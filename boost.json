@@ -1,0 +1,13 @@
+{
+    "agents": [
+        "copilot"
+    ],
+    "guidelines": true,
+    "skills": [
+        "laravel-best-practices",
+        "inertia-react-development",
+        "echo-react-development",
+        "echo-development",
+        "tailwindcss-development"
+    ]
+}
