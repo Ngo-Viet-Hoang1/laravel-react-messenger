@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\Group;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,8 +20,6 @@ class GroupFactory extends Factory
         return [
             'name' => $this->faker->company(),
             'description' => $this->faker->paragraph(),
-            'owner_id' => User::factory(),
-            'last_message_id' => null,
         ];
     }
 }
