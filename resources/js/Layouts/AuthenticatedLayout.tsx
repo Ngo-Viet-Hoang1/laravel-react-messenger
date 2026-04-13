@@ -1,8 +1,8 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
-import Dropdown from '@/Components/Dropdown';
-import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import ThemeToggle from '@/Components/ThemeToggle';
+import ThemeToggle from '@/Components/App/ThemeToggle';
+import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
+import Dropdown from '@/Components/Breeze/Dropdown';
+import NavLink from '@/Components/Breeze/NavLink';
+import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 
