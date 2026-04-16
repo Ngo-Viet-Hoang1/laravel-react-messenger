@@ -6,9 +6,9 @@ use App\Models\Conversation;
 use App\Models\Group;
 use App\Models\Message;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -19,8 +19,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
         User::factory()->create([
             'name' => 'John Doe',
             'email' => 'john@example.com',
@@ -32,13 +30,14 @@ class DatabaseSeeder extends Seeder
             'name' => 'Jane Smith',
             'email' => 'jane@example.com',
             'password' => bcrypt('password'),
+            'is_admin' => false,
         ]);
 
         User::factory(10)->create();
 
         for ($i = 0; $i < 5; $i++) {
             $group = Group::factory()->create([
-                'owner_id' => 1
+                'owner_id' => 1,
             ]);
 
             $users = User::inRandomOrder()->limit(rand(2, 5))->pluck('id');

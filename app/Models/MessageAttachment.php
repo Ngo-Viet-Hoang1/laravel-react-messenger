@@ -7,14 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class MessageAttachment extends Model
 {
-    //
     use HasFactory;
 
-    protected $fillable = [
-        'message_id',
-        'name',
-        'path',
-        'mine',
-        'size',
-    ];
+    protected $fillable = ['message_id', 'name', 'path', 'mine', 'size'];
+
+    public function message()
+    {
+        return $this->belongsTo(Message::class);
+    }
 }

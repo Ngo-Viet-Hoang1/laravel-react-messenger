@@ -22,9 +22,11 @@ class User extends Authenticatable
         'avatar',
         'name',
         'email',
+        'avatar_url',
         'email_verified_at',
         'password',
         'is_admin',
+        'blocked_at',
     ];
 
     /**
@@ -52,13 +54,29 @@ class User extends Authenticatable
             ->where('user.id', '!=', $userId)
             ->when(!$exceptUser->is_admin, function ($query) {
                 $query->whereNull('users.blocked_at');
-            })->leftJoin('conversations', function($join) use ($userId) {
+            })->leftJoin('conversations', function ($join) use ($userId) {
                 $join->on('conversations.user_id1', '=', 'users.id')
                     ->where('conversations.user_id2', $userId)
-                    ->orWhere(function($query) {
+                    ->orWhere(function ($query) {
                         $query->on('conversations.user_id2', '=', 'users.id')
                             ->where('conversations.user_id1', Auth::id());
                     });
             });
+    }
+
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class, 'user_id1')
+            ->orWhere('user_id2', $this->id);
+    }
+
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id');
     }
 }

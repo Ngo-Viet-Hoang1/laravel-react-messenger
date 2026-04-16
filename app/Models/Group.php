@@ -7,15 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Group extends Model
 {
-    //
     use HasFactory;
 
-    protected $fillable = [
-        'name',
-        'description',
-        'owner_id',
-        'last_message_id',
-    ];
+    protected $fillable = ['name', 'description', 'owner_id', 'last_message_id'];
 
     public function users()
     {
@@ -29,6 +23,11 @@ class Group extends Model
 
     public function owner()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function lastMessage()
+    {
+        return $this->belongsTo(Message::class, 'last_message_id');
     }
 }
