@@ -1,0 +1,156 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Events\SocketMessage;
+use App\Http\Requests\StoreMessageRequest;
+use App\Http\Resources\MessageResource;
+use App\Models\Conversation;
+use App\Models\Group;
+use App\Models\Message;
+use App\Models\MessageAttachment;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+class MessageController extends Controller
+{
+    public function byUser(User $user)
+    {
+        $messages = $this->directMessageQuery(auth()->id(), $user->id)
+            ->with(['sender', 'receiver', 'attachments'])
+            ->latest()
+            ->paginate(10);
+
+        return inertia('Home', [
+            'selectedConversation' => $user->toConversationArray(),
+            'messages' => MessageResource::collection($messages),
+        ]);
+    }
+
+    public function byGroup(Group $group)
+    {
+        $this->abortIfUserCannotAccessGroup($group->id);
+
+        $messages = Message::query()
+            ->where('group_id', $group->id)
+            ->with(['sender', 'receiver', 'attachments'])
+            ->latest()
+            ->paginate(10);
+
+        $group->load(['users']);
+
+        return inertia('Home', [
+            'selectedConversation' => $group->toConversationArray(),
+            'messages' => MessageResource::collection($messages),
+        ]);
+    }
+
+    public function loadOlder(Message $message)
+    {
+        $isGroupChat = (bool) $message->group_id;
+
+        if ($isGroupChat) {
+            $this->abortIfUserCannotAccessGroup((int) $message->group_id);
+
+            $olderMessages = Message::query()
+                ->where('group_id', $message->group_id)
+                ->where('created_at', '<', $message->created_at)
+                ->with(['sender', 'receiver', 'attachments'])
+                ->latest()
+                ->paginate(10);
+        } else {
+            $this->abortIfUserCannotAccessDirectMessage($message);
+
+            $olderMessages = $this->directMessageQuery((int) $message->sender_id, (int) $message->receiver_id)
+                ->where('created_at', '<', $message->created_at)
+                ->with(['sender', 'receiver', 'attachments'])
+                ->latest()
+                ->paginate(10);
+        }
+
+        return MessageResource::collection($olderMessages);
+    }
+
+    public function store(StoreMessageRequest $request)
+    {
+        $data = $request->validated();
+        $senderId = (int) $request->user()->id;
+        $data['sender_id'] = $senderId;
+        $receiverId = isset($data['receiver_id']) ? (int) $data['receiver_id'] : null;
+        $groupId = isset($data['group_id']) ? (int) $data['group_id'] : null;
+        $files = $data['attachments'] ?? [];
+        unset($data['attachments']);
+
+        $message = DB::transaction(function () use ($data, $files, $receiverId, $groupId, $senderId) {
+            $message = Message::create($data);
+
+            if ($files !== []) {
+                foreach ($files as $file) {
+                    $directory = 'attachments/' . Str::random(40);
+                    Storage::disk('public')->makeDirectory($directory);
+
+                    MessageAttachment::create([
+                        'message_id' => $message->id,
+                        'path' => $file->store($directory, 'public'),
+                        'name' => $file->getClientOriginalName(),
+                        'size' => $file->getSize(),
+                        'mime' => $file->getMimeType(),
+                    ]);
+                }
+            }
+
+            if ($receiverId !== null) {
+                Conversation::updateConversationWithMessage($senderId, $receiverId, $message);
+            }
+
+            if ($groupId !== null) {
+                Group::updateGroupWithMessage($groupId, $message);
+            }
+
+            return $message->load(['sender', 'receiver', 'attachments']);
+        });
+
+        SocketMessage::dispatch($message);
+
+        return new MessageResource($message);
+    }
+
+    public function destroy(Message $message)
+    {
+        if ($message->sender_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+        $message->delete();
+        return response()->noContent();
+    }
+
+    private function abortIfUserCannotAccessGroup(int $groupId): void
+    {
+        $user = auth()->user();
+        abort_unless($user && $user->groups()->whereKey($groupId)->exists(), 403, 'Unauthorized');
+    }
+
+    private function abortIfUserCannotAccessDirectMessage(Message $message): void
+    {
+        $userId = auth()->id();
+        abort_unless($userId === $message->sender_id || $userId === $message->receiver_id, 403, 'Unauthorized');
+    }
+
+    private function directMessageQuery(int $firstUserId, int $secondUserId): Builder
+    {
+        return Message::query()->where(function (Builder $query) use ($firstUserId, $secondUserId) {
+            $query->where(function (Builder $subQuery) use ($firstUserId, $secondUserId) {
+                $subQuery
+                    ->where('sender_id', $firstUserId)
+                    ->where('receiver_id', $secondUserId);
+            })->orWhere(function (Builder $subQuery) use ($firstUserId, $secondUserId) {
+                $subQuery
+                    ->where('sender_id', $secondUserId)
+                    ->where('receiver_id', $firstUserId);
+            });
+        });
+    }
+}

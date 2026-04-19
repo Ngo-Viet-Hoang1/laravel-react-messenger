@@ -54,7 +54,7 @@ class Group extends Model
             'is_user' => false,
             'owner_id' => $this->owner_id,
             'users' => $this->relationLoaded('users')
-                ? $this->users->map(fn (User $user) => [
+                ? $this->users->map(fn(User $user) => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'avatar_url' => $user->avatar_url,
@@ -70,5 +70,12 @@ class Group extends Model
             'last_message' => $this->last_message,
             'last_message_date' => $this->last_message_date,
         ];
+    }
+
+    public static function updateGroupWithMessage(int $groupId, Message $message): void
+    {
+        self::query()
+            ->whereKey($groupId)
+            ->update(['last_message_id' => $message->id]);
     }
 }
