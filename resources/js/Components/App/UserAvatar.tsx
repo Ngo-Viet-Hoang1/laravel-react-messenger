@@ -10,7 +10,7 @@ type Props = {
 
 const UserAvatar = ({ user, online, profile = false }: Props) => {
     const onlineClass = online ? 'online' : '';
-    const sizeClass = profile ? 'w-40' : 'w-8';
+    const sizeClass = profile ? 'h-40 w-40' : 'h-8 w-8';
     const fallbackTextSizeClass = profile ? 'text-4xl' : 'text-sm';
 
     if (user.avatar_url) {
