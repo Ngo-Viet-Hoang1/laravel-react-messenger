@@ -19,13 +19,15 @@ class MessageController extends Controller
 {
     public function byUser(User $user)
     {
+        $selectedUser = $this->resolveSelectedUserConversation($user);
+
         $messages = $this->directMessageQuery(auth()->id(), $user->id)
             ->with(['sender', 'receiver', 'attachments'])
             ->latest()
             ->paginate(10);
 
         return inertia('Home', [
-            'selectedConversation' => $user->toConversationArray(),
+            'selectedConversation' => $selectedUser->toConversationArray(),
             'messages' => MessageResource::collection($messages),
         ]);
     }
@@ -40,7 +42,9 @@ class MessageController extends Controller
             ->latest()
             ->paginate(10);
 
-        $group->load(['users']);
+        $group->load(['users', 'lastMessage']);
+        $group->setAttribute('last_message', $group->lastMessage?->message);
+        $group->setAttribute('last_message_date', $group->lastMessage?->created_at?->toISOString());
 
         return inertia('Home', [
             'selectedConversation' => $group->toConversationArray(),
@@ -124,6 +128,7 @@ class MessageController extends Controller
             abort(403, 'Unauthorized');
         }
         $message->delete();
+
         return response()->noContent();
     }
 
@@ -152,5 +157,29 @@ class MessageController extends Controller
                     ->where('receiver_id', $firstUserId);
             });
         });
+    }
+
+    private function resolveSelectedUserConversation(User $user): User
+    {
+        $authUserId = (int) auth()->id();
+
+        $conversation = Conversation::query()
+            ->where(function (Builder $query) use ($authUserId, $user) {
+                $query
+                    ->where('user_id1', $authUserId)
+                    ->where('user_id2', $user->id);
+            })
+            ->orWhere(function (Builder $query) use ($authUserId, $user) {
+                $query
+                    ->where('user_id1', $user->id)
+                    ->where('user_id2', $authUserId);
+            })
+            ->with(['lastMessage:id,message,created_at'])
+            ->first();
+
+        $user->setAttribute('last_message', $conversation?->lastMessage?->message);
+        $user->setAttribute('last_message_date', $conversation?->lastMessage?->created_at?->toISOString());
+
+        return $user;
     }
 }

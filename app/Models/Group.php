@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class Group extends Model
 {
@@ -46,6 +47,12 @@ class Group extends Model
 
     public function toConversationArray()
     {
+        $lastMessage = $this->last_message ?? $this->lastMessage?->message;
+        $lastMessageDate = $this->last_message_date ?? $this->lastMessage?->created_at;
+        if ($lastMessageDate !== null) {
+            $lastMessageDate = Carbon::parse($lastMessageDate)->toISOString();
+        }
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -67,8 +74,8 @@ class Group extends Model
                 : [],
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            'last_message' => $this->last_message,
-            'last_message_date' => $this->last_message_date,
+            'last_message' => $lastMessage,
+            'last_message_date' => $lastMessageDate,
         ];
     }
 

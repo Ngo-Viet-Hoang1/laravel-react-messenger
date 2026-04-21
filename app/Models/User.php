@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -66,7 +67,7 @@ class User extends Authenticatable
         $userId = $user->id;
         $query = User::select(['users.*', 'messages.message as last_message', 'messages.created_at as last_message_date'])
             ->where('users.id', '!=', $userId)
-            ->when(! $user->is_admin, function ($query) {
+            ->when(!$user->is_admin, function ($query) {
                 $query->whereNull('users.blocked_at');
             })
             ->leftJoin('conversations', function ($join) use ($userId) {
@@ -88,6 +89,11 @@ class User extends Authenticatable
 
     public function toConversationArray()
     {
+        $lastMessageDate = $this->last_message_date;
+        if ($lastMessageDate !== null) {
+            $lastMessageDate = Carbon::parse($lastMessageDate)->toISOString();
+        }
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -99,7 +105,7 @@ class User extends Authenticatable
             'updated_at' => $this->updated_at,
             'blocked_at' => $this->blocked_at,
             'last_message' => $this->last_message,
-            'last_message_date' => $this->last_message_date,
+            'last_message_date' => $lastMessageDate,
         ];
     }
 }
