@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('conversations', function (Blueprint $table) {
             $table->id();
-            $table->foreign('user_id1')->constrained('users');
-            $table->foreign('user_id2')->constrained('users');
+            $table->foreignId('user_id1')->constrained('users');
+            $table->foreignId('user_id2')->constrained('users');
             $table->timestamps();
         });
     }
