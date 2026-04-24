@@ -5,7 +5,8 @@
     "scripts": {
         "build": "tsc && vite build",
         "dev": "vite",
-        "lint": "eslint resources/js --ext .js,.jsx,.ts,.tsx --ignore-path .gitignore --fix"
+        "lint": "eslint resources/js --ext .js,.jsx,.ts,.tsx --ignore-path .gitignore --fix",
+        "dev:all": "concurrently -n serve,vite,reverb \"php artisan serve\" \"npm run dev\" \"php artisan reverb:start --debug\""
     },
     "devDependencies": {
         "@headlessui/react": "^2.2.9",

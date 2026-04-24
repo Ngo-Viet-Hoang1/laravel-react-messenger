@@ -1,3 +1,4 @@
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ChatLayout from '@/Layouts/ChatLayout';
 
 function Home() {
@@ -8,9 +9,9 @@ function Home() {
 
 Home.layout = (page) => {
     return (
-        <>
+        <AuthenticatedLayout>
             <ChatLayout children={page} />
-        </>
+        </AuthenticatedLayout>
     );
 }
 

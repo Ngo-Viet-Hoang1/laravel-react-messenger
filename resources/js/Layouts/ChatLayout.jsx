@@ -1,6 +1,8 @@
 import { usePage } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useEffect, useState } from 'react';
+import { PencilSquareIcon } from '@heroicons/react/24/solid';
+import TextInput from '@/Components/TextInput';
+import ConversationItem from '@/Components/App/ConversationItem';
 
 const ChatLayout = ({ children }) => {
     const page = usePage();
@@ -15,9 +17,29 @@ const ChatLayout = ({ children }) => {
     console.log('conversations', conversations);
     console.log('selectedConversation', selectedConversation);
 
-    useEffect(() => { 
+    const onSearch = (ev) => {
+        const search = ev.target.value.toLowerCase();
+        setLocalConversations(
+            conversations.filter((conversation) => { 
+                return (
+                    conversation.name.toLowerCase().includes(search)
+                )
+            })
+        );
+     }
+
+    useEffect(() => {
+        const uniqueConversations = Array.from(
+            new Map(
+                localConversations.map((conversation) => [
+                    `${conversation.is_group ? 'group_' : 'user_'}${conversation.id}`,
+                    conversation,
+                ])
+            ).values()
+        );
+
         setSortedConversations(
-            localConversations.sort((a, b) => {
+            uniqueConversations.sort((a, b) => {
                 if (a.blocked_at && b.blocked_at) {
                     return a.blocked_at > b.blocked_at ? 1 : -1;
                 } else if (a.blocked_at) {
@@ -38,7 +60,7 @@ const ChatLayout = ({ children }) => {
         );
     }, [localConversations]);
 
-    useEffect(() => { 
+    useEffect(() => {
         setLocalConversations(conversations);
     }, [conversations]);
 
@@ -81,10 +103,43 @@ const ChatLayout = ({ children }) => {
     }, []);
 
     return (
-        <AuthenticatedLayout>
-            ChatLayout
-            <div>{children}</div>
-        </AuthenticatedLayout>
+        <>
+            <div className='flex-1 w-full flex overflow-hidden'>
+                <div className={`transition-all w-full sm:w-[220px] md:w-[300px] bg-slate-800 
+                     flex flex-col overflow-hidden ${selectedConversation ? "ml-[100] sm:ml-0" : ""
+                    }`}>
+
+                    <div className='flex items-center justify-between py-2 px-3 text-xl font-medium text-gray-200'>
+                        My conversations
+                        <div className='tooltip tooltip-left' data-tip="Create new Group">
+                            <button className='text-gray-400 hover:text-gray-200'>
+                                <PencilSquareIcon className='w-4 h-4 inline-block ml-2' />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className='p-3'>
+                        <TextInput onKeyUp={onSearch} placeholder='Filter users and groups' className='w-full' />
+                    </div>
+                    <div className='flex-1 overflow-auto'>
+                        {sortedConversations && sortedConversations.map((conversation) => (
+                            <ConversationItem
+                                key={`${
+                                    conversation.is_group ? 'group_' : 'user_'
+                                    }${conversation.id}`}
+                                conversation={conversation}
+                                online={!!isUserOnline(conversation.id)}
+                                selectedConversation={selectedConversation}
+                            />
+                        ))}
+                    </div>
+
+                </div>
+                <div className='flex-1 flex flex-col overflow-hidden'>
+                    {children}
+                </div>
+            </div>
+        </>
     );
 };
 
