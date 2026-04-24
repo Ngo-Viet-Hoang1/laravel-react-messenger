@@ -1,4 +1,5 @@
-import { ChatItem } from '@/types';
+import { useEventBus } from '@/EventBus';
+import { ChatItem, ChatMessage } from '@/types';
 import {
     FaceSmileIcon,
     HandThumbUpIcon,
@@ -15,17 +16,25 @@ type Props = {
 };
 
 const MessageInput = ({ conversation = null }: Props) => {
+    const { emit } = useEventBus();
+
     const [message, setMessage] = useState('');
     const [inputErrorMessage, setInputErrorMessage] = useState('');
     const [messageSending, setMessageSending] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
     const hasMessage = message.trim().length > 0;
     const attachmentButtonClass =
         'btn btn-circle btn-ghost relative inline-flex h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 transition-all duration-150 hover:scale-[1.04] hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600';
 
+    const showError = (msg: string) => {
+        setInputErrorMessage(msg);
+        setTimeout(() => setInputErrorMessage(''), 3000);
+    };
+
     const sendMessage = async (content: string, clearInput = false) => {
         if (!conversation) {
-            setInputErrorMessage('Please select a conversation first');
-            setTimeout(() => setInputErrorMessage(''), 3000);
+            showError('Please select a conversation first');
             return;
         }
 
@@ -43,26 +52,36 @@ const MessageInput = ({ conversation = null }: Props) => {
         setMessageSending(true);
 
         try {
-            await axios.post(route('message.store'), formData, {
-                onUploadProgress: (progressEvent) => {
-                    if (!progressEvent.total) return;
+            const { data: newMessage } = await axios.post<ChatMessage>(
+                route('message.store'),
+                formData,
+                {
+                    onUploadProgress: (progressEvent) => {
+                        if (!progressEvent.total) return;
 
-                    const progress = Math.round(
-                        (progressEvent.loaded / progressEvent.total) * 100,
-                    );
-                    console.log('Upload Progress: ' + progress + '%');
+                        const progress = Math.round(
+                            (progressEvent.loaded / progressEvent.total) * 100,
+                        );
+                        setUploadProgress(progress);
+                    },
                 },
-            });
+            );
+
+            // Emit message.created so that Home.tsx can update localMessages
+            // immediately without waiting for WebSocket broadcast
+            // Only others receive the WebSocket broadcast, sender gets the immediate update via EventBus
+            if (newMessage?.id) {
+                emit('message.created', newMessage);
+            }
 
             if (clearInput) {
-                setMessage('');
+                clearAllInputs();
             }
-        } catch (error) {
-            console.error('Error sending message:', error);
-            setInputErrorMessage('Failed to send message. Please try again.');
-            setTimeout(() => setInputErrorMessage(''), 3000);
+        } catch {
+            showError('Failed to send message. Please try again.');
         } finally {
             setMessageSending(false);
+            setUploadProgress(0);
         }
     };
 
@@ -74,6 +93,10 @@ const MessageInput = ({ conversation = null }: Props) => {
     const onLikeClick = async () => {
         if (messageSending) return;
         await sendMessage('👍');
+    };
+
+    const clearAllInputs = () => {
+        setMessage('');
     };
 
     return (

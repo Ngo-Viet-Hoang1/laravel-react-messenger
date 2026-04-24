@@ -1,11 +1,19 @@
 import ConversationHeader from '@/Components/App/ConversationHeader';
 import MessageInput from '@/Components/App/MessageInput';
 import MessageItem from '@/Components/App/MessageItem';
+import { useEventBus } from '@/EventBus';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ChatLayout from '@/Layouts/ChatLayout';
-import { ChatItem, ChatMessage, ChatMessageCollection } from '@/types';
+import {
+    PageProps as AppPageProps,
+    ChatItem,
+    ChatMessage,
+    ChatMessageCollection,
+} from '@/types';
+import { isMessageForConversation } from '@/utils';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
-import { useEffect, useRef, useState } from 'react';
+import { usePage } from '@inertiajs/react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type PageProps = {
     selectedConversation?: ChatItem | null;
@@ -13,8 +21,35 @@ type PageProps = {
 };
 
 function Home({ selectedConversation = null, messages = null }: PageProps) {
+    const currentUser = usePage<AppPageProps>().props.auth.user;
+    const myId = Number(currentUser.id);
+
     const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
     const messagesCtrRef = useRef<HTMLDivElement>(null);
+    const { on } = useEventBus();
+
+    const messageCreated = useCallback(
+        (message: ChatMessage) => {
+            if (!selectedConversation) return;
+            if (
+                !isMessageForConversation(message, selectedConversation, myId)
+            ) {
+                return;
+            }
+            const isMessageAlreadyAdded = localMessages.some(
+                (m) => m.id === message.id,
+            );
+            if (isMessageAlreadyAdded) return;
+
+            setLocalMessages((prev) => [...prev, message]);
+        },
+        [selectedConversation, myId, localMessages],
+    );
+
+    useEffect(() => {
+        const offCreated = on('message.created', messageCreated);
+        return () => offCreated();
+    }, [messageCreated, on]);
 
     useEffect(() => {
         if (!messagesCtrRef.current) return;
@@ -26,9 +61,7 @@ function Home({ selectedConversation = null, messages = null }: PageProps) {
             });
         }, 100);
 
-        return () => {
-            window.clearTimeout(timeoutId);
-        };
+        return () => window.clearTimeout(timeoutId);
     }, [
         localMessages.length,
         selectedConversation?.id,

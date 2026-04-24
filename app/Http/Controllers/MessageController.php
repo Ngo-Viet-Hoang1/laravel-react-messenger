@@ -117,7 +117,7 @@ class MessageController extends Controller
             return $message->load(['sender', 'receiver', 'attachments']);
         });
 
-        SocketMessage::dispatch($message);
+        broadcast(new SocketMessage($message))->toOthers();
 
         return new MessageResource($message);
     }
