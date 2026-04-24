@@ -1,8 +1,9 @@
-import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
+import defaultTheme from 'tailwindcss/defaultTheme';
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    darkMode: 'class',
     content: [
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './storage/framework/views/*.php',
@@ -16,7 +17,21 @@ export default {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
         },
+        screens: {
+            xs: '475px',
+            ...defaultTheme.screens,
+        },
     },
 
-    plugins: [forms],
+    plugins: [forms, require('daisyui')],
+    daisyui: {
+        themes: true,
+        darkTheme: 'dark',
+        base: true,
+        styled: true,
+        utils: true,
+        prefix: '',
+        logs: true,
+        themeRoot: ':root',
+    },
 };

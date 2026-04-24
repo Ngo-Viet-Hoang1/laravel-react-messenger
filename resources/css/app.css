@@ -1,3 +1,88 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.chat-message-content > blockquote,
+.chat-message-content > dl,
+.chat-message-content > dd,
+.chat-message-content > h1,
+.chat-message-content > h2,
+.chat-message-content > h3,
+.chat-message-content > h4,
+.chat-message-content > h5,
+.chat-message-content > h6,
+.chat-message-content > hr,
+.chat-message-content > pre,
+.chat-message-content > p,
+.chat-message-content > figure {
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.chat-message-content > ol,
+.chat-message-content > ul {
+    padding: revert;
+    margin: revert;
+    list-style: revert;
+}
+
+.chat-message-content > table {
+    border-collapse: revert;
+}
+
+.chat-message-content > h1,
+.chat-message-content > h2,
+.chat-message-content > h3,
+.chat-message-content > h4,
+.chat-message-content > h5,
+.chat-message-content > h6 {
+    font-size: revert;
+    font-weight: revert;
+}
+
+.chat-message-content > a {
+    text-decoration: none;
+    color: rgb(246, 246, 246);
+}
+
+.chat-message-content > :first-child {
+    margin-top: 0;
+}
+
+.chat-message-content > :last-child {
+    margin-bottom: 0;
+}
+
+.chat-message-content > blockquote {
+    border-left: 5px solid rgb(209, 213, 219);
+    font-style: italic;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    overflow: hidden;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.chat-message-content code {
+    font-family: 'Courier New', Courier, monospace;
+    font-style: normal;
+    font-weight: 600;
+    background-color: rgb(229, 231, 235);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    background-color: rgb(229, 231, 235);
+    color: rgb(55, 65, 81);
+}
+
+.chat-message-content pre {
+    background-color: rgb(229, 231, 235);
+    padding: 1rem;
+    white-space: nowrap;
+    overflow-x: auto;
+    border-radius: 0.25rem;
+    color: rgb(55, 65, 81);
+}
+
+.chat-message-content pre code {
+    background-color: transparent;
+}

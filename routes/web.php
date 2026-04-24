@@ -1,22 +1,21 @@
 <?php
 
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/', [HomeController::class, 'index'])->name('dashboard');
+
+    Route::get('/user/{user}', [MessageController::class, 'byUser'])->name('chat.user');
+    Route::get('/group/{group}', [MessageController::class, 'byGroup'])->name('chat.group');
+
+    Route::post('/messages', [MessageController::class, 'store'])->name('message.store');
+    Route::get('/messages/older/{message}', [MessageController::class, 'loadOlder'])->name('message.loadOlder');
+    Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('message.destroy');
+
 });
-
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

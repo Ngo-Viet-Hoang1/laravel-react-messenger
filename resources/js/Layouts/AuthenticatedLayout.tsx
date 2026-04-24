@@ -1,7 +1,8 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
-import Dropdown from '@/Components/Dropdown';
-import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
+import ThemeToggle from '@/Components/App/ThemeToggle';
+import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
+import Dropdown from '@/Components/Breeze/Dropdown';
+import NavLink from '@/Components/Breeze/NavLink';
+import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 
@@ -15,8 +16,8 @@ export default function Authenticated({
         useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <nav className="border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex h-screen flex-col overflow-hidden bg-gray-100 dark:bg-gray-900">
+            <nav className="shrink-0 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
@@ -37,6 +38,7 @@ export default function Authenticated({
                         </div>
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
+                            <ThemeToggle />
                             <div className="relative ms-3">
                                 <Dropdown>
                                     <Dropdown.Trigger>
@@ -166,14 +168,16 @@ export default function Authenticated({
             </nav>
 
             {header && (
-                <header className="bg-white shadow dark:bg-gray-800">
+                <header className="shrink-0 bg-white shadow dark:bg-gray-800">
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         {header}
                     </div>
                 </header>
             )}
 
-            <main>{children}</main>
+            <main className="flex min-h-0 flex-1 overflow-hidden">
+                {children}
+            </main>
         </div>
     );
 }
