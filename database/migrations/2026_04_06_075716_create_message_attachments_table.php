@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('message_id')->constrained('messages');
             $table->string('name', 255);
             $table->string('path', 1024);
-            $table->string('mine', 255);
+            $table->string('mime', 255);
             $table->integer('size');
             $table->timestamps();
         });
