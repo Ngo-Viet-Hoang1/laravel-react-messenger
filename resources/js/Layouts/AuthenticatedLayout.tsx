@@ -3,12 +3,10 @@ import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
-import { useEventBus } from '@/EventBus';
-import { ChatItem, PageProps, SocketMessageEvent } from '@/types';
-import { getChannelName } from '@/utils';
+import useConversationSockets from '@/hooks/useConversationSockets';
+import { PageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { echo } from '@laravel/echo-react';
-import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
+import { PropsWithChildren, ReactNode, useState } from 'react';
 
 export default function Authenticated({
     header,
@@ -17,44 +15,11 @@ export default function Authenticated({
     const page = usePage<PageProps>();
     const user = page.props.auth.user;
     const conversations = page.props.conversations;
-    const { emit } = useEventBus();
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
 
-    useEffect(() => {
-        const e = echo();
-        if (!e || !conversations?.length) return;
-
-        conversations.forEach((conversation: ChatItem) => {
-            const channel = getChannelName(conversation, user.id);
-
-            e.private(channel).listen(
-                'SocketMessage',
-                (event: SocketMessageEvent) => {
-                    const message = event.message;
-
-                    emit('message.created', message);
-
-                    if (message.sender_id === user.id) return;
-
-                    emit('newMessageNotification', {
-                        user: message.sender,
-                        group_id: message.group_id,
-                        message:
-                            message.message ||
-                            `Shared ${message.attachments.length} attachment(s)`,
-                    });
-                },
-            );
-        });
-
-        return () => {
-            conversations.forEach((conversation: ChatItem) => {
-                e.leave(getChannelName(conversation, user.id));
-            });
-        };
-    }, [conversations, emit, user.id]);
+    useConversationSockets(conversations || [], Number(user.id));
 
     return (
         <div className="flex h-screen flex-col overflow-hidden bg-gray-100 dark:bg-gray-900">

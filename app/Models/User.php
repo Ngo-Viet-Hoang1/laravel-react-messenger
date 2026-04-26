@@ -11,22 +11,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'avatar_url', 'email_verified_at', 'password', 'is_admin', 'blocked_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
-
-    protected $fillable = [
-        'name',
-        'email',
-        'avatar_url',
-        'email_verified_at',
-        'password',
-        'is_admin',
-        'blocked_at',
-    ];
 
     /**
      * Get the attributes that should be cast.
@@ -38,6 +28,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
+            'blocked_at' => 'datetime',
         ];
     }
 
