@@ -1,7 +1,7 @@
+import EmojiPickerPopover from '@/Components/App/EmojiPickerPopover';
 import { useEventBus } from '@/EventBus';
 import { ChatItem, ChatMessage } from '@/types';
 import {
-    FaceSmileIcon,
     HandThumbUpIcon,
     PaperAirplaneIcon,
     PaperClipIcon,
@@ -144,15 +144,15 @@ const MessageInput = ({ conversation = null }: Props) => {
                         disabled={!conversation || messageSending}
                     />
 
-                    <button
-                        type="button"
-                        disabled={!conversation || messageSending}
-                        className="btn btn-circle btn-ghost absolute right-2 top-1/2 inline-flex h-8 min-h-8 w-8 -translate-y-1/2 items-center justify-center p-0 text-slate-500 transition-all duration-150 hover:scale-[1.04] hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
-                    >
-                        <FaceSmileIcon className="h-5 w-5" />
-                    </button>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <EmojiPickerPopover
+                            disabled={!conversation || messageSending}
+                            onSelect={(emoji: string) => {
+                                setMessage((prev) => prev + emoji);
+                            }}
+                        />
+                    </div>
                 </div>
-
                 <button
                     type="button"
                     onClick={hasMessage ? onSendClick : onLikeClick}
