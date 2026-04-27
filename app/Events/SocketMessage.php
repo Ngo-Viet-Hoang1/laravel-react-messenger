@@ -7,11 +7,11 @@ use App\Models\Message;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class SocketMessage implements ShouldBroadcast
+class SocketMessage implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -30,6 +30,11 @@ class SocketMessage implements ShouldBroadcast
         ];
     }
 
+    public function broadcastAs(): string
+    {
+        return 'message.created';
+    }
+
     /**
      * Get the channels the event should broadcast on.
      *
@@ -38,14 +43,17 @@ class SocketMessage implements ShouldBroadcast
     public function broadcastOn(): array
     {
         $m = $this->message;
-        $channel = [];
-        
+        $channels = [];
+
         if ($m->group_id) {
-            $channel[] = new PrivateChannel('message.group.'.$m->group_id);
+            $channels[] = new PrivateChannel('message.group.'.$m->group_id);
         } else {
-            new PrivateChannel('message.user.'.collect($m->sender_id, $m->receiver_id)->sort()->implode('-'));
+            $userIds = [$m->sender_id, $m->receiver_id];
+            sort($userIds);
+
+            $channels[] = new PrivateChannel('message.user.'.$userIds[0].'-'.$userIds[1]);
         }
 
-        return $channel;
+        return $channels;
     }
 }

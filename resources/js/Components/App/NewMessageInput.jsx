@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 
 const NewMessageInput = ({ value, onChange, onSend }) => {
-    const input = useRef();
+    const input = useRef(null);
 
     const onInputKeyDown = (ev) => {
         if (ev.key === "Enter" && !ev.shiftKey) { 
@@ -19,6 +19,10 @@ const NewMessageInput = ({ value, onChange, onSend }) => {
 
     const adjustHeight = () => { 
         setTimeout(() => { 
+            if (!input.current) {
+                return;
+            }
+
             input.current.style.height = "auto";
             input.current.style.height = input.current.scrollHeight + 1 + "px";
         }, 100);

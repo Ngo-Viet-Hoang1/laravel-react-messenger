@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { PencilSquareIcon } from '@heroicons/react/24/solid';
 import TextInput from '@/Components/TextInput';
 import ConversationItem from '@/Components/App/ConversationItem';
+import { useEventBus } from '@/EventBus';
 
 const ChatLayout = ({ children }) => {
     const page = usePage();
@@ -11,19 +12,64 @@ const ChatLayout = ({ children }) => {
     const [localConversations, setLocalConversations] = useState([]);
     const [sortedConversations, setSortedConversations] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState({});
+    const { on } = useEventBus();
 
     const isUserOnline = (userId) => onlineUsers[userId];
 
     const onSearch = (ev) => {
         const search = ev.target.value.toLowerCase();
         setLocalConversations(
-            conversations.filter((conversation) => { 
+            conversations.filter((conversation) => {
                 return (
                     conversation.name.toLowerCase().includes(search)
                 )
             })
         );
-     }
+    }
+
+    const messageCreated = (message) => {
+        setLocalConversations((oldUser) => {
+            return oldUser.map((u) => {
+                const conversationId = Number(u.id);
+                const receiverId = Number(message.receiver_id);
+                const senderId = Number(message.sender_id);
+                const groupId = Number(message.group_id);
+
+                // is user
+                if (message.receiver_id
+                    && !u.is_group
+                    && (conversationId === receiverId || conversationId === senderId)
+                ) {
+                    return {
+                        ...u,
+                        last_message: message.message,
+                        last_message_date: message.created_at,
+                    };
+                }
+                // is group
+                if (message.group_id
+                    && u.is_group
+                    && conversationId === groupId
+                ) {
+                    return {
+                        ...u,
+                        last_message: message.message,
+                        last_message_date: message.created_at,
+                    };
+                }
+
+                return u;
+            });
+        })
+    }
+
+    useEffect(() => {
+        const offCreated = on('message.created', messageCreated);
+
+        return () => {
+            offCreated();
+        }
+    }, [on]);
 
     useEffect(() => {
         const uniqueConversations = Array.from(
@@ -121,8 +167,7 @@ const ChatLayout = ({ children }) => {
                     <div className='flex-1 overflow-auto'>
                         {sortedConversations && sortedConversations.map((conversation) => (
                             <ConversationItem
-                                key={`${
-                                    conversation.is_group ? 'group_' : 'user_'
+                                key={`${conversation.is_group ? 'group_' : 'user_'
                                     }${conversation.id}`}
                                 conversation={conversation}
                                 online={!!isUserOnline(conversation.id)}

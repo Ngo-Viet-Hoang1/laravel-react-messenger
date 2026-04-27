@@ -1,14 +1,20 @@
+/* global route */
+
 import { FaceSmileIcon, HandThumbUpIcon, PaperAirplaneIcon, PaperClipIcon, PhotoIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 import NewMessageInput from "./NewMessageInput";
 import axios from "axios";
+import { useEventBus } from "@/EventBus";
 
 const MessageInput = ({ conversation = null }) => {
     const [newMessage, setNewMessage] = useState("");
     const [inputErrorMessage, setInputErrorMessage] = useState("");
     const [messageSending, setMessageSending] = useState(false);
+    const { emit } = useEventBus();
 
     const onSendClick = () => { 
+        if (messageSending) return;
+        
         if (newMessage.trim() === "") {
             setInputErrorMessage("Please provide a message or attachments.");
 
@@ -33,7 +39,8 @@ const MessageInput = ({ conversation = null }) => {
                 );
                 console.log(progress)
             }
-        }).then(() => {
+        }).then(({ data }) => {
+            emit("message.created", data);
             setNewMessage("");
             setMessageSending(false);
         }).catch(() => {
@@ -68,10 +75,7 @@ const MessageInput = ({ conversation = null }) => {
                         onSend={onSendClick}
                         onChange={(ev) => setNewMessage(ev.target.value)}
                     />
-                    <button onClick={onSendClick} className="btn btn-info rounded l-none">
-                        {messageSending && (
-                            <span className="loading loading-spiner loading-xs"></span>
-                        )}
+                    <button onClick={onSendClick} disabled={messageSending} className="btn btn-info rounded l-none">
                         <PaperAirplaneIcon className="w-6" />
                         <span className="hidden sm:inline">Send</span>
                     </button>
