@@ -1,5 +1,6 @@
 /* global route */
 
+import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';
 import ConversationHeader from '@/Components/App/ConversationHeader';
 import MessageInput from '@/Components/App/MessageInput';
 import MessageItem from '@/Components/App/MessageItem';
@@ -15,17 +16,29 @@ function Home({ selectedConversation = null, messages = null }) {
     const [localMessages, setLocalMessages] = useState([]);
     const [srollFromBottom, setScrollFromBottom] = useState(null);
     const [noMoreMessages, setNoMoreMessages] = useState(false);
+    const isLoadingMoreMessages = useRef(false);
     const messageCtrRef = useRef(null);
+    const [showAttachmentPreview, setShowAttachmentPreview] = useState(false);
+    const [previewAttachment, setPreviewAttachment] = useState({
+        attachments: [],
+        index: 0,
+    });
     const loadMoreIntersect = useRef(null);
     const { on } = useEventBus();
 
     const loadMoreMessages = useCallback(() => {
 
-        if (noMoreMessages) {
+        if (noMoreMessages || isLoadingMoreMessages.current) {
             return;
         }
 
         const firstMessage = localMessages[0];
+        if (!firstMessage) {
+            return;
+        }
+
+        isLoadingMoreMessages.current = true;
+
         axios.get(route('message.loadOlder', firstMessage.id))
             .then(({ data }) => {
                 if (data.data.length === 0) {
@@ -42,10 +55,18 @@ function Home({ selectedConversation = null, messages = null }) {
 
                 setLocalMessages((prevMessages) => [...data.data.reverse(), ...prevMessages]);
             })
+            .finally(() => {
+                isLoadingMoreMessages.current = false;
+            })
 
     }, [localMessages, noMoreMessages]);
 
-    const messageCreated = (message) => {
+    const onAttachmentClick = (attachments, index) => {
+        setPreviewAttachment({ attachments, index });
+        setShowAttachmentPreview(true);
+    }
+
+    const messageCreated = useCallback((message) => {
         if (!selectedConversation) {
             return;
         }
@@ -72,7 +93,7 @@ function Home({ selectedConversation = null, messages = null }) {
 
             return [...prevMessages, message];
         });
-    }
+    }, [selectedConversation]);
 
     useEffect(() => {
         setTimeout(() => {
@@ -90,10 +111,10 @@ function Home({ selectedConversation = null, messages = null }) {
             offCreated();
         }
 
-    }, [selectedConversation]);
+    }, [selectedConversation, messageCreated, on]);
 
     useEffect(() => {
-        setLocalMessages(messages ? messages.data.reverse() : []);
+        setLocalMessages(messages ? [...messages.data].reverse() : []);
     }, [messages]);
 
     useEffect(() => {
@@ -124,7 +145,7 @@ function Home({ selectedConversation = null, messages = null }) {
         return () => {
             observer.disconnect();
         };
-    }, [localMessages]);
+    }, [localMessages, loadMoreMessages, noMoreMessages, srollFromBottom]);
 
     return (
         <>
@@ -157,6 +178,7 @@ function Home({ selectedConversation = null, messages = null }) {
                                     <MessageItem
                                         key={message.id}
                                         message={message}
+                                        attachmentClick={onAttachmentClick}
                                     />
                                 ))}
                             </div>
@@ -164,9 +186,15 @@ function Home({ selectedConversation = null, messages = null }) {
                     </div>
                     <MessageInput conversation={selectedConversation} />
                 </>
-            )
-
-            }
+            )}
+            {previewAttachment.attachments.length > 0 && (
+                <AttachmentPreviewModal
+                    attachments={previewAttachment.attachments}
+                    index={previewAttachment.index}
+                    show={showAttachmentPreview}
+                    onClose={() => setShowAttachmentPreview(false)}
+                />
+            )}
         </>
     );
 }
