@@ -51,3 +51,18 @@ export type ChatItem = {
     created_at?: string;
     updated_at?: string;
 };
+
+export type AttachmentKind = 'image' | 'video' | 'audio' | 'file';
+
+export type AttachmentSource = {
+    type?: string | null;
+    mime?: string | null;
+    name?: string | null;
+    size?: number | null;
+};
+
+export type AttachedItem = AttachmentSource & {
+    file: File;
+    url: string;
+    kind: AttachmentKind;
+};
