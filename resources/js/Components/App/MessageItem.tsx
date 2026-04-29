@@ -1,17 +1,22 @@
-import { ChatMessage, PageProps } from '@/types';
+import { ChatMessage, MessageAttachment, PageProps } from '@/types';
 import { formatChatTime } from '@/utils/chatTime.util';
 import { usePage } from '@inertiajs/react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import MessageAttachments from './MessageAttachments';
 import UserAvatar from './UserAvatar';
 
 type Props = {
     message: ChatMessage;
+    onAttachmentClick?: (
+        attachments: MessageAttachment[],
+        index: number,
+    ) => void;
 };
 
 const DELETED_USER = { name: 'Deleted User', avatar_url: null };
 
-const MessageItem = ({ message }: Props) => {
+const MessageItem = ({ message, onAttachmentClick }: Props) => {
     const currentUser = usePage<PageProps>().props.auth.user;
     const isOwnMessage = message.sender_id === currentUser.id;
     const sender = message.sender ?? DELETED_USER;
@@ -53,6 +58,10 @@ const MessageItem = ({ message }: Props) => {
                             {message.message ?? ''}
                         </ReactMarkdown>
                     </div>
+                    <MessageAttachments
+                        attachments={message.attachments}
+                        onAttachmentClick={onAttachmentClick}
+                    />
                 </div>
             </div>
         </div>
