@@ -3,6 +3,7 @@ import ChatLayout from '@/Layouts/ChatLayout';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/solid';
 import { useEffect, useRef, useState } from 'react';
 import ConversationHeader from '../Components/App/ConversationHeader';
+import MessageInput from '../Components/App/MessageInput';
 import MessageItem from '../Components/App/MessageItem';
 
 export default function Home({ messages, selectedConversation }) {
@@ -11,6 +12,9 @@ export default function Home({ messages, selectedConversation }) {
 
     useEffect(() => {
         setTimeout(() => {
+            if (!messageCtrRef.current) {
+                return;
+            }
             messageCtrRef.current.scrollTop =
                 messageCtrRef.current.scrollHeight;
         }, 10);
@@ -19,6 +23,17 @@ export default function Home({ messages, selectedConversation }) {
     useEffect(() => {
         setLocalMessages(messages ? messages.data.reverse() : []);
     }, [messages]);
+
+    const onMessageSent = (message) => {
+        setLocalMessages((prev) => [...prev, message]);
+        setTimeout(() => {
+            if (!messageCtrRef.current) {
+                return;
+            }
+            messageCtrRef.current.scrollTop =
+                messageCtrRef.current.scrollHeight;
+        }, 10);
+    };
 
     return (
         <>
@@ -59,7 +74,10 @@ export default function Home({ messages, selectedConversation }) {
                             </div>
                         )}
                     </div>
-                    {/* <MessageInput conversation={selectedConversation} /> */}
+                    <MessageInput
+                        conversation={selectedConversation}
+                        onMessageSent={onMessageSent}
+                    />
                 </>
             )}
         </>
