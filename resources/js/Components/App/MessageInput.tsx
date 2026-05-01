@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { type ChangeEvent, useRef, useState } from 'react';
 import AttachedItemList from './AttachedItemList';
+import AudioRecorder from './AudioRecorder';
 import NewMessageInput from './NewMessageInput';
 
 type Props = {
@@ -61,6 +62,8 @@ const MessageInput = ({ conversation = null }: Props) => {
         e.target.value = '';
         addFiles(files);
     };
+
+    const handleAudioFileReady = (file: File) => addFiles([file]);
 
     return (
         <div className="flex w-full flex-col gap-2 px-1 py-2 sm:px-2">
@@ -115,6 +118,8 @@ const MessageInput = ({ conversation = null }: Props) => {
                             onChange={handleFiles}
                         />
                     </button>
+
+                    <AudioRecorder onFileReady={handleAudioFileReady} />
                 </div>
 
                 <div className="relative min-w-0 flex-1">
