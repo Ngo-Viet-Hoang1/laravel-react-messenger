@@ -14,4 +14,5 @@ export type NewMessageNotification = {
 export type AppEventMap = {
     'message.created': ChatMessage;
     newMessageNotification: NewMessageNotification;
+    'toast.show': string;
 };

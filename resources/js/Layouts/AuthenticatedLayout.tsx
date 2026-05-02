@@ -1,4 +1,5 @@
 import ThemeToggle from '@/Components/App/ThemeToggle';
+import Toast from '@/Components/App/Toast';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
@@ -184,6 +185,8 @@ export default function Authenticated({
             <main className="flex min-h-0 flex-1 overflow-hidden">
                 {children}
             </main>
+
+            <Toast />
         </div>
     );
 }
