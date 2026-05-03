@@ -95,6 +95,17 @@ function Home({ selectedConversation = null, messages = null }) {
         });
     }, [selectedConversation]);
 
+    const messageDeleted = useCallback((payload) => {
+        const deletedMessage = payload?.message;
+        if (!deletedMessage) {
+            return;
+        }
+
+        setLocalMessages((prevMessages) =>
+            prevMessages.filter((m) => Number(m.id) !== Number(deletedMessage.id))
+        );
+    }, []);
+
     useEffect(() => {
         setTimeout(() => {
             if (messageCtrRef.current) {
@@ -103,15 +114,17 @@ function Home({ selectedConversation = null, messages = null }) {
         }, 10);
 
         const offCreated = on("message.created", messageCreated);
+        const offDeleted = on("message.deleted", messageDeleted);
 
         setScrollFromBottom(0);
         setNoMoreMessages(false);
 
         return () => {
             offCreated();
+            offDeleted();
         }
 
-    }, [selectedConversation, messageCreated, on]);
+    }, [selectedConversation, messageCreated, messageDeleted, on]);
 
     useEffect(() => {
         setLocalMessages(messages ? [...messages.data].reverse() : []);

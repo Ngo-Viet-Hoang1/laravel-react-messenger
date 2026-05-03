@@ -65,6 +65,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                 : message.attachments.length + " attachments"
                             }`,
                     })
+                })
+                .listen(".message.deleted", (e) => {
+                    emit("message.deleted", {
+                        message: e.message,
+                        prevMessage: e.prevMessage,
+                    });
                 });
 
         });

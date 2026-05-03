@@ -3,6 +3,7 @@ import UserAvatar from "./UserAvatar";
 import { formatMessageDateLong } from "@/helpers";
 import ReactMarkdown from "react-markdown";
 import MessageAttachments from "./MessageAttachments";
+import MessageOptionDropdown from "./MessageOptionDropdown";
 
 const MessageItem = ({ message, attachmentClick }) => {
 
@@ -26,6 +27,9 @@ const MessageItem = ({ message, attachmentClick }) => {
                     ? " chat-bubble-info"
                     : " ")
             }>
+                {message.sender_id === currentUser.id && (
+                    <MessageOptionDropdown message={message} />
+                )}
                 <div className="chat-message">
                     <div className="chat-message-content">
                         <ReactMarkdown>{message.message}</ReactMarkdown>

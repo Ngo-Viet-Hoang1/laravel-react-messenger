@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\SocketMessage;
+use App\Events\SocketMessageDeleted;
 use App\Http\Requests\StoreMessageRequest;
 use App\Http\Resources\MessageResource;
 use App\Models\Conversation;
@@ -113,14 +114,53 @@ class MessageController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        $prevMessage = null;
+
+        if ($message->group_id) {
+            $prevMessage = Message::query()
+                ->where('group_id', $message->group_id)
+                ->whereKeyNot($message->id)
+                ->latest()
+                ->first();
+
+            Group::query()
+                ->where('id', $message->group_id)
+                ->update(['last_message_id' => $prevMessage?->id]);
+        } else {
+            $prevMessage = Message::query()
+                ->where(function ($query) use ($message) {
+                    $query->where('sender_id', $message->sender_id)
+                        ->where('receiver_id', $message->receiver_id)
+                        ->orWhere('sender_id', $message->receiver_id)
+                        ->where('receiver_id', $message->sender_id);
+                })
+                ->whereKeyNot($message->id)
+                ->latest()
+                ->first();
+
+            Conversation::query()
+                ->where(function ($query) use ($message) {
+                    $query->where('user_id1', $message->sender_id)
+                        ->where('user_id2', $message->receiver_id);
+                })
+                ->orWhere(function ($query) use ($message) {
+                    $query->where('user_id1', $message->receiver_id)
+                        ->where('user_id2', $message->sender_id);
+                })
+                ->update(['last_message_id' => $prevMessage?->id]);
+        }
+
         $message->delete();
 
-        return response('', 204);
+        SocketMessageDeleted::dispatch($message, $prevMessage);
+
+        return response()->json([
+            'prevMessage' => $prevMessage ? new MessageResource($prevMessage) : null,
+        ]);
     }
 
     public static function updateGroupWithMessage($groupId, $message)
     {
-
         return Group::updateOrCreate(
             ['id' => $groupId],
             ['last_message_id' => $message->id]
