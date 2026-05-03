@@ -6,6 +6,7 @@ import { useEventBus } from '@/EventBus';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ChatLayout from '@/Layouts/ChatLayout';
 import {
+    AppEventMap,
     PageProps as AppPageProps,
     ChatItem,
     ChatMessage,
@@ -56,10 +57,29 @@ function Home({ selectedConversation = null, messages = null }: PageProps) {
         [selectedConversation, myId],
     );
 
+    const messageDeleted = useCallback(
+        ({ message }: AppEventMap['message.deleted']) => {
+            if (!selectedConversation) return;
+            if (
+                !isMessageForConversation(message, selectedConversation, myId)
+            ) {
+                return;
+            }
+
+            setLocalMessages((prev) => prev.filter((m) => m.id !== message.id));
+        },
+        [selectedConversation, myId],
+    );
+
     useEffect(() => {
         const offCreated = on('message.created', messageCreated);
-        return () => offCreated();
-    }, [messageCreated, on]);
+        const offDeleted = on('message.deleted', messageDeleted);
+
+        return () => {
+            offCreated();
+            offDeleted();
+        };
+    }, [messageCreated, messageDeleted, on]);
 
     const handleScroll = useCallback(() => {
         if (!messagesCtrRef.current) return;
@@ -134,9 +154,7 @@ function Home({ selectedConversation = null, messages = null }: PageProps) {
     return (
         <>
             <div className="flex h-full flex-col">
-                <ConversationHeader
-                    selectedConversation={selectedConversation}
-                />
+                <ConversationHeader conversation={selectedConversation} />
 
                 <div
                     ref={messagesCtrRef}

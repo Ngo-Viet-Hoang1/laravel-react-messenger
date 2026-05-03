@@ -1,7 +1,7 @@
 import ConversationItem from '@/Components/App/ConversationItem';
 import TextInput from '@/Components/Breeze/TextInput';
 import { useEventBus } from '@/EventBus';
-import { ChatItem, ChatMessage, PageProps, User } from '@/types';
+import { AppEventMap, ChatItem, ChatMessage, PageProps, User } from '@/types';
 import { isMessageForConversation } from '@/utils';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
@@ -81,10 +81,38 @@ const ChatLayout = ({ children }: { children: ReactNode }) => {
         [currentUser.id],
     );
 
+    const messageDeleted = useCallback(
+        ({ message, newLastMessage }: AppEventMap['message.deleted']) => {
+            setLocalConversations((prev) => {
+                const index = prev.findIndex((conv) =>
+                    isMessageForConversation(message, conv, currentUser.id),
+                );
+
+                if (index === -1) return prev;
+
+                return [
+                    {
+                        ...prev[index],
+                        last_message: newLastMessage?.message || null,
+                        last_message_date: newLastMessage?.created_at || null,
+                    },
+                    ...prev.slice(0, index),
+                    ...prev.slice(index + 1),
+                ];
+            });
+        },
+        [currentUser.id],
+    );
+
     useEffect(() => {
         const offCreated = on('message.created', messageCreated);
-        return () => offCreated();
-    }, [on, messageCreated]);
+        const offDeleted = on('message.deleted', messageDeleted);
+
+        return () => {
+            offCreated();
+            offDeleted();
+        };
+    }, [on, messageCreated, messageDeleted]);
 
     useEffect(() => {
         setLocalConversations(conversations);

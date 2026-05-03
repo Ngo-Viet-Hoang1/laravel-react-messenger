@@ -129,7 +129,28 @@ class MessageController extends Controller
         }
         $message->delete();
 
-        return response()->noContent();
+        $newLastMessage = null;
+
+        if ($message->group_id) {
+            $group = Group::where('id', $message->group_id)->with('lastMessage')->first();
+            $newLastMessage = $group?->lastMessage;
+        } else {
+            $conversation = Conversation::where(function (Builder $q) use ($message) {
+                $q->where('user_id1', $message->sender_id)
+                    ->where('user_id2', $message->receiver_id);
+            })
+                ->orWhere(function (Builder $q) use ($message) {
+                    $q->where('user_id1', $message->receiver_id)
+                        ->where('user_id2', $message->sender_id);
+                })
+                ->with('lastMessage')
+                ->first();
+            $newLastMessage = $conversation?->lastMessage;
+        }
+
+        return response()->json([
+            'newLastMessage' => $newLastMessage ? new MessageResource($newLastMessage) : null,
+        ]);
     }
 
     private function abortIfUserCannotAccessGroup(int $groupId): void

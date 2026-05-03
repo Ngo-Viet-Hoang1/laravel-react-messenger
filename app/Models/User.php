@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['name', 'email', 'avatar_url', 'email_verified_at', 'password', 'is_admin', 'blocked_at'])]
 #[Hidden(['password', 'remember_token'])]
@@ -40,8 +41,10 @@ class User extends Authenticatable
 
     public function conversations()
     {
-        return $this->hasMany(Conversation::class, 'user_id1')
-            ->orWhere('user_id2', $this->id);
+        return Conversation::where(function ($query) {
+            $query->where('user_id1', $this->id)
+                ->orWhere('user_id2', $this->id);
+        });
     }
 
     public function sentMessages()
@@ -59,7 +62,7 @@ class User extends Authenticatable
         $userId = $user->id;
         $query = User::select(['users.*', 'messages.message as last_message', 'messages.created_at as last_message_date'])
             ->where('users.id', '!=', $userId)
-            ->when(!$user->is_admin, function ($query) {
+            ->when(! $user->is_admin, function ($query) {
                 $query->whereNull('users.blocked_at');
             })
             ->leftJoin('conversations', function ($join) use ($userId) {
@@ -92,7 +95,7 @@ class User extends Authenticatable
             'is_user' => true,
             'is_group' => false,
             'is_admin' => (bool) $this->is_admin,
-            'avatar_url' => $this->avatar_url,
+            'avatar_url' => $this->avatar_url ? Storage::url($this->avatar_url) : null,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'blocked_at' => $this->blocked_at,
