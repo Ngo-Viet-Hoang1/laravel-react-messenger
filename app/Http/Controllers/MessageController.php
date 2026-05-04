@@ -125,28 +125,35 @@ class MessageController extends Controller
     public function destroy(Message $message)
     {
         if ($message->sender_id !== auth()->id()) {
-            abort(403, 'Unauthorized');
+            abort(403);
         }
-        $message->delete();
 
-        $newLastMessage = null;
+        DB::transaction(function () use ($message, &$newLastMessage) {
+            $message->delete();
 
-        if ($message->group_id) {
-            $group = Group::where('id', $message->group_id)->with('lastMessage')->first();
-            $newLastMessage = $group?->lastMessage;
-        } else {
-            $conversation = Conversation::where(function (Builder $q) use ($message) {
-                $q->where('user_id1', $message->sender_id)
-                    ->where('user_id2', $message->receiver_id);
-            })
-                ->orWhere(function (Builder $q) use ($message) {
-                    $q->where('user_id1', $message->receiver_id)
-                        ->where('user_id2', $message->sender_id);
-                })
-                ->with('lastMessage')
-                ->first();
-            $newLastMessage = $conversation?->lastMessage;
-        }
+            if ($message->group_id) {
+                $group = Group::find($message->group_id);
+
+                $newLastMessage = Message::where('group_id', $group->id)
+                    ->latest()
+                    ->first();
+
+                $group->update(['last_message_id' => $newLastMessage?->id]);
+            } else {
+                $newLastMessage = Message::where(function ($q) use ($message) {
+                    $q->where([
+                        ['sender_id', $message->sender_id],
+                        ['receiver_id', $message->receiver_id]
+                    ])->orWhere([
+                                ['sender_id', $message->receiver_id],
+                                ['receiver_id', $message->sender_id]
+                            ]);
+                })->latest()->first();
+
+                Conversation::where('last_message_id', $message->id)
+                    ->update(['last_message_id' => $newLastMessage?->id]);
+            }
+        });
 
         return response()->json([
             'newLastMessage' => $newLastMessage ? new MessageResource($newLastMessage) : null,
