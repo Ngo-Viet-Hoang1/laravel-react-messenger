@@ -1,3 +1,4 @@
+import { formatDuration } from '@/utils';
 import { MicrophoneIcon, StopCircleIcon } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
 
@@ -24,12 +25,6 @@ const AudioRecorder = ({ onFileReady }: Props) => {
             clearInterval(intervalRef.current);
         }
         intervalRef.current = null;
-    };
-
-    const formatDuration = (totalSeconds: number) => {
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     };
 
     useEffect(() => {

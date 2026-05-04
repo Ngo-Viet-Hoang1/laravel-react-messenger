@@ -27,16 +27,23 @@ const OVERLAY_DOWNLOAD_BTN =
 const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
     if (attachments.length === 0) return null;
 
-    const mediaItems = attachments.filter((a) => isImage(a) || isVideo(a));
-    const nonMediaItems = attachments.filter((a) => !isImage(a) && !isVideo(a));
+    const allWithIndex = attachments.map((a, i) => ({
+        attachment: a,
+        index: i,
+    }));
+    const mediaItems = allWithIndex.filter(
+        ({ attachment }) => isImage(attachment) || isVideo(attachment),
+    );
+    const nonMediaItems = allWithIndex.filter(
+        ({ attachment }) => !isImage(attachment) && !isVideo(attachment),
+    );
 
     return (
         <div className="mt-1.5 flex flex-col gap-2">
             {/* ── Media Group (Images & Videos) ── */}
             {mediaItems.length > 0 && (
                 <div className="flex flex-col items-start gap-1.5">
-                    {mediaItems.map((attachment) => {
-                        const index = attachments.indexOf(attachment);
+                    {mediaItems.map(({ attachment, index }) => {
                         return (
                             <div
                                 key={attachment.id}
@@ -76,9 +83,7 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
             {/* ── Files / PDF / Audio Group ── */}
             {nonMediaItems.length > 0 && (
                 <div className="flex flex-col gap-2">
-                    {nonMediaItems.map((attachment) => {
-                        const index = attachments.indexOf(attachment);
-
+                    {nonMediaItems.map(({ attachment, index }) => {
                         if (isAudio(attachment)) {
                             return (
                                 <div

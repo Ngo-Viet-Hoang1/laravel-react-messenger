@@ -2,6 +2,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { FaceSmileIcon } from '@heroicons/react/24/outline';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
+import { useMemo } from 'react';
 
 type Props = {
     disabled?: boolean;
@@ -16,10 +17,13 @@ export default function EmojiPickerPopover({
     onSelect,
 }: Props) {
     const { theme } = useTheme();
-    const isDarkTheme =
-        theme === 'dark' ||
-        (theme === 'system' &&
-            window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const isDarkTheme = useMemo(() => {
+        return (
+            theme === 'dark' ||
+            (theme === 'system' &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches)
+        );
+    }, [theme]);
     const pickerTheme = isDarkTheme ? Theme.DARK : Theme.LIGHT;
 
     return (

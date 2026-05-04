@@ -14,61 +14,61 @@ export const useAttachments = (onError: (msg: string) => void) => {
 
     const addFiles = useCallback(
         (files: File[]) => {
-            if (items.length + files.length > MAX_FILES) {
-                onError(`Max ${MAX_FILES} files allowed`);
-                return;
-            }
-
-            const newItems: AttachedItem[] = [];
-
-            for (const file of files) {
-                if (file.size > MAX_FILE_SIZE) {
-                    onError(`${file.name} exceeds 10MB`);
-                    continue;
+            setItems((prev) => {
+                if (prev.length + files.length > MAX_FILES) {
+                    onError(`Max ${MAX_FILES} files allowed`);
+                    return prev;
                 }
 
-                const isDuplicate =
-                    items.some(
-                        (item) =>
-                            item.file.name === file.name &&
-                            item.file.size === file.size,
-                    ) ||
-                    newItems.some(
-                        (item) =>
-                            item.file.name === file.name &&
-                            item.file.size === file.size,
-                    );
+                const newItems: AttachedItem[] = [];
 
-                if (isDuplicate) {
-                    onError(`${file.name} already attached`);
-                    continue;
+                for (const file of files) {
+                    if (file.size > MAX_FILE_SIZE) {
+                        onError(`${file.name} exceeds 10MB`);
+                        continue;
+                    }
+
+                    const isDuplicate =
+                        prev.some(
+                            (item) =>
+                                item.file.name === file.name &&
+                                item.file.size === file.size,
+                        ) ||
+                        newItems.some(
+                            (item) =>
+                                item.file.name === file.name &&
+                                item.file.size === file.size,
+                        );
+
+                    if (isDuplicate) {
+                        onError(`${file.name} already attached`);
+                        continue;
+                    }
+
+                    newItems.push({
+                        file,
+                        url: URL.createObjectURL(file),
+                        mime: file.type,
+                        size: file.size,
+                        name: file.name,
+                        kind: getAttachmentKind(file),
+                    });
                 }
 
-                newItems.push({
-                    file,
-                    url: URL.createObjectURL(file),
-                    mime: file.type,
-                    size: file.size,
-                    name: file.name,
-                    kind: getAttachmentKind(file),
-                });
-            }
+                const totalSize = [...prev, ...newItems].reduce(
+                    (sum, item) => sum + (item.size ?? 0),
+                    0,
+                );
 
-            const totalSize = [...items, ...newItems].reduce(
-                (sum, item) => sum + (item.size ?? 0),
-                0,
-            );
+                if (totalSize > MAX_TOTAL_SIZE) {
+                    onError('Total size exceeds 25MB');
+                    return prev;
+                }
 
-            if (totalSize > MAX_TOTAL_SIZE) {
-                onError('Total size exceeds 25MB');
-                return;
-            }
-
-            if (newItems.length > 0) {
-                setItems((prev) => [...prev, ...newItems]);
-            }
+                return newItems.length > 0 ? [...prev, ...newItems] : prev;
+            });
         },
-        [items, onError],
+        [onError],
     );
 
     const remove = useCallback((idx: number) => {
