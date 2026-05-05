@@ -119,7 +119,10 @@ const MessageInput = ({ conversation = null }: Props) => {
                         />
                     </button>
 
-                    <AudioRecorder onFileReady={handleAudioFileReady} />
+                    <AudioRecorder
+                        onFileReady={handleAudioFileReady}
+                        onError={showError}
+                    />
                 </div>
 
                 <div className="relative min-w-0 flex-1">

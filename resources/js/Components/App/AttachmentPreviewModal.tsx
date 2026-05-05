@@ -25,6 +25,10 @@ const AttachmentPreviewModal = ({
 }: Props) => {
     const [currentIndex, setCurrentIndex] = useState(index);
 
+    useEffect(() => {
+        setCurrentIndex(index);
+    }, [index]);
+
     const attachment = attachments[currentIndex];
     const showNav = attachments.length > 1;
 

@@ -30,13 +30,17 @@ export default function useConversationSockets(
         [emit, userId],
     );
 
+    const channelNamesStr =
+        conversations
+            ?.map((c) => getChannelName(c, userId))
+            .sort()
+            .join(',') || '';
+
     useEffect(() => {
         const e = echo();
         if (!e) return;
 
-        const next = new Set(
-            conversations?.map((c) => getChannelName(c, userId)) ?? [],
-        );
+        const next = new Set(channelNamesStr ? channelNamesStr.split(',') : []);
 
         const prev = subscribedRef.current;
 
@@ -55,7 +59,7 @@ export default function useConversationSockets(
         });
 
         subscribedRef.current = next;
-    }, [conversations, userId, handler]);
+    }, [channelNamesStr, handler]);
 
     useEffect(() => {
         return () => {

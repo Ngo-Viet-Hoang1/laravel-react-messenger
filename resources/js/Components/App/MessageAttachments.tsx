@@ -41,7 +41,7 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
     return (
         <div className="mt-1.5 flex flex-col gap-2">
             {/* ── Media Group (Images & Videos) ── */}
-            {mediaItems.length > 0 && (
+            {mediaItems.length > 0 ? (
                 <div className="flex flex-col items-start gap-1.5">
                     {mediaItems.map(({ attachment, index }) => {
                         return (
@@ -78,10 +78,10 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
                         );
                     })}
                 </div>
-            )}
+            ) : null}
 
             {/* ── Files / PDF / Audio Group ── */}
-            {nonMediaItems.length > 0 && (
+            {nonMediaItems.length > 0 ? (
                 <div className="flex flex-col gap-2">
                     {nonMediaItems.map(({ attachment, index }) => {
                         if (isAudio(attachment)) {
@@ -184,7 +184,7 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
                         );
                     })}
                 </div>
-            )}
+            ) : null}
         </div>
     );
 };

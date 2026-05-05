@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 
 type Props = {
     onFileReady?: (file: File) => void;
+    onError?: (msg: string) => void;
 };
 
-const AudioRecorder = ({ onFileReady }: Props) => {
+const AudioRecorder = ({ onFileReady, onError }: Props) => {
     const [isRecording, setIsRecording] = useState(false);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
 
@@ -105,7 +106,9 @@ const AudioRecorder = ({ onFileReady }: Props) => {
             setIsRecording(true);
         } catch (err) {
             setIsRecording(false);
-            console.error('Error accessing microphone:', err);
+            onError?.(
+                'Failed to access microphone. Please check your permissions.',
+            );
         }
     };
 

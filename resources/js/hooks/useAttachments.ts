@@ -62,6 +62,7 @@ export const useAttachments = (onError: (msg: string) => void) => {
 
                 if (totalSize > MAX_TOTAL_SIZE) {
                     onError('Total size exceeds 25MB');
+                    newItems.forEach((item) => URL.revokeObjectURL(item.url));
                     return prev;
                 }
 
