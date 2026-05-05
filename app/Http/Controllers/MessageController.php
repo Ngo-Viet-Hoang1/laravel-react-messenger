@@ -128,30 +128,39 @@ class MessageController extends Controller
             abort(403);
         }
 
+        $newLastMessage = null;
+
         DB::transaction(function () use ($message, &$newLastMessage) {
             $message->delete();
 
             if ($message->group_id) {
                 $group = Group::find($message->group_id);
 
-                $newLastMessage = Message::where('group_id', $group->id)
-                    ->latest()
-                    ->first();
+                if ($group) {
+                    $newLastMessage = Message::where('group_id', $group->id)
+                        ->latest()
+                        ->first();
 
-                $group->update(['last_message_id' => $newLastMessage?->id]);
+                    $group->update(['last_message_id' => $newLastMessage?->id]);
+                }
             } else {
                 $newLastMessage = Message::where(function ($q) use ($message) {
                     $q->where([
                         ['sender_id', $message->sender_id],
-                        ['receiver_id', $message->receiver_id]
+                        ['receiver_id', $message->receiver_id],
                     ])->orWhere([
                                 ['sender_id', $message->receiver_id],
-                                ['receiver_id', $message->sender_id]
+                                ['receiver_id', $message->sender_id],
                             ]);
                 })->latest()->first();
 
-                Conversation::where('last_message_id', $message->id)
-                    ->update(['last_message_id' => $newLastMessage?->id]);
+                Conversation::where(function ($q) use ($message) {
+                    $q->where('user_id1', $message->sender_id)
+                        ->where('user_id2', $message->receiver_id);
+                })->orWhere(function ($q) use ($message) {
+                    $q->where('user_id1', $message->receiver_id)
+                        ->where('user_id2', $message->sender_id);
+                })->update(['last_message_id' => $newLastMessage?->id]);
             }
         });
 
