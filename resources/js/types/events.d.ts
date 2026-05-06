@@ -13,5 +13,10 @@ export type NewMessageNotification = {
 
 export type AppEventMap = {
     'message.created': ChatMessage;
+    'message.deleted': {
+        message: ChatMessage;
+        newLastMessage: ChatMessage | null;
+    };
     newMessageNotification: NewMessageNotification;
+    'toast.show': string;
 };

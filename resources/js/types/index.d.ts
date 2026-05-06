@@ -1,6 +1,9 @@
 export type { User } from './auth';
 
 export type {
+    AttachedItem,
+    AttachmentKind,
+    AttachmentSource,
     ChatItem,
     ChatMember,
     ChatMessage,

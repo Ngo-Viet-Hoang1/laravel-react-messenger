@@ -1,11 +1,22 @@
+import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';
 import ConversationHeader from '@/Components/App/ConversationHeader';
 import MessageInput from '@/Components/App/MessageInput';
 import MessageItem from '@/Components/App/MessageItem';
+import { useEventBus } from '@/EventBus';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ChatLayout from '@/Layouts/ChatLayout';
-import { ChatItem, ChatMessage, ChatMessageCollection } from '@/types';
+import {
+    AppEventMap,
+    PageProps as AppPageProps,
+    ChatItem,
+    ChatMessage,
+    ChatMessageCollection,
+    MessageAttachment,
+} from '@/types';
+import { isMessageForConversation } from '@/utils';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
-import { useEffect, useRef, useState } from 'react';
+import { usePage } from '@inertiajs/react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type PageProps = {
     selectedConversation?: ChatItem | null;
@@ -13,62 +24,171 @@ type PageProps = {
 };
 
 function Home({ selectedConversation = null, messages = null }: PageProps) {
+    const currentUser = usePage<AppPageProps>().props.auth.user;
+    const myId = Number(currentUser.id);
+
     const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+    const [isShowAttachmentPreview, setIsShowAttachmentPreview] =
+        useState(false);
+    const [previewAttachment, setPreviewAttachment] = useState<{
+        id: number;
+        attachments: MessageAttachment[];
+    } | null>(null);
+
     const messagesCtrRef = useRef<HTMLDivElement>(null);
+    const isUserNearBottomRef = useRef(true);
+    const { on } = useEventBus();
+
+    const messageCreated = useCallback(
+        (message: ChatMessage) => {
+            if (!selectedConversation) return;
+            if (
+                !isMessageForConversation(message, selectedConversation, myId)
+            ) {
+                return;
+            }
+
+            setLocalMessages((prev) =>
+                prev.some((m) => m.id === message.id)
+                    ? prev
+                    : [...prev, message],
+            );
+        },
+        [selectedConversation, myId],
+    );
+
+    const messageDeleted = useCallback(
+        ({ message }: AppEventMap['message.deleted']) => {
+            if (!selectedConversation) return;
+            if (
+                !isMessageForConversation(message, selectedConversation, myId)
+            ) {
+                return;
+            }
+
+            setLocalMessages((prev) => prev.filter((m) => m.id !== message.id));
+        },
+        [selectedConversation, myId],
+    );
 
     useEffect(() => {
-        if (!messagesCtrRef.current) return;
-
-        const timeoutId = window.setTimeout(() => {
-            messagesCtrRef.current?.scrollTo({
-                top: messagesCtrRef.current.scrollHeight,
-                behavior: 'smooth',
-            });
-        }, 100);
+        const offCreated = on('message.created', messageCreated);
+        const offDeleted = on('message.deleted', messageDeleted);
 
         return () => {
-            window.clearTimeout(timeoutId);
+            offCreated();
+            offDeleted();
         };
-    }, [
-        localMessages.length,
-        selectedConversation?.id,
-        selectedConversation?.is_group,
-    ]);
+    }, [messageCreated, messageDeleted, on]);
+
+    const handleScroll = useCallback(() => {
+        if (!messagesCtrRef.current) return;
+        const container = messagesCtrRef.current;
+        isUserNearBottomRef.current =
+            container.scrollHeight -
+                container.scrollTop -
+                container.clientHeight <
+            150;
+    }, []);
+
+    const scrollToBottom = useCallback(
+        (behavior: ScrollBehavior = 'smooth') => {
+            if (messagesCtrRef.current) {
+                messagesCtrRef.current.scrollTo({
+                    top: messagesCtrRef.current.scrollHeight,
+                    behavior,
+                });
+            }
+        },
+        [],
+    );
+
+    useEffect(() => {
+        if (isUserNearBottomRef.current || localMessages.length <= 10) {
+            requestAnimationFrame(() => scrollToBottom('smooth'));
+        }
+    }, [localMessages.length, selectedConversation?.id, scrollToBottom]);
+
+    useEffect(() => {
+        const container = messagesCtrRef.current;
+        if (!container) return;
+
+        const resizeObserver = new ResizeObserver(() => {
+            if (isUserNearBottomRef.current) {
+                scrollToBottom('auto');
+            }
+        });
+
+        if (container.firstElementChild) {
+            resizeObserver.observe(container.firstElementChild);
+        }
+
+        return () => resizeObserver.disconnect();
+    }, [selectedConversation?.id, scrollToBottom]);
+
+    const handleAttachmentClick = (
+        attachments: MessageAttachment[],
+        index: number,
+    ) => {
+        setPreviewAttachment({ id: index, attachments });
+        setIsShowAttachmentPreview(true);
+    };
 
     useEffect(() => {
         setLocalMessages(messages?.data ? [...messages.data].reverse() : []);
     }, [messages]);
 
+    const EmptyState = ({ message }: { message: string }) => (
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-2xl font-semibold opacity-35">
+            <ChatBubbleLeftRightIcon className="h-16 w-16" />
+            {message}
+        </div>
+    );
+
     if (!messages) {
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-2xl font-semibold opacity-35">
-                <ChatBubbleLeftRightIcon className="h-16 w-16" />
-                Please select a conversation to start chatting
-            </div>
+            <EmptyState message="Please select a conversation to start chatting" />
         );
     }
 
     return (
-        <div className="flex h-full flex-col">
-            <ConversationHeader selectedConversation={selectedConversation} />
+        <>
+            <div className="flex h-full flex-col">
+                <ConversationHeader conversation={selectedConversation} />
 
-            <div ref={messagesCtrRef} className="flex-1 overflow-y-auto p-2">
-                {localMessages.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 text-2xl font-semibold opacity-35">
-                        <ChatBubbleLeftRightIcon className="h-16 w-16" />
-                        No messages yet. Start the conversation!
-                    </div>
-                ) : (
-                    <div className="flex flex-1 flex-col">
-                        {localMessages.map((message) => (
-                            <MessageItem key={message.id} message={message} />
-                        ))}
-                    </div>
-                )}
+                <div
+                    ref={messagesCtrRef}
+                    className="flex flex-1 flex-col overflow-y-auto p-2"
+                    onScroll={handleScroll}
+                >
+                    {localMessages.length === 0 ? (
+                        <EmptyState message="No messages yet. Start the conversation!" />
+                    ) : (
+                        <div className="flex shrink-0 flex-col">
+                            {localMessages.map((message) => (
+                                <MessageItem
+                                    key={message.id}
+                                    message={message}
+                                    onAttachmentClick={handleAttachmentClick}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <MessageInput conversation={selectedConversation} />
             </div>
 
-            <MessageInput conversation={selectedConversation} />
-        </div>
+            {previewAttachment?.attachments && (
+                <AttachmentPreviewModal
+                    key={`${previewAttachment.id}_${isShowAttachmentPreview}`}
+                    index={previewAttachment.id}
+                    isShow={isShowAttachmentPreview}
+                    onClose={() => setIsShowAttachmentPreview(false)}
+                    attachments={previewAttachment.attachments}
+                />
+            )}
+        </>
     );
 }
 

@@ -1,8 +1,11 @@
 import ThemeToggle from '@/Components/App/ThemeToggle';
+import Toast from '@/Components/App/Toast';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
+import useConversationSockets from '@/hooks/useConversationSockets';
+import { PageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 
@@ -10,10 +13,14 @@ export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user;
+    const page = usePage<PageProps>();
+    const user = page.props.auth.user;
+    const conversations = page.props.conversations;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+
+    useConversationSockets(conversations || [], Number(user.id));
 
     return (
         <div className="flex h-screen flex-col overflow-hidden bg-gray-100 dark:bg-gray-900">
@@ -178,6 +185,8 @@ export default function Authenticated({
             <main className="flex min-h-0 flex-1 overflow-hidden">
                 {children}
             </main>
+
+            <Toast />
         </div>
     );
 }

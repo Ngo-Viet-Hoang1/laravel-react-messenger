@@ -1,19 +1,23 @@
 import ConversationItem from '@/Components/App/ConversationItem';
 import TextInput from '@/Components/Breeze/TextInput';
-import { ChatItem, PageProps, User } from '@/types';
+import { useEventBus } from '@/EventBus';
+import { AppEventMap, ChatItem, ChatMessage, PageProps, User } from '@/types';
+import { isMessageForConversation } from '@/utils';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 const EMPTY_CONVERSATIONS: ChatItem[] = [];
 const getTime = (date?: string | null) => (date ? new Date(date).getTime() : 0);
 
 const ChatLayout = ({ children }: { children: ReactNode }) => {
     const pageProps = usePage<PageProps>().props;
+    const currentUser = pageProps.auth.user;
     const conversations = pageProps.conversations ?? EMPTY_CONVERSATIONS;
     const selectedConversation = pageProps.selectedConversation ?? null;
 
+    const { on } = useEventBus();
     const [onlineUsers, setOnlineUsers] = useState<Record<number, User>>({});
     const [localConversations, setLocalConversations] = useState<ChatItem[]>(
         [],
@@ -40,7 +44,7 @@ const ChatLayout = ({ children }: { children: ReactNode }) => {
 
     const isUserOnline = (userId: number) => userId in onlineUsers;
 
-    const onSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const onSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.currentTarget.value.toLowerCase();
         if (!value) {
             setLocalConversations(conversations);
@@ -53,6 +57,62 @@ const ChatLayout = ({ children }: { children: ReactNode }) => {
             ),
         );
     };
+
+    const messageCreated = useCallback(
+        (message: ChatMessage) => {
+            setLocalConversations((prev) => {
+                const index = prev.findIndex((conv) =>
+                    isMessageForConversation(message, conv, currentUser.id),
+                );
+
+                if (index === -1) return prev;
+
+                return [
+                    {
+                        ...prev[index],
+                        last_message: message.message,
+                        last_message_date: message.created_at,
+                    },
+                    ...prev.slice(0, index),
+                    ...prev.slice(index + 1),
+                ];
+            });
+        },
+        [currentUser.id],
+    );
+
+    const messageDeleted = useCallback(
+        ({ message, newLastMessage }: AppEventMap['message.deleted']) => {
+            setLocalConversations((prev) => {
+                const index = prev.findIndex((conv) =>
+                    isMessageForConversation(message, conv, currentUser.id),
+                );
+
+                if (index === -1) return prev;
+
+                return [
+                    {
+                        ...prev[index],
+                        last_message: newLastMessage?.message || null,
+                        last_message_date: newLastMessage?.created_at || null,
+                    },
+                    ...prev.slice(0, index),
+                    ...prev.slice(index + 1),
+                ];
+            });
+        },
+        [currentUser.id],
+    );
+
+    useEffect(() => {
+        const offCreated = on('message.created', messageCreated);
+        const offDeleted = on('message.deleted', messageDeleted);
+
+        return () => {
+            offCreated();
+            offDeleted();
+        };
+    }, [on, messageCreated, messageDeleted]);
 
     useEffect(() => {
         setLocalConversations(conversations);
@@ -102,7 +162,7 @@ const ChatLayout = ({ children }: { children: ReactNode }) => {
 
                 <div className="shrink-0 p-3 dark:border-slate-700">
                     <TextInput
-                        onKeyUp={onSearch}
+                        onChange={onSearch}
                         placeholder="Filter users and groups"
                         className="w-full"
                     />
