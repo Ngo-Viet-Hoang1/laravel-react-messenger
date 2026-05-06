@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\GroupController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
@@ -15,6 +16,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/messages/older/{message}', [MessageController::class, 'loadOlder'])->name('message.loadOlder');
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('message.destroy');
 
+    Route::post('/groups', [GroupController::class, 'store'])->name('groups.store');
+    Route::put('/groups/{group}', [GroupController::class, 'update'])->name('groups.update');
+    Route::delete('/groups/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
 });
 
 Route::middleware('auth')->group(function () {
@@ -23,4 +27,4 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

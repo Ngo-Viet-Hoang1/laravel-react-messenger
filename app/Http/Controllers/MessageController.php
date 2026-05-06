@@ -88,12 +88,24 @@ class MessageController extends Controller
         $files = $data['attachments'] ?? [];
         unset($data['attachments']);
 
+        if ($groupId !== null) {
+            $canPost = $request->user()->groups()->whereKey($groupId)->exists();
+            abort_unless($canPost, 403, 'Unauthorized');
+        }
+
+        if ($receiverId !== null && ! $request->user()->is_admin) {
+            $receiverBlocked = User::whereKey($receiverId)
+                ->whereNotNull('blocked_at')
+                ->exists();
+            abort_if($receiverBlocked, 403, 'Unauthorized');
+        }
+
         $message = DB::transaction(function () use ($data, $files, $receiverId, $groupId, $senderId) {
             $message = Message::create($data);
 
             if ($files !== []) {
                 foreach ($files as $file) {
-                    $directory = 'attachments/' . Str::random(40);
+                    $directory = 'attachments/'.Str::random(40);
                     Storage::disk('public')->makeDirectory($directory);
 
                     MessageAttachment::create([
@@ -149,9 +161,9 @@ class MessageController extends Controller
                         ['sender_id', $message->sender_id],
                         ['receiver_id', $message->receiver_id],
                     ])->orWhere([
-                                ['sender_id', $message->receiver_id],
-                                ['receiver_id', $message->sender_id],
-                            ]);
+                        ['sender_id', $message->receiver_id],
+                        ['receiver_id', $message->sender_id],
+                    ]);
                 })->latest()->first();
 
                 Conversation::where(function ($q) use ($message) {
