@@ -45,19 +45,76 @@ This project has domain-specific skills available. You MUST activate the relevan
 - You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
 - Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
 - Check for existing components to reuse before writing a new one.
+- Frontend: Use TypeScript strict mode (`strict: true`). Write explicit type annotations for function parameters and return types. Example: `const toggleGroup = (groupId: number): void => {...}`.
+- Backend: Use Form Requests for validation (e.g., `StoreMessageRequest`, `UpdateGroupRequest`). Use API Resources for data transformation (e.g., `UserResource`, `MessageResource`).
+- Use Inertia page names that map to file paths under `resources/js/Pages`.
+- Use the `@/` alias for imports from `resources/js` (configured in `tsconfig.json`).
+- Keep auth-protected routes inside middleware groups and preserve route names used by frontend `route()` calls.
+- Tailwind scan targets include Blade and TSX files; keep UI code in scanned paths so styles compile.
+- Prefer additive migration changes; do not edit old migrations unless explicitly requested.
+
+## Frontend State & Broadcasting
+
+- Real-time messaging uses an **EventBus pattern** (`EventBus.tsx`, `EventBusProvider`) for cross-component event emission. Use `useEventBus()` to access `emit()` and `on()` methods for app-level events.
+- **Echo/Reverb hooks** in `resources/js/hooks/` manage real-time subscriptions:
+  - `useConversationSockets`: Subscribes to message channels (`message.user.*`, `message.group.*`) and broadcasts from private channels; emits `message.created` and `newMessageNotification` events.
+  - `useSendMessage`: Handles message creation via API and UI feedback.
+  - `useAttachments`: Manages file uploads (max 10 files, 1MB each per `StoreMessageRequest`).
+  - `useErrorMessage`: Displays error feedback to users.
+  - `useTheme`: Manages UI theme state.
+- **Broadcast Channels** (defined in `routes/channels.php`):
+  - `online`: Public channel for tracking online users.
+  - `message.user.{userId1}-{userId2}`: Private channel for 1:1 messaging between two users.
+  - `message.group.{groupId}`: Private channel for group messaging (user must be member).
+  - `user.{userId}`: Private channel for user-specific notifications (e.g., `GroupDeleted` events).
+- Realtime/broadcasting plumbing exists, but channel/event wiring may be incomplete; verify end-to-end flow before claiming realtime behavior works.
+- Always unsubscribe from channels on component unmount to prevent memory leaks.
+
+## Frontend UI Libraries
+
+- **daisyui** (v4.12+) provides pre-built Tailwind components; use classes like `btn`, `card`, `input` instead of creating primitives.
+- **@headlessui/react** (v2.2+) for unstyled, accessible components (dropdowns, dialogs, menus).
+- **emoji-picker-react** for emoji selection in message composer.
+- **react-markdown** with **rehype-sanitize** for rendering markdown in messages safely.
+- Prefer existing components in `resources/js/Components/` over creating new UI primitives.
 
 ## Verification Scripts
 
 - Do not create verification scripts or tinker when tests cover that functionality and prove they work. Unit and feature tests are more important.
+- Initial setup: `composer run-script setup`.
+- Full local dev stack (server, queue, Reverb, Vite): `composer run-script dev`.
+- Run tests: `php artisan test` (test environment uses in-memory SQLite from `phpunit.xml`).
+
+## Backend Patterns
+
+- **Form Requests** validate and authorize incoming data. Create with `php artisan make:request StoreMessageRequest --no-interaction`. Define `rules()` method with all validation constraints (e.g., `required_without`, `prohibited_with`, `Rule::exists()`, `Rule::notIn()`). Use the `authorize()` method for policy checks.
+- **API Resources** transform models for JSON responses. Create with `php artisan make:resource MessageResource --no-interaction`. Use in controllers: `return MessageResource::collection($messages)`. Leverage resource wrapping and conditional attributes for fine-grained API control.
+- **Observers** handle model events. The `MessageObserver` listens for model lifecycle hooks (e.g., `created`, `deleting`) to trigger broadcasts or jobs.
 
 ## Application Structure & Architecture
 
 - Stick to existing directory structure; don't create new base folders without approval.
 - Do not change the application's dependencies without approval.
+- Backend is Laravel 13 in `app/` with route entry points in `routes/web.php` and `routes/auth.php`.
+- Frontend is Inertia + React in `resources/js/` with pages resolved from `resources/js/Pages/**/*.tsx` in `resources/js/app.tsx`.
+- Authentication baseline comes from Breeze-style controllers/pages; preserve middleware and named-route patterns.
+- Real-time stack uses Reverb/Echo (`configureEcho` in `resources/js/app.tsx`).
+- `README.md` is mostly upstream Laravel boilerplate; prioritize repository files over README assumptions.
 
 ## Frontend Bundling
 
+- Frontend builds via Vite (`vite.config.js`, `laravel-vite-plugin`). **TypeScript compiles first** (`npm run build` runs `tsc && vite build`).
 - If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
+- **Linting and formatting**: Run `npm run lint` to fix ESLint + Prettier violations across `resources/js/`. The project uses `eslint-plugin-react` and `@typescript-eslint/parser`.
+- **Vite manifest error**: If you receive "Unable to locate file in Vite manifest", run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
+
+## Frontend TypeScript Patterns
+
+- Strictly use TypeScript strict mode. Never use `any` without explicit `// @ts-expect-error` or casting via `as`.
+- Use **discriminated unions** for event types (see `AppEventMap` in `types/`).
+- Define **types in `resources/js/types/`** (not inline in components). Export as default or named exports for reuse.
+- Hook return types must be explicit: `const data = useSendMessage(): { isPending: boolean } => {...}`.
+- Use **Record<K, V>** for typed object maps instead of plain objects.
 
 ## Documentation Files
 
