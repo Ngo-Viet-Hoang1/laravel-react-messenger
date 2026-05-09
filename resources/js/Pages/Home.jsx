@@ -6,7 +6,7 @@ import ConversationHeader from '@/Components/App/ConversationHeader';
 import MessageItem from '@/Components/App/MessageItem';
 import MessageInput from '@/Components/App/MessageInput';
 import { useEventBus } from '../EventBus';
-import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';   
+import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';
 
 function Home({ selectedConversation = null, messages = null }) {
     const [localMessages, setLocalMessages] = useState([]);
@@ -34,6 +34,29 @@ function Home({ selectedConversation = null, messages = null }) {
                 selectedConversation.id == message.receiver_id)
         ) {
             setLocalMessages((prevMessages) => [...prevMessages, message]);
+        }
+    };
+
+    const messageDeleted = (message) => {
+        if (
+            selectedConversation &&
+            selectedConversation.is_group &&
+            selectedConversation.id == message.group_id
+        ) {
+            setLocalMessages((prevMessages) => {
+                return prevMessages.filter((m) => m.id !== message.id);
+            });
+        }
+
+        if (
+            selectedConversation &&
+            selectedConversation.is_user &&
+            (selectedConversation.id == message.sender_id ||
+                selectedConversation.id == message.receiver_id)
+        ) {
+            setLocalMessages((prevMessages) => {
+                return prevMessages.filter((m) => m.id !== message.id);
+            });
         }
     };
 
@@ -81,9 +104,11 @@ function Home({ selectedConversation = null, messages = null }) {
         }, 10);
 
         const offCreated = on("message.created", messageCreated);
+        const offDeleted = on("message.deleted", messageDeleted);
 
         return () => {
             offCreated();
+            offDeleted();
         };
     }, [selectedConversation]);
 
