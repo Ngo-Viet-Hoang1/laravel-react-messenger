@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 export default function AuthenticatedLayout({ header, children }) {
     const page = usePage();
     const user = page.props.auth.user;
-    const conversations = page.props.conversation;
+    const conversation = page.props.conversation;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
@@ -28,11 +28,11 @@ export default function AuthenticatedLayout({ header, children }) {
             return;
         }
 
-        if (!Array.isArray(conversations) || conversations.length === 0) {
+        if (!Array.isArray(conversation) || conversation.length === 0) {
             return;
         }
 
-        conversations.forEach((conversation) => {
+        conversation.forEach((conversation) => {
             let channel = `message.group.${conversation.id}`;
 
             if (conversation.is_user) {
@@ -72,10 +72,23 @@ export default function AuthenticatedLayout({ header, children }) {
                         prevMessage: e.prevMessage,
                     });
                 });
+            
+            if (conversation.is_group) { 
+                echo.private(`group.deleted.${conversation.id}`)
+                    .listen("GroupDeleted", (e) => { 
+                        console.log("GroupDeleted", e);
+                        emit("group.deleted", {
+                            id: e.id,
+                            name: e.name,
+                        });
+                    }).error((e) => {
+                        console.log(e);
+                    })
+            }
 
         });
         return () => {
-            conversations.forEach((conversation) => {
+            conversation.forEach((conversation) => {
                 let channel = `message.group.${conversation.id}`;
 
                 if (conversation.is_user) {
@@ -86,9 +99,15 @@ export default function AuthenticatedLayout({ header, children }) {
                 }
                 echo.leave(channel);
             });
+
+            conversation.forEach((conversation) => {
+                if (conversation.is_group) {
+                    echo.leave(`group.deleted.${conversation.id}`);
+                }
+            });
         }
 
-    }, [conversations, emit, user.id]);
+    }, [conversation, emit, user.id]);
 
     return (
         <>

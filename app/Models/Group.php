@@ -31,6 +31,14 @@ class Group extends Model
         return $this->belongsTo(Message::class, 'last_message_id');
     }
 
+    public static function updateGroupWithMessage(int $groupId, Message $message): Group
+    {
+        return static::updateOrCreate(
+            ['id' => $groupId],
+            ['last_message_id' => $message->id]
+        );
+    }
+
     public static function getGroupsForUser(User $user)
     {
         $query = self::select(['groups.*', 'messages.message as last_message', 'messages.created_at as last_message_date'])
@@ -57,7 +65,7 @@ class Group extends Model
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'last_message' => $this->last_message,
-            'last_message_date' => $this->last_message_date ? $this->last_message_date .' UTC' : null,
+            'last_message_date' => $this->last_message_date ? $this->last_message_date.' UTC' : null,
         ];
     }
 }

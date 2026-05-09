@@ -158,12 +158,4 @@ class MessageController extends Controller
             'prevMessage' => $prevMessage ? new MessageResource($prevMessage) : null,
         ]);
     }
-
-    public static function updateGroupWithMessage($groupId, $message)
-    {
-        return Group::updateOrCreate(
-            ['id' => $groupId],
-            ['last_message_id' => $message->id]
-        );
-    }
 }

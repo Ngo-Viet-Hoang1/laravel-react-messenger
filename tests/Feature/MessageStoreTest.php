@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Conversation;
 use App\Models\Message;
-use App\Models\MessageAttachment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
