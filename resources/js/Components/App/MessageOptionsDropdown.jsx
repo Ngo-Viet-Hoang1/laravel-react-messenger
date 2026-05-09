@@ -13,8 +13,7 @@ export default function MessageOptionsDropdown({ message }) {
         axios
             .delete(route("message.destroy", message.id))
             .then((res) => {
-                emit('message.deleted', message);
-                console.log(res.data);
+                emit('message.deleted', { message, prevMessage: res.data.message });
             })
             .catch((err) => {
                 console.error(err);
@@ -49,7 +48,7 @@ export default function MessageOptionsDropdown({ message }) {
                                             : "text-gray-100"
                                             } group flex w-full items-center rounded-md px-2 py-2 text-sm`}
                                     >
-                                       <TrashIcon className="w-4 h-4 mr-2" />
+                                        <TrashIcon className="w-4 h-4 mr-2" />
                                         Delete Message
                                     </button>
                                 )}

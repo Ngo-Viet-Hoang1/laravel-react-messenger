@@ -23,8 +23,7 @@ class MessageController extends Controller
             ->orWhere('sender_id', $user->id)
             ->where('receiver_id', Auth::id())
             ->latest()
-            ->paginate(10)
-        ;
+            ->paginate(10);
 
         return inertia('Home', [
             'selectedConversation' => $user->toConversationArray(),
@@ -36,8 +35,7 @@ class MessageController extends Controller
     {
         $messages = Message::where('group_id', $group->id)
             ->latest()
-            ->paginate(10)
-        ;
+            ->paginate(10);
 
         return inertia('Home', [
             'selectedConversation' => $group->toConversationArray(),
@@ -47,7 +45,7 @@ class MessageController extends Controller
 
     public function loadOlder(Message $message)
     {
-        if ($message->group_id){
+        if ($message->group_id) {
             $messages = Message::where('created_at', '<', $message->created_at)
                 ->where('group_id', $message->group_id)
                 ->latest()
@@ -106,7 +104,7 @@ class MessageController extends Controller
         }
 
         SocketMessage::dispatch($message);
-        
+
         return new MessageResource($message);
     }
 
@@ -116,8 +114,25 @@ class MessageController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        $group = null;
+        $conversation = null;
+        // Check if the message is the group message
+        if ($message->group_id) {
+            $group = Group::where('last_message_id', $message->id)->first();         
+        } else {
+            $conversation = Conversation::where('last_message_id', $message->id)->first();
+        }
+
         $message->delete();
 
-        return response('', 204);
+        if ($group) {
+            $group = Group::find($group->id);
+            $lastMessage = $group->lastMessage;
+        } else if ($conversation) {
+            $conversation = Conversation::find($conversation->id);
+            $lastMessage = $conversation->lastMessage;
+        } 
+
+        return response()->json(['message' => $lastMessage ? new MessageResource($lastMessage) : null]);
     }
 }
