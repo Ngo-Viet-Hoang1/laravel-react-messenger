@@ -1,5 +1,9 @@
 import ConversationItem from '@/Components/App/ConversationItem';
 import TextInput from '@/Components/Breeze/TextInput';
+import {
+    GroupModalProvider,
+    useGroupModal,
+} from '@/Contexts/GroupModalContext';
 import { useEventBus } from '@/EventBus';
 import { AppEventMap, ChatItem, ChatMessage, PageProps, User } from '@/types';
 import { isMessageForConversation } from '@/utils';
@@ -11,7 +15,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 const EMPTY_CONVERSATIONS: ChatItem[] = [];
 const getTime = (date?: string | null) => (date ? new Date(date).getTime() : 0);
 
-const ChatLayout = ({ children }: { children: ReactNode }) => {
+const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     const pageProps = usePage<PageProps>().props;
     const currentUser = pageProps.auth.user;
     const conversations = pageProps.conversations ?? EMPTY_CONVERSATIONS;
@@ -19,6 +23,7 @@ const ChatLayout = ({ children }: { children: ReactNode }) => {
 
     const { on } = useEventBus();
     const [onlineUsers, setOnlineUsers] = useState<Record<number, User>>({});
+    const { openModal } = useGroupModal();
     const [localConversations, setLocalConversations] = useState<ChatItem[]>(
         [],
     );
@@ -154,7 +159,10 @@ const ChatLayout = ({ children }: { children: ReactNode }) => {
                         className="tooltip tooltip-left"
                         data-tip="Create new Group"
                     >
-                        <button className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100">
+                        <button
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+                            onClick={() => openModal()}
+                        >
                             <PencilSquareIcon className="w-5" />
                         </button>
                     </div>
@@ -190,6 +198,14 @@ const ChatLayout = ({ children }: { children: ReactNode }) => {
                 <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
             </div>
         </div>
+    );
+};
+
+const ChatLayout = ({ children }: { children: ReactNode }) => {
+    return (
+        <GroupModalProvider>
+            <ChatLayoutInner>{children}</ChatLayoutInner>
+        </GroupModalProvider>
     );
 };
 
