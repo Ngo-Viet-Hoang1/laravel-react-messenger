@@ -1,5 +1,6 @@
 import { useEventBus } from '@/EventBus';
 import { ChatItem, SocketMessageEvent } from '@/types';
+import { GroupDeletedEvent } from '@/types/events';
 import { getChannelName } from '@/utils';
 import { echo } from '@laravel/echo-react';
 import { useCallback, useEffect, useRef } from 'react';
@@ -60,6 +61,26 @@ export default function useConversationSockets(
 
         subscribedRef.current = next;
     }, [channelNamesStr, handler]);
+
+    useEffect(() => {
+        const e = echo();
+        if (!e) return;
+
+        const channelName = `user.${userId}`;
+        const channel = e.private(channelName);
+
+        channel
+            .error((error: Error) =>
+                console.error('Group deleted error:', error),
+            )
+            .listen('GroupDeleted', ({ id, name }: GroupDeletedEvent) => {
+                emit('group.deleted', { id, name });
+            });
+
+        return () => {
+            e.leave(channelName);
+        };
+    }, [emit, userId]);
 
     useEffect(() => {
         return () => {

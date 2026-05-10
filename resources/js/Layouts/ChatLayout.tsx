@@ -8,7 +8,7 @@ import { useEventBus } from '@/EventBus';
 import { AppEventMap, ChatItem, ChatMessage, PageProps, User } from '@/types';
 import { isMessageForConversation } from '@/utils';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -21,7 +21,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     const conversations = pageProps.conversations ?? EMPTY_CONVERSATIONS;
     const selectedConversation = pageProps.selectedConversation ?? null;
 
-    const { on } = useEventBus();
+    const { on, emit } = useEventBus();
     const [onlineUsers, setOnlineUsers] = useState<Record<number, User>>({});
     const { openModal } = useGroupModal();
     const [localConversations, setLocalConversations] = useState<ChatItem[]>(
@@ -118,6 +118,23 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
             offDeleted();
         };
     }, [on, messageCreated, messageDeleted]);
+
+    useEffect(() => {
+        on('group.deleted', ({ id, name }) => {
+            setLocalConversations((prev) =>
+                prev.filter((conv) => !(conv.is_group && conv.id === id)),
+            );
+
+            emit('toast.show', `The group "${name}" has been deleted`);
+
+            if (
+                selectedConversation?.is_group &&
+                selectedConversation.id === id
+            ) {
+                router.visit(route('dashboard'));
+            }
+        });
+    }, [on, emit, selectedConversation?.id, selectedConversation?.is_group]);
 
     useEffect(() => {
         setLocalConversations(conversations);

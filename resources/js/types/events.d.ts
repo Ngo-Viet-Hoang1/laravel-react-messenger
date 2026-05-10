@@ -1,8 +1,14 @@
 import type { User } from './auth';
 import type { ChatMessage } from './chat';
+import { NewMessageNotification } from './events.d';
 
 export type SocketMessageEvent = {
     message: ChatMessage;
+};
+
+export type GroupDeletedEvent = {
+    id: number;
+    name: string;
 };
 
 export type NewMessageNotification = {
@@ -17,6 +23,7 @@ export type AppEventMap = {
         message: ChatMessage;
         newLastMessage: ChatMessage | null;
     };
-    newMessageNotification: NewMessageNotification;
+    NewMessageNotification: NewMessageNotification;
     'toast.show': string;
+    'group.deleted': GroupDeletedEvent;
 };
