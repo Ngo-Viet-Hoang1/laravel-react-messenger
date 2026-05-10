@@ -23,7 +23,7 @@ const Toast = () => {
             }, 3000);
         });
 
-        const offNewMessageNoti = on('newMessageNotification', (data) => {
+        const offNewMessageNoti = on('notification.new-message', (data) => {
             const { user, message, group_id } = data;
             const notiMessage = `${user.name}: ${message}`;
             const uuid = crypto.randomUUID();

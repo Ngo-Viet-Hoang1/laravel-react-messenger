@@ -57,16 +57,16 @@ This project has domain-specific skills available. You MUST activate the relevan
 
 - Real-time messaging uses an **EventBus pattern** (`EventBus.tsx`, `EventBusProvider`) for cross-component event emission. Use `useEventBus()` to access `emit()` and `on()` methods for app-level events.
 - **Echo/Reverb hooks** in `resources/js/hooks/` manage real-time subscriptions:
-  - `useConversationSockets`: Subscribes to message channels (`message.user.*`, `message.group.*`) and broadcasts from private channels; emits `message.created` and `newMessageNotification` events.
-  - `useSendMessage`: Handles message creation via API and UI feedback.
-  - `useAttachments`: Manages file uploads (max 10 files, 1MB each per `StoreMessageRequest`).
-  - `useErrorMessage`: Displays error feedback to users.
-  - `useTheme`: Manages UI theme state.
+    - `useConversationSockets`: Subscribes to message channels (`message.user.*`, `message.group.*`) and broadcasts from private channels; emits `message.created` and `notification.new-message` events.
+    - `useSendMessage`: Handles message creation via API and UI feedback.
+    - `useAttachments`: Manages file uploads (max 10 files, 1MB each per `StoreMessageRequest`).
+    - `useErrorMessage`: Displays error feedback to users.
+    - `useTheme`: Manages UI theme state.
 - **Broadcast Channels** (defined in `routes/channels.php`):
-  - `online`: Public channel for tracking online users.
-  - `message.user.{userId1}-{userId2}`: Private channel for 1:1 messaging between two users.
-  - `message.group.{groupId}`: Private channel for group messaging (user must be member).
-  - `user.{userId}`: Private channel for user-specific notifications (e.g., `GroupDeleted` events).
+    - `online`: Public channel for tracking online users.
+    - `message.user.{userId1}-{userId2}`: Private channel for 1:1 messaging between two users.
+    - `message.group.{groupId}`: Private channel for group messaging (user must be member).
+    - `user.{userId}`: Private channel for user-specific notifications (e.g., `GroupDeleted` events).
 - Realtime/broadcasting plumbing exists, but channel/event wiring may be incomplete; verify end-to-end flow before claiming realtime behavior works.
 - Always unsubscribe from channels on component unmount to prevent memory leaks.
 
@@ -161,7 +161,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 
 - Execute PHP in app context for debugging and testing code. Do not create models without user approval, prefer tests with factories instead. Prefer existing Artisan commands over custom tinker code.
 - Always use single quotes to prevent shell expansion: `php artisan tinker --execute 'Your::code();'`
-  - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
+    - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
 
 === php rules ===
 

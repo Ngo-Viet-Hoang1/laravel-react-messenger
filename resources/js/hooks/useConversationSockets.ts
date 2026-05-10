@@ -19,7 +19,7 @@ export default function useConversationSockets(
             emit('message.created', message);
 
             if (message.sender_id !== userId) {
-                emit('newMessageNotification', {
+                emit('notification.new-message', {
                     user: message.sender,
                     group_id: message.group_id,
                     message:

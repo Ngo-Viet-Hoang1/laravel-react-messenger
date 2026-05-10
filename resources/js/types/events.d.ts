@@ -23,7 +23,7 @@ export type AppEventMap = {
         message: ChatMessage;
         newLastMessage: ChatMessage | null;
     };
-    NewMessageNotification: NewMessageNotification;
+    'notification.new-message': NewMessageNotification;
     'toast.show': string;
     'group.deleted': GroupDeletedEvent;
 };
