@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,13 +30,28 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $data = $request->validated();
+        $avatar = $request->file('avatar');
+        $user = $request->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        if ($avatar) {
+            if ($user->avatar_url) {
+                Storage::disk('public')->delete($user->avatar_url);
+            }
+
+            $avatarName = uniqid('avatar_') . '.' . $avatar->getClientOriginalExtension();
+            $avatarPath = $avatar->storeAs('avatars', $avatarName, 'public');
+            $user->avatar_url = $avatarPath;
         }
 
-        $request->user()->save();
+        unset($data['avatar']);
+        $user->fill($data);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
 
         return Redirect::route('profile.edit');
     }
