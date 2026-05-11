@@ -1,5 +1,6 @@
 import ThemeToggle from '@/Components/App/ThemeToggle';
 import Toast from '@/Components/App/Toast';
+import UserAvatar from '@/Components/App/UserAvatar';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
@@ -52,10 +53,10 @@ export default function Authenticated({
                                         <span className="inline-flex rounded-md">
                                             <button
                                                 type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                                                className="inline-flex items-center gap-2 rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
                                             >
+                                                <UserAvatar user={user} />
                                                 {user.name}
-
                                                 <svg
                                                     className="-me-0.5 ms-2 h-4 w-4"
                                                     xmlns="http://www.w3.org/2000/svg"

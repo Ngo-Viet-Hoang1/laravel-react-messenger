@@ -13,22 +13,22 @@ export default function Edit({
         <AuthenticatedLayout>
             <Head title="Profile" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                    <div className="bg-white p-4 shadow dark:bg-gray-800 sm:rounded-lg sm:p-8">
+            <div className="w-full flex-1 overflow-y-auto bg-gray-50/50 py-12 dark:bg-gray-900/50">
+                <div className="mx-auto max-w-2xl space-y-8 sm:px-6 lg:px-8">
+                    <div className="bg-white p-4 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-800 dark:ring-gray-700/50 sm:rounded-lg sm:p-8">
                         <UpdateProfileInformationForm
                             mustVerifyEmail={mustVerifyEmail}
                             status={status}
-                            className="max-w-xl"
+                            className="max-w-2xl"
                         />
                     </div>
 
-                    <div className="bg-white p-4 shadow dark:bg-gray-800 sm:rounded-lg sm:p-8">
-                        <UpdatePasswordForm className="max-w-xl" />
+                    <div className="bg-white p-4 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-800 dark:ring-gray-700/50 sm:rounded-lg sm:p-8">
+                        <UpdatePasswordForm className="max-w-2xl" />
                     </div>
 
-                    <div className="bg-white p-4 shadow dark:bg-gray-800 sm:rounded-lg sm:p-8">
-                        <DeleteUserForm className="max-w-xl" />
+                    <div className="bg-white p-4 shadow-sm ring-1 ring-red-900/10 dark:bg-red-900/10 dark:ring-red-500/20 sm:rounded-lg sm:p-8">
+                        <DeleteUserForm className="max-w-2xl" />
                     </div>
                 </div>
             </div>
