@@ -1,13 +1,16 @@
 /* global route */
 
 import NewMessageNotification from '@/Components/App/NewMessageNotification';
+import NewUserModal from '@/Components/App/NewUserModal';
 import ThemeToggle from '@/Components/App/ThemeToggle';
 import Toast from '@/Components/App/Toast';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
+import PrimaryButton from '@/Components/PrimaryButton';
 import { useEventBus } from '@/EventBus';
+import { UserPlusIcon } from '@heroicons/react/24/solid';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -18,6 +21,8 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+    
+    const [showNewUserModal, setShowNewUserModal] = useState(false);
 
     const { emit } = useEventBus();
 
@@ -134,7 +139,14 @@ export default function AuthenticatedLayout({ header, children }) {
 
                             <div className="hidden sm:ms-6 sm:flex sm:items-center">
                                 <ThemeToggle />
-                                <div className="relative ms-3">
+                                <div className="flex relative ms-3">
+                                    {user.is_admin && (
+                                        <PrimaryButton onClick={() => setShowNewUserModal(true)}>
+                                            <UserPlusIcon className="h-5 w-5 -ms-2 mr-2" />
+                                            Add New User
+                                        </PrimaryButton>
+                                    )}
+
                                     <Dropdown>
                                         <Dropdown.Trigger>
                                             <span className="inline-flex rounded-md">
@@ -271,7 +283,8 @@ export default function AuthenticatedLayout({ header, children }) {
                 {children}
             </div>
             <Toast />
-            <NewMessageNotification/>
+            <NewMessageNotification />
+            <NewUserModal show={showNewUserModal} onClose={() => setShowNewUserModal(false)} />
         </>
     );
 }
