@@ -4,22 +4,27 @@ import UserAvatar from '@/Components/App/UserAvatar';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
+import PrimaryButton from '@/Components/Breeze/PrimaryButton';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
+import { UserModalProvider, useUserModal } from '@/Contexts/UserModalContext';
 import useConversationSockets from '@/hooks/useConversationSockets';
 import { PageProps } from '@/types';
+import { UserPlusIcon } from '@heroicons/react/24/outline';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 
-export default function Authenticated({
+const AuthenticatedInner = ({
     header,
     children,
-}: PropsWithChildren<{ header?: ReactNode }>) {
+}: PropsWithChildren<{ header?: ReactNode }>) => {
     const page = usePage<PageProps>();
     const user = page.props.auth.user;
     const conversations = page.props.conversations;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+
+    const { openModal } = useUserModal();
 
     useConversationSockets(conversations || [], Number(user.id));
 
@@ -47,6 +52,16 @@ export default function Authenticated({
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
                             <ThemeToggle />
+
+                            {user.is_admin && (
+                                <PrimaryButton
+                                    onClick={() => openModal()}
+                                    className="ms-3"
+                                >
+                                    <UserPlusIcon className="h-4 w-4" />
+                                </PrimaryButton>
+                            )}
+
                             <div className="relative ms-3">
                                 <Dropdown>
                                     <Dropdown.Trigger>
@@ -190,4 +205,14 @@ export default function Authenticated({
             <Toast />
         </div>
     );
-}
+};
+
+const AuthenticatedLayout = ({ children }: { children: ReactNode }) => {
+    return (
+        <UserModalProvider>
+            <AuthenticatedInner>{children}</AuthenticatedInner>
+        </UserModalProvider>
+    );
+};
+
+export default AuthenticatedLayout;
