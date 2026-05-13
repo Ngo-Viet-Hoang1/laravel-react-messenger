@@ -1,5 +1,6 @@
 import { useEventBus } from '@/EventBus';
 import { User } from '@/types';
+import { ModalBaseProps } from '@/utils/createModalContext';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 import Checkbox from '../Breeze/Checkbox';
@@ -10,11 +11,7 @@ import PrimaryButton from '../Breeze/PrimaryButton';
 import SecondaryButton from '../Breeze/SecondaryButton';
 import TextInput from '../Breeze/TextInput';
 
-type Props = {
-    isOpen: boolean;
-    user?: User | null;
-    onClose: () => void;
-};
+type Props = ModalBaseProps<User>;
 
 type CreateOrEditUserFormData = {
     id: number | null;
@@ -23,7 +20,7 @@ type CreateOrEditUserFormData = {
     is_admin?: boolean;
 };
 
-const CreateOrEditUserModal = ({ isOpen, user, onClose }: Props) => {
+const CreateOrEditUserModal = ({ isOpen, entity: user, onClose }: Props) => {
     const { emit } = useEventBus();
 
     const { data, setData, processing, reset, post, patch, errors } =

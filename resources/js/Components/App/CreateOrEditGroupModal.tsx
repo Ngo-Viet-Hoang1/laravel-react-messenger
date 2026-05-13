@@ -1,5 +1,6 @@
 import { useEventBus } from '@/EventBus';
 import { ChatItem, PageProps } from '@/types';
+import { ModalBaseProps } from '@/utils/createModalContext';
 import { useForm, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
 import InputError from '../Breeze/InputError';
@@ -11,11 +12,7 @@ import TextAreaInput from '../Breeze/TextAreaInput';
 import TextInput from '../Breeze/TextInput';
 import UserPicker from './UserPicker';
 
-type Props = {
-    isOpen: boolean;
-    group: ChatItem | null;
-    onClose: () => void;
-};
+type Props = ModalBaseProps<ChatItem>;
 
 type CreateOrEditGroupFormData = {
     id: number | null;
@@ -24,7 +21,7 @@ type CreateOrEditGroupFormData = {
     user_ids: number[];
 };
 
-const CreateOrEditGroupModal = ({ isOpen, group, onClose }: Props) => {
+const CreateOrEditGroupModal = ({ isOpen, entity: group, onClose }: Props) => {
     const page = usePage<PageProps>();
     const conversations = page.props.conversations;
     const users = conversations?.filter((c) => c.is_user);
