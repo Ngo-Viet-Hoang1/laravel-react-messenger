@@ -75,3 +75,59 @@ export const isYesterday = (date) => {
         date.getFullYear() === yesterday.getFullYear()
     );
 };
+
+const getMimeParts = (attachment) => {
+    if (!attachment) return [];
+    if (typeof attachment === 'string') return [];
+    const mime = attachment.mime || attachment.type;
+    if (!mime || typeof mime !== 'string') return [];
+    return mime.split('/');
+};
+
+export const isImage = (attachment) => {
+    const mime = getMimeParts(attachment);
+    return (mime[0] || '').toLowerCase() === 'image';
+};
+
+export const isVideo = (attachment) => {
+    const mime = getMimeParts(attachment);
+    return (mime[0] || '').toLowerCase() === 'video';
+};
+
+export const isAudio = (attachment) => {
+    const mime = getMimeParts(attachment);
+    return (mime[0] || '').toLowerCase() === 'audio';
+};
+
+export const isPDF = (attachment) => {
+    const mime = getMimeParts(attachment);
+    return (
+        (mime[0] || '').toLowerCase() === 'application' &&
+        (mime[1] || '').toLowerCase() === 'pdf'
+    );
+};
+
+export const isPreviewable = (attachment) => {
+    return (
+        isImage(attachment) ||
+        isVideo(attachment) ||
+        isAudio(attachment) ||
+        isPDF(attachment)
+    );
+};
+
+export const formatBytes = (bytes, decimals = 2) => {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const units = ['Bytes', 'KB', 'MB', 'GB'];
+
+    let i = 0;
+    let size = bytes;
+    while (size >= k && i < units.length - 1) {
+        size /= k;
+        i++;
+    }
+    return parseFloat(size.toFixed(dm)) + ' ' + units[i];
+};

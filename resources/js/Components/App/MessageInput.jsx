@@ -5,21 +5,43 @@ import {
     PaperAirplaneIcon,
     PaperClipIcon,
     PhotoIcon,
+    XCircleIcon,
 } from '@heroicons/react/24/solid';
 import EmojiPicker from 'emoji-picker-react';
 import { useState } from 'react';
+import { isAudio, isImage } from '../../helpers';
+import AttachmentPreview from './AttachmentPreview';
+import CustomAudioPlayer from './CustomAudioPlayer';
 import NewMessageInput from './NewMessageInput';
 
 const MessageInput = ({ conversation = null, onMessageSent = null }) => {
     const [newMessage, setNewMessage] = useState('');
     const [inputErrorMessage, setInputErrorMessage] = useState('');
     const [messageSending, setMessageSending] = useState(false);
+    const [chosenFiles, setChosenFiles] = useState([]);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    const onFileChange = (ev) => {
+        const files = ev.target.files;
+
+        const updatedFiles = [...files].map((file) => {
+            return {
+                file: file,
+                url: URL.createObjectURL(file),
+            };
+        });
+        ev.target.value = null;
+        setChosenFiles((prevFiles) => {
+            return [...prevFiles, ...updatedFiles];
+        });
+    };
 
     const onSendClick = () => {
         if (messageSending) {
             return;
         }
-        if (newMessage.trim() === '') {
+        const trimmedMessage = newMessage.trim();
+        if (trimmedMessage === '' && chosenFiles.length === 0) {
             setInputErrorMessage('Hay nhap mot tin nhan');
 
             setTimeout(() => {
@@ -28,7 +50,13 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
             return;
         }
         const formData = new FormData();
-        formData.append('message', newMessage);
+        chosenFiles.forEach((file) => {
+            formData.append('attachments[]', file.file);
+        });
+        formData.append(
+            'message',
+            trimmedMessage === '' ? ' ' : trimmedMessage,
+        );
         if (conversation.is_user) {
             formData.append('receiver_id', conversation.id);
         } else if (conversation.is_group) {
@@ -43,6 +71,7 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                         (progressEvent.loaded * 100) / progressEvent.total,
                     );
                     console.log('Upload progress:', progress);
+                    setUploadProgress(progress);
                 },
             })
             .then((response) => {
@@ -51,10 +80,17 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                 }
                 setNewMessage('');
                 setMessageSending(false);
+                setUploadProgress(0);
+                setChosenFiles([]);
             })
             .catch((error) => {
                 console.error('Error sending message:', error);
                 setMessageSending(false);
+                setChosenFiles([]);
+                const message = error?.response?.data?.message;
+                setInputErrorMessage(
+                    message || 'An error occurred while sending the message.',
+                );
             });
     };
 
@@ -82,6 +118,7 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                     <input
                         type="file"
                         multiple
+                        onChange={onFileChange}
                         className="absolute bottom-0 left-0 right-0 top-0 z-20 cursor-pointer opacity-0"
                     />
                 </button>
@@ -90,6 +127,7 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                     <input
                         type="file"
                         multiple
+                        onChange={onFileChange}
                         accept="image/*"
                         className="absolute bottom-0 left-0 right-0 top-0 z-20 cursor-pointer opacity-0"
                     />
@@ -113,10 +151,60 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                         <PaperAirplaneIcon className="w-6" />
                         <span className="hidden sm:inline">Send</span>
                     </button>
-                </div>
-                {inputErrorMessage && (
-                    <p className="text-xs text-red-400">{inputErrorMessage}</p>
+                </div>{' '}
+                {!!uploadProgress && (
+                    <progress
+                        className="progress progress-info w-full"
+                        value={uploadProgress}
+                        max="100"
+                    ></progress>
                 )}
+                {inputErrorMessage && (
+                    <div className="mt-1 text-sm text-red-500">
+                        {inputErrorMessage}
+                    </div>
+                )}
+                <div className="mt-2 flex flex-wrap gap-1">
+                    {chosenFiles.map((file) => (
+                        <div
+                            key={file.file.name}
+                            className={
+                                `cursors-pointer relative flex justify-between` +
+                                (!isImage(file.url) ? ' w-[240px]' : '')
+                            }
+                        >
+                            {isImage(file.file) && (
+                                <img
+                                    src={file.url}
+                                    alt=""
+                                    className="h-16 w-16 object-cover"
+                                />
+                            )}
+                            {isAudio(file.file) && (
+                                <CustomAudioPlayer
+                                    src={file.file}
+                                    showVolume={false}
+                                />
+                            )}
+                            {!isAudio(file.file) && !isImage(file.file) && (
+                                <AttachmentPreview file={file} />
+                            )}
+
+                            <button
+                                onClick={() => {
+                                    setChosenFiles(
+                                        chosenFiles.filter(
+                                            (f) =>
+                                                f.file.name !== file.file.name,
+                                        ),
+                                    );
+                                }}
+                            >
+                                <XCircleIcon className="w-6" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
             </div>
             <div className="order-3 flex p-2 xs:order-3">
                 <Popover className="relative">

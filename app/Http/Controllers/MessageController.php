@@ -53,6 +53,11 @@ class MessageController extends Controller
         $groupId = $data['group_id'] ?? null;
 
         $files = $data['attachments'] ?? [];
+        $messageText = trim((string) ($data['message'] ?? ''));
+        if ($messageText === '' && count($files) === 0) {
+            return response()->json(['message' => 'Message or attachment required.'], 422);
+        }
+        $data['message'] = $messageText;
 
         $message = Message::create($data);
 
