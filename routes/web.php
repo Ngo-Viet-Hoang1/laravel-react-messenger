@@ -7,7 +7,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('dashboard');
 
     Route::get('/user/{user}', [MessageController::class, 'byUser'])->name('chat.user');
@@ -23,6 +23,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('admin')->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::patch('/users/{user}/promote', [UserController::class, 'promote'])->name('users.promote');
+        Route::patch('/users/{user}/demote', [UserController::class, 'demote'])->name('users.demote');
     });
 });
 

@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BlockUserRequest;
+use App\Http\Requests\DemoteUserRequest;
+use App\Http\Requests\PromoteUserRequest;
 use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UnblockUserRequest;
 use App\Mail\UserCreated;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -27,4 +30,23 @@ class UserController extends Controller
 
         return redirect()->back();
     }
+
+    public function promote(PromoteUserRequest $request, User $user): JsonResponse
+    {
+        $user->update(['is_admin' => true]);
+
+        return response()->json([
+            'message' => "User {$user->name} has been promoted to admin.",
+        ]);
+    }
+
+    public function demote(DemoteUserRequest $request, User $user): JsonResponse
+    {
+        $user->update(['is_admin' => false]);
+
+        return response()->json([
+            'message' => "User {$user->name} has been demoted to a regular user.",
+        ]);
+    }
+
 }
