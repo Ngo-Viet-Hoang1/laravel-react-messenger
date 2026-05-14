@@ -1,3 +1,4 @@
+import { Popover } from '@headlessui/react';
 import {
     FaceSmileIcon,
     HandThumbUpIcon,
@@ -5,6 +6,7 @@ import {
     PaperClipIcon,
     PhotoIcon,
 } from '@heroicons/react/24/solid';
+import EmojiPicker from 'emoji-picker-react';
 import { useState } from 'react';
 import NewMessageInput from './NewMessageInput';
 
@@ -14,6 +16,9 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
     const [messageSending, setMessageSending] = useState(false);
 
     const onSendClick = () => {
+        if (messageSending) {
+            return;
+        }
         if (newMessage.trim() === '') {
             setInputErrorMessage('Hay nhap mot tin nhan');
 
@@ -53,9 +58,25 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
             });
     };
 
+    const onLikeClick = () => {
+        if (messageSending) {
+            return;
+        }
+        const data = {
+            message: '👍',
+        };
+        if (conversation.is_user) {
+            data['receiver_id'] = conversation.id;
+        } else if (conversation.is_group) {
+            data['group_id'] = conversation.id;
+        }
+
+        axios.post(route('message.store'), data);
+    };
+
     return (
         <div className="flex flex-wrap items-start border-t border-slate-700 py-3">
-            <div className="xs:flex-none xs:order-1 order-2 p-2">
+            <div className="order-2 p-2 xs:order-1 xs:flex-none">
                 <button className="relative p-1 text-gray-400 hover:text-gray-300">
                     <PaperClipIcon className="w-5" />
                     <input
@@ -74,11 +95,12 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                     />
                 </button>
             </div>
-            <div className="xs:p-0 xs:basis-0 xs:order-2 relative order-1 min-w-[220px] flex-1 basis-full px-3">
+            <div className="relative order-1 min-w-[220px] flex-1 basis-full px-3 xs:order-2 xs:basis-0 xs:p-0">
                 <div className="flex">
                     <NewMessageInput
                         value={newMessage}
                         onSend={onSendClick}
+                        disabled={messageSending}
                         onChange={(ev) => setNewMessage(ev.target.value)}
                     />
                     <button
@@ -96,11 +118,25 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                     <p className="text-xs text-red-400">{inputErrorMessage}</p>
                 )}
             </div>
-            <div className="xs:order-3 order-3 flex p-2">
-                <button className="p-1 text-gray-400 hover:text-gray-300">
-                    <FaceSmileIcon className="h-6 w-6" />
-                </button>
-                <button className="p-1 text-gray-400 hover:text-gray-300">
+            <div className="order-3 flex p-2 xs:order-3">
+                <Popover className="relative">
+                    <Popover.Button className="p-1 text-gray-400 hover:text-gray-300">
+                        <FaceSmileIcon className="h-6 w-6" />
+                    </Popover.Button>
+                    <Popover.Panel className="absolute bottom-full right-0 z-10">
+                        <EmojiPicker
+                            theme="dark"
+                            onEmojiClick={(ev) =>
+                                setNewMessage(newMessage + ev.emoji)
+                            }
+                        />
+                    </Popover.Panel>
+                </Popover>
+                <button className="p-1 text-gray-400 hover:text-gray-300"></button>
+                <button
+                    onClick={onLikeClick}
+                    className="p-1 text-gray-400 hover:text-gray-300"
+                >
                     <HandThumbUpIcon className="h-6 w-6" />
                 </button>
             </div>
