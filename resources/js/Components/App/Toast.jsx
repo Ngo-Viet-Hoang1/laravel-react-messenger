@@ -21,7 +21,7 @@ export default function Toast({ }) {
     }, [on]);
 
     return (
-        <div className="toast min-w-[280px]">
+        <div className="toast min-w-[280px] w-full xs:w-auto">
             {toasts.map((toast, index) => (
                 <div
                     key={toast.uuid}
