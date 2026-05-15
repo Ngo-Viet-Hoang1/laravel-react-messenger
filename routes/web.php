@@ -25,6 +25,8 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}/promote', [UserController::class, 'promote'])->name('users.promote');
         Route::patch('/users/{user}/demote', [UserController::class, 'demote'])->name('users.demote');
+        Route::patch('/users/{user}/block', [UserController::class, 'block'])->name('users.block');
+        Route::patch('/users/{user}/unblock', [UserController::class, 'unblock'])->name('users.unblock');
     });
 });
 

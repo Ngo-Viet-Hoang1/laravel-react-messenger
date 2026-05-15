@@ -49,4 +49,37 @@ class UserController extends Controller
         ]);
     }
 
+    public function block(BlockUserRequest $request, User $user): JsonResponse
+    {
+        if ($request->user()?->is($user)) {
+            return response()->json([
+                'message' => 'You cannot block your own account.',
+            ], 403);
+        }
+
+        if (!$user->blocked_at) {
+            $user->update(['blocked_at' => now()]);
+        }
+
+        return response()->json([
+            'message' => "User {$user->name} has been blocked.",
+        ]);
+    }
+
+    public function unblock(UnblockUserRequest $request, User $user): JsonResponse
+    {
+        if ($request->user()?->is($user)) {
+            return response()->json([
+                'message' => 'You cannot block your own account.',
+            ], 403);
+        }
+
+        if ($user->blocked_at) {
+            $user->update(['blocked_at' => null]);
+        }
+
+        return response()->json([
+            'message' => "User {$user->name} account has been unblocked.",
+        ]);
+    }
 }
