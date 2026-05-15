@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\UserCreated;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -14,13 +17,14 @@ class UserController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'is_admin' => 'boolean',
         ]);
-        // generate random password
-        // $rawPassword = Str::random(8);
-        $rawPassword = 'password';
+
+        $rawPassword = Str::random(8);
         $data['password'] = bcrypt($rawPassword);
         $data['email_verified_at'] = now();
 
         $user = User::create($data);
+
+        Mail::to($user)->send(new UserCreated($user, $rawPassword));
 
         return redirect()->back();
     }
