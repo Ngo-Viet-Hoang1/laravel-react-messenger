@@ -9,7 +9,6 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UnblockUserRequest;
 use App\Mail\UserCreated;
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -31,55 +30,43 @@ class UserController extends Controller
         return redirect()->back();
     }
 
-    public function promote(PromoteUserRequest $request, User $user): JsonResponse
+    public function promote(PromoteUserRequest $request, User $user): RedirectResponse
     {
         $user->update(['is_admin' => true]);
 
-        return response()->json([
-            'message' => "User {$user->name} has been promoted to admin.",
-        ]);
+        return redirect()->back();
     }
 
-    public function demote(DemoteUserRequest $request, User $user): JsonResponse
+    public function demote(DemoteUserRequest $request, User $user): RedirectResponse
     {
         $user->update(['is_admin' => false]);
 
-        return response()->json([
-            'message' => "User {$user->name} has been demoted to a regular user.",
-        ]);
+        return redirect()->back();
     }
 
-    public function block(BlockUserRequest $request, User $user): JsonResponse
+    public function block(BlockUserRequest $request, User $user): RedirectResponse
     {
         if ($request->user()?->is($user)) {
-            return response()->json([
-                'message' => 'You cannot block your own account.',
-            ], 403);
+            abort(403, 'You cannot block your own account.');
         }
 
         if (!$user->blocked_at) {
             $user->update(['blocked_at' => now()]);
         }
 
-        return response()->json([
-            'message' => "User {$user->name} has been blocked.",
-        ]);
+        return redirect()->back();
     }
 
-    public function unblock(UnblockUserRequest $request, User $user): JsonResponse
+    public function unblock(UnblockUserRequest $request, User $user): RedirectResponse
     {
         if ($request->user()?->is($user)) {
-            return response()->json([
-                'message' => 'You cannot block your own account.',
-            ], 403);
+            abort(403, 'You cannot unblock your own account.');
         }
 
         if ($user->blocked_at) {
             $user->update(['blocked_at' => null]);
         }
 
-        return response()->json([
-            'message' => "User {$user->name} account has been unblocked.",
-        ]);
+        return redirect()->back();
     }
 }
