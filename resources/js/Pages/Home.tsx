@@ -16,6 +16,7 @@ import {
 import { isMessageForConversation } from '@/utils';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
+import axios from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 type PageProps = {
@@ -27,123 +28,198 @@ function Home({ selectedConversation = null, messages = null }: PageProps) {
     const currentUser = usePage<AppPageProps>().props.auth.user;
     const myId = Number(currentUser.id);
 
-    const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
-    const [isShowAttachmentPreview, setIsShowAttachmentPreview] =
+    const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+    const [hasLoadedAllMessages, setHasLoadedAllMessages] = useState(false);
+    const [scrollOffsetFromBottom, setScrollOffsetFromBottom] = useState<
+        number | null
+    >(null);
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() =>
+        messages?.data ? [...messages.data].reverse() : [],
+    );
+    // [Vercel Rule] rerender-derived-state-no-effect: Derive state during render instead of useEffect
+    const [prevMessagesProp, setPrevMessagesProp] = useState(messages);
+    if (messages !== prevMessagesProp) {
+        setPrevMessagesProp(messages);
+        setChatMessages(messages?.data ? [...messages.data].reverse() : []);
+        setHasLoadedAllMessages(false);
+        setScrollOffsetFromBottom(0);
+    }
+
+    const [isAttachmentPreviewOpen, setIsAttachmentPreviewOpen] =
         useState(false);
     const [previewAttachment, setPreviewAttachment] = useState<{
         id: number;
         attachments: MessageAttachment[];
     } | null>(null);
 
-    const messagesCtrRef = useRef<HTMLDivElement>(null);
-    const isUserNearBottomRef = useRef(true);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const infiniteScrollTriggerRef = useRef<HTMLDivElement>(null);
+    const isUserScrolledToBottomRef = useRef(true);
+    const isFetchingOlderMessagesRef = useRef(false);
+
+    // [Vercel Rule] advanced-use-latest: Stable ref for latest messages to avoid stale closure and prevent unnecessary hook recreations
+    const chatMessagesRef = useRef(chatMessages);
+    chatMessagesRef.current = chatMessages;
+
     const { on } = useEventBus();
 
-    const messageCreated = useCallback(
-        (message: ChatMessage) => {
-            if (!selectedConversation) return;
-            if (
-                !isMessageForConversation(message, selectedConversation, myId)
-            ) {
-                return;
-            }
+    const loadOlderMessages = useCallback(async () => {
+        if (hasLoadedAllMessages || isFetchingOlderMessagesRef.current) return;
+        if (!selectedConversation) return;
 
-            setLocalMessages((prev) =>
-                prev.some((m) => m.id === message.id)
-                    ? prev
-                    : [...prev, message],
+        const oldestMessage = chatMessagesRef.current[0];
+        if (!oldestMessage) return;
+
+        isFetchingOlderMessagesRef.current = true;
+        setIsLoadingOlderMessages(true);
+
+        try {
+            const res = await axios.get<ChatMessageCollection>(
+                route('message.loadOlder', oldestMessage.id),
             );
-        },
-        [selectedConversation, myId],
-    );
-
-    const messageDeleted = useCallback(
-        ({ message }: AppEventMap['message.deleted']) => {
-            if (!selectedConversation) return;
-            if (
-                !isMessageForConversation(message, selectedConversation, myId)
-            ) {
+            const newMessages = res.data.data;
+            if (newMessages.length === 0) {
+                setHasLoadedAllMessages(true);
                 return;
             }
 
-            setLocalMessages((prev) => prev.filter((m) => m.id !== message.id));
-        },
+            const el = scrollContainerRef.current;
+            if (el) {
+                // Keep the scroll offset from bottom to restore position after loading more messages
+                const distanceFromBottom =
+                    el.scrollHeight - el.scrollTop - el.clientHeight;
+                setScrollOffsetFromBottom(distanceFromBottom);
+            }
+
+            setChatMessages((prev) => {
+                const existingIds = new Set(prev.map((m) => m.id));
+                const uniqueNew = newMessages.filter(
+                    (m) => !existingIds.has(m.id),
+                );
+                return [...uniqueNew.reverse(), ...prev];
+            });
+        } finally {
+            isFetchingOlderMessagesRef.current = false;
+            setIsLoadingOlderMessages(false);
+        }
+    }, [selectedConversation, hasLoadedAllMessages]);
+
+    const shouldIgnoreMessageEvent = useCallback(
+        (message: ChatMessage) =>
+            !selectedConversation ||
+            !isMessageForConversation(message, selectedConversation, myId),
         [selectedConversation, myId],
     );
 
     useEffect(() => {
-        const offCreated = on('message.created', messageCreated);
-        const offDeleted = on('message.deleted', messageDeleted);
+        const offCreated = on('message.created', (message: ChatMessage) => {
+            if (shouldIgnoreMessageEvent(message)) return;
+            setChatMessages((prev) =>
+                prev.some((m) => m.id === message.id)
+                    ? prev
+                    : [...prev, message],
+            );
+        });
+
+        const offDeleted = on(
+            'message.deleted',
+            ({ message }: AppEventMap['message.deleted']) => {
+                if (shouldIgnoreMessageEvent(message)) return;
+                setChatMessages((prev) =>
+                    prev.filter((m) => m.id !== message.id),
+                );
+            },
+        );
 
         return () => {
             offCreated();
             offDeleted();
         };
-    }, [messageCreated, messageDeleted, on]);
+    }, [shouldIgnoreMessageEvent, on]);
 
     const handleScroll = useCallback(() => {
-        if (!messagesCtrRef.current) return;
-        const container = messagesCtrRef.current;
-        isUserNearBottomRef.current =
-            container.scrollHeight -
-                container.scrollTop -
-                container.clientHeight <
-            150;
+        const el = scrollContainerRef.current;
+        if (!el) return;
+
+        isUserScrolledToBottomRef.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 150;
     }, []);
 
     const scrollToBottom = useCallback(
         (behavior: ScrollBehavior = 'smooth') => {
-            if (messagesCtrRef.current) {
-                messagesCtrRef.current.scrollTo({
-                    top: messagesCtrRef.current.scrollHeight,
-                    behavior,
-                });
-            }
+            const el = scrollContainerRef.current;
+            if (!el) return;
+
+            el.scrollTo({
+                top: el.scrollHeight,
+                behavior,
+            });
         },
         [],
     );
 
+    // Scroll to bottom on new messages if user is near the bottom or if it's the first load (<=10 messages)
     useEffect(() => {
-        if (isUserNearBottomRef.current || localMessages.length <= 10) {
+        if (isUserScrolledToBottomRef.current || chatMessages.length <= 10) {
             requestAnimationFrame(() => scrollToBottom('smooth'));
         }
-    }, [localMessages.length, selectedConversation?.id, scrollToBottom]);
+    }, [chatMessages.length, selectedConversation?.id, scrollToBottom]);
 
+    // Scroll to bottom when container size changes (e.g., opening the phone keyboard or new message with attachments),
+    // but only if user is currently at the bottom
     useEffect(() => {
-        const container = messagesCtrRef.current;
-        if (!container) return;
+        const el = scrollContainerRef.current;
+        if (!el) return;
 
         const resizeObserver = new ResizeObserver(() => {
-            if (isUserNearBottomRef.current) {
+            if (isUserScrolledToBottomRef.current) {
                 scrollToBottom('auto');
             }
         });
 
-        if (container.firstElementChild) {
-            resizeObserver.observe(container.firstElementChild);
+        if (el.firstElementChild) {
+            resizeObserver.observe(el.firstElementChild);
         }
 
         return () => resizeObserver.disconnect();
     }, [selectedConversation?.id, scrollToBottom]);
+
+    // Restore scroll position after loading old messages
+    useEffect(() => {
+        const el = scrollContainerRef.current;
+        if (!el || scrollOffsetFromBottom === null) return;
+
+        el.scrollTop =
+            el.scrollHeight - el.clientHeight - scrollOffsetFromBottom;
+    }, [scrollOffsetFromBottom]);
+
+    useEffect(() => {
+        if (hasLoadedAllMessages) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            const entry = entries[0];
+            if (!entry?.isIntersecting) return;
+            loadOlderMessages();
+        });
+
+        if (infiniteScrollTriggerRef.current) {
+            observer.observe(infiniteScrollTriggerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [loadOlderMessages, hasLoadedAllMessages]);
 
     const handleAttachmentClick = (
         attachments: MessageAttachment[],
         index: number,
     ) => {
         setPreviewAttachment({ id: index, attachments });
-        setIsShowAttachmentPreview(true);
+        setIsAttachmentPreviewOpen(true);
     };
 
-    useEffect(() => {
-        setLocalMessages(messages?.data ? [...messages.data].reverse() : []);
-    }, [messages]);
-
-    const EmptyState = ({ message }: { message: string }) => (
-        <div className="flex h-full flex-col items-center justify-center gap-2 text-2xl font-semibold opacity-35">
-            <ChatBubbleLeftRightIcon className="h-16 w-16" />
-            {message}
-        </div>
-    );
+    const firstMessageDate = new Intl.DateTimeFormat('en-En', {
+        dateStyle: 'medium',
+    }).format(new Date(chatMessages[0].created_at));
 
     if (!messages) {
         return (
@@ -157,15 +233,33 @@ function Home({ selectedConversation = null, messages = null }: PageProps) {
                 <ConversationHeader conversation={selectedConversation} />
 
                 <div
-                    ref={messagesCtrRef}
+                    ref={scrollContainerRef}
                     className="flex flex-1 flex-col overflow-y-auto p-2"
                     onScroll={handleScroll}
                 >
-                    {localMessages.length === 0 ? (
+                    {chatMessages.length === 0 ? (
                         <EmptyState message="No messages yet. Start the conversation!" />
                     ) : (
                         <div className="flex shrink-0 flex-col">
-                            {localMessages.map((message) => (
+                            <div ref={infiniteScrollTriggerRef} />
+
+                            {hasLoadedAllMessages &&
+                                chatMessages.length > 0 && (
+                                    <div className="flex flex-col items-center py-3 text-xs opacity-40">
+                                        <div>Start of conversation</div>
+                                        <div className="text-[10px]">
+                                            {firstMessageDate}
+                                        </div>
+                                    </div>
+                                )}
+
+                            {isLoadingOlderMessages && (
+                                <div className="flex justify-center p-2 opacity-50">
+                                    <span className="loading loading-spinner text-primary"></span>
+                                </div>
+                            )}
+
+                            {chatMessages.map((message) => (
                                 <MessageItem
                                     key={message.id}
                                     message={message}
@@ -181,10 +275,10 @@ function Home({ selectedConversation = null, messages = null }: PageProps) {
 
             {previewAttachment?.attachments && (
                 <AttachmentPreviewModal
-                    key={`${previewAttachment.id}_${isShowAttachmentPreview}`}
+                    key={previewAttachment.id}
                     index={previewAttachment.id}
-                    isShow={isShowAttachmentPreview}
-                    onClose={() => setIsShowAttachmentPreview(false)}
+                    isShow={isAttachmentPreviewOpen}
+                    onClose={() => setIsAttachmentPreviewOpen(false)}
                     attachments={previewAttachment.attachments}
                 />
             )}
@@ -196,6 +290,13 @@ Home.layout = (page: React.ReactNode) => (
     <AuthenticatedLayout>
         <ChatLayout>{page}</ChatLayout>
     </AuthenticatedLayout>
+);
+
+const EmptyState = ({ message }: { message: string }) => (
+    <div className="flex h-full flex-col items-center justify-center gap-2 text-2xl font-semibold opacity-35">
+        <ChatBubbleLeftRightIcon className="h-16 w-16" />
+        {message}
+    </div>
 );
 
 export default Home;
