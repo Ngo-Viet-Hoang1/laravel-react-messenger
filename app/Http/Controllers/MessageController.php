@@ -118,20 +118,21 @@ class MessageController extends Controller
         $conversation = null;
         // Check if the message is the group message
         if ($message->group_id) {
-            $group = Group::where('last_message_id', $message->id)->first();         
+            $group = Group::where('last_message_id', $message->id)->first();
         } else {
             $conversation = Conversation::where('last_message_id', $message->id)->first();
         }
 
         $message->delete();
 
+        $lastMessage = null;
         if ($group) {
             $group = Group::find($group->id);
             $lastMessage = $group->lastMessage;
         } else if ($conversation) {
             $conversation = Conversation::find($conversation->id);
             $lastMessage = $conversation->lastMessage;
-        } 
+        }
 
         return response()->json(['message' => $lastMessage ? new MessageResource($lastMessage) : null]);
     }
