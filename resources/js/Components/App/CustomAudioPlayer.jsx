@@ -2,6 +2,10 @@ import { PauseCircleIcon, PlayCircleIcon } from '@heroicons/react/24/solid';
 import { useRef, useState } from 'react';
 
 const CustomAudioPlayer = ({ file, showVolume = true }) => {
+    if (!file?.url) {
+        return null;
+    }
+
     const audioRef = useRef();
     const [isPlaying, setIsPlaying] = useState(false);
     const [volume, setVolume] = useState(1);
@@ -10,35 +14,50 @@ const CustomAudioPlayer = ({ file, showVolume = true }) => {
 
     const togglePlayPause = () => {
         const audio = audioRef.current;
+        if (!audio) {
+            return;
+        }
         if (isPlaying) {
             audio.pause();
         } else {
-            console.log(audio, audio.duration);
-            setDuration(audio.duration);
-            audio.play();
+            if (Number.isFinite(audio.duration)) {
+                setDuration(audio.duration);
+            }
+            audio.play().catch(() => {
+                setIsPlaying(false);
+            });
         }
         setIsPlaying(!isPlaying);
     };
 
     const handleVolumeChante = (e) => {
         const volume = e.target.value;
-        audioRef.current.volume = volume;
+        if (audioRef.current) {
+            audioRef.current.volume = volume;
+        }
         setVolume(volume);
     };
 
-    const handleTimeUpdate = () => {
+    const handleTimeUpdate = (e) => {
         const audio = audioRef.current;
-        setDuration(audio.duration);
-        setCurrentTime(e.target.currentTime);
+        if (audio && Number.isFinite(audio.duration)) {
+            setDuration(audio.duration);
+        }
+        setCurrentTime(e.target.currentTime || 0);
     };
 
-    const handleLoadedMetadata = () => {
-        setDuration(e.target.duration);
+    const handleLoadedMetadata = (e) => {
+        const newDuration = e.target.duration;
+        if (Number.isFinite(newDuration)) {
+            setDuration(newDuration);
+        }
     };
 
     const handleSeekChange = (e) => {
-        const time = e.target.value;
-        audioRef.current.currentTime = time;
+        const time = Number(e.target.value) || 0;
+        if (audioRef.current) {
+            audioRef.current.currentTime = time;
+        }
         setCurrentTime(time);
     };
 
@@ -70,9 +89,9 @@ const CustomAudioPlayer = ({ file, showVolume = true }) => {
                 type="range"
                 className="flex-1"
                 min="0"
-                max={duration}
+                max={Number.isFinite(duration) ? duration : 0}
                 step="0.01"
-                value={currentTime}
+                value={Number.isFinite(currentTime) ? currentTime : 0}
                 onChange={handleSeekChange}
             />
         </div>

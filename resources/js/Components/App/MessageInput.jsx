@@ -11,6 +11,7 @@ import EmojiPicker from 'emoji-picker-react';
 import { useState } from 'react';
 import { isAudio, isImage } from '../../helpers';
 import AttachmentPreview from './AttachmentPreview';
+import AudioRecorder from './AudioRecorder';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import NewMessageInput from './NewMessageInput';
 
@@ -110,6 +111,10 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
         axios.post(route('message.store'), data);
     };
 
+    const recordedAudioReady = (file, url) => {
+        setChosenFiles((prevFiles) => [...prevFiles, { file, url }]);
+    };
+
     return (
         <div className="flex flex-wrap items-start border-t border-slate-700 py-3">
             <div className="order-2 p-2 xs:order-1 xs:flex-none">
@@ -132,6 +137,7 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                         className="absolute bottom-0 left-0 right-0 top-0 z-20 cursor-pointer opacity-0"
                     />
                 </button>
+                <AudioRecorder fileReady={recordedAudioReady} />
             </div>
             <div className="relative order-1 min-w-[220px] flex-1 basis-full px-3 xs:order-2 xs:basis-0 xs:p-0">
                 <div className="flex">
@@ -182,7 +188,7 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                             )}
                             {isAudio(file.file) && (
                                 <CustomAudioPlayer
-                                    src={file.file}
+                                    file={file}
                                     showVolume={false}
                                 />
                             )}

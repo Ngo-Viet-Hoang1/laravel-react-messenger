@@ -3,9 +3,33 @@ import {
     PaperClipIcon,
     PlayCircleIcon,
 } from '@heroicons/react/24/solid';
+import { useState } from 'react';
 import { isAudio, isImage, isPDF, isPreviewable, isVideo } from '../../helpers';
 
 const MessageAttachments = ({ attachments, attachmentClick }) => {
+    const [audioDurations, setAudioDurations] = useState({});
+
+    const formatDuration = (value) => {
+        if (!Number.isFinite(value)) {
+            return '';
+        }
+        const totalSeconds = Math.floor(value);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    };
+
+    const onAudioMetadata = (attachmentId, e) => {
+        const duration = e.target?.duration;
+        if (!Number.isFinite(duration)) {
+            return;
+        }
+        setAudioDurations((prev) => ({
+            ...prev,
+            [attachmentId]: duration,
+        }));
+    };
+
     return (
         <>
             {attachments.length > 0 && (
@@ -50,11 +74,21 @@ const MessageAttachments = ({ attachments, attachmentClick }) => {
                                 </div>
                             )}
                             {isAudio(attachment) && (
-                                <div className="relative flex items-center justify-center">
+                                <div className="flex w-full flex-col gap-1">
                                     <audio
                                         src={attachment.url}
                                         controls
+                                        onLoadedMetadata={(e) =>
+                                            onAudioMetadata(attachment.id, e)
+                                        }
                                     ></audio>
+                                    {audioDurations[attachment.id] && (
+                                        <div className="text-xs text-gray-400">
+                                            {formatDuration(
+                                                audioDurations[attachment.id],
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             {isPDF(attachment) && (
