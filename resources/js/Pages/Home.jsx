@@ -25,10 +25,15 @@ export default function Home({ messages, selectedConversation }) {
         }
 
         const firstMessage = localMessages[0];
+        if (!firstMessage) {
+            return;
+        }
         axios
             .get(route('message.loadOlder', firstMessage.id))
             .then(({ data }) => {
-                if (data.messages.data.length === 0) {
+                const page = data?.messages ?? data;
+                const items = page?.data ?? [];
+                if (items.length === 0) {
                     setNoMoreMessages(true);
                     return;
                 }
@@ -41,7 +46,7 @@ export default function Home({ messages, selectedConversation }) {
                 setScrollFromBottom(tmpScrollBottom);
 
                 setLocalMessages((prevMessages) => {
-                    return [...data.messages.data.reverse(), ...prevMessages];
+                    return [...items.reverse(), ...prevMessages];
                 });
             });
     }, [localMessages, noMoreMessages]);
@@ -65,6 +70,29 @@ export default function Home({ messages, selectedConversation }) {
         }
     };
 
+    const messageDeleted = ({ message }) => {
+        if (
+            selectedConversation &&
+            selectedConversation.is_group &&
+            selectedConversation.id === message.group_id
+        ) {
+            setLocalMessages((prevMessages) => {
+                return prevMessages.filter((m) => m.id !== message.id);
+            });
+        }
+
+        if (
+            selectedConversation &&
+            selectedConversation.is_user &&
+            (selectedConversation.id === message.sender_id ||
+                selectedConversation.id === message.receiver_id)
+        ) {
+            setLocalMessages((prevMessages) => {
+                return prevMessages.filter((m) => m.id !== message.id);
+            });
+        }
+    };
+
     const onAttachmentClick = (attachments, ind) => {
         setPreviewAttachment({ attachments, ind });
         setShowAttachmentPreview(true);
@@ -80,12 +108,14 @@ export default function Home({ messages, selectedConversation }) {
         }, 10);
 
         const offCreated = on('message.created', messageCreated);
+        const offDeleted = on('message.deleted', messageDeleted);
 
         setScrollFromBottom(0);
         setNoMoreMessages(false);
 
         return () => {
             offCreated();
+            offDeleted();
         };
     }, [selectedConversation]);
 

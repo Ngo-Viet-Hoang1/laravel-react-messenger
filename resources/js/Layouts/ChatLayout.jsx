@@ -25,24 +25,65 @@ const ChatLayout = ({ children }) => {
     };
 
     const messageCreated = (message) => {
+        const lastText =
+            message.message ||
+            (message.attachments?.length
+                ? `Shared ${
+                      message.attachments.length === 1
+                          ? 'an attachment'
+                          : message.attachments.length + ' attachments'
+                  }`
+                : '');
+
+        setLocalConversations((oldUsers) => {
+            return oldUsers.map((u) => {
+                const isUserMatch =
+                    message.receiver_id &&
+                    !u.is_group &&
+                    (Number(u.id) === Number(message.sender_id) ||
+                        Number(u.id) === Number(message.receiver_id));
+                const isGroupMatch =
+                    message.group_id &&
+                    u.is_group &&
+                    Number(u.id) === Number(message.group_id);
+
+                if (!isUserMatch && !isGroupMatch) {
+                    return u;
+                }
+
+                return {
+                    ...u,
+                    last_message: lastText,
+                    last_message_date: message.created_at,
+                };
+            });
+        });
+    };
+
+    const messageDeleted = ({ message, prevMessage }) => {
+        if (!prevMessage) {
+            return;
+        }
+
         setLocalConversations((oldUsers) => {
             return oldUsers.map((u) => {
                 if (
-                    message.receiver_id &&
+                    prevMessage.receiver_id &&
                     !u.is_group &&
-                    (u.id === message.sender_id || u.id === message.receiver_id)
+                    (u.id === prevMessage.sender_id ||
+                        u.id === prevMessage.receiver_id)
                 ) {
-                    u.last_message = message.message;
-                    u.last_message_date = message.created_at;
+                    u.last_message = prevMessage.message;
+                    u.last_message_date = prevMessage.created_at;
                     return u;
                 }
                 if (
-                    message.group_id &&
+                    prevMessage.group_id &&
                     u.is_group &&
-                    u.id === message.group_id
+                    u.id === prevMessage.group_id
                 ) {
-                    u.last_message = message.message;
-                    u.last_message_date = message.created_at;
+                    u.last_message = prevMessage.message;
+                    u.last_message_date = prevMessage.created_at;
                     return u;
                 }
                 return u;
@@ -52,8 +93,12 @@ const ChatLayout = ({ children }) => {
 
     useEffect(() => {
         const offCreated = on('message.created', messageCreated);
+        const offDeleted = on('message.deleted', ({ message, prevMessage }) => {
+            messageDeleted({ message, prevMessage });
+        });
         return () => {
             offCreated();
+            offDeleted();
         };
     }, [on]);
 

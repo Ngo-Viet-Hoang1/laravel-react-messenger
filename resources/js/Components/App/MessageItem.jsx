@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react';
 import ReactMarkdown from 'react-markdown';
 import { formatMessageDateLong } from '../../helpers';
 import MessageAttachments from './MessageAttachments';
+import MessageOptionsDropdown from './MessageOptionsDropdown';
 import UserAvatar from './UserAvatar';
 
 const MessageItem = ({ message, attachmentClick }) => {
@@ -37,6 +38,9 @@ const MessageItem = ({ message, attachmentClick }) => {
                         : '')
                 }
             >
+                {Number(message.sender_id) === Number(currentUser.id) && (
+                    <MessageOptionsDropdown message={message} />
+                )}
                 <div className="chat-message">
                     <div className="chat-message-content">
                         <ReactMarkdown>{message.message}</ReactMarkdown>

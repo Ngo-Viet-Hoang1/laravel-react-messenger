@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/solid';
 import EmojiPicker from 'emoji-picker-react';
 import { useState } from 'react';
+import { useEventBus } from '../../EventBus';
 import { isAudio, isImage } from '../../helpers';
 import AttachmentPreview from './AttachmentPreview';
 import AudioRecorder from './AudioRecorder';
@@ -16,6 +17,7 @@ import CustomAudioPlayer from './CustomAudioPlayer';
 import NewMessageInput from './NewMessageInput';
 
 const MessageInput = ({ conversation = null, onMessageSent = null }) => {
+    const { emit } = useEventBus();
     const [newMessage, setNewMessage] = useState('');
     const [inputErrorMessage, setInputErrorMessage] = useState('');
     const [messageSending, setMessageSending] = useState(false);
@@ -76,6 +78,7 @@ const MessageInput = ({ conversation = null, onMessageSent = null }) => {
                 },
             })
             .then((response) => {
+                emit('message.created', response.data);
                 if (onMessageSent) {
                     onMessageSent(response.data);
                 }

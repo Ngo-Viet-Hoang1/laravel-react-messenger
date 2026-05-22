@@ -11,7 +11,7 @@ class Conversation extends Model
 
     protected $fillable = ['user_id1', 'user_id2', 'last_message_id'];
 
-    public function lastmessage(){
+    public function lastMessage(){
         return $this->belongsTo(Message::class, 'last_message_id');
     }
 
@@ -22,6 +22,7 @@ class Conversation extends Model
     public function user2(){
         return $this->belongsTo(User::class, 'user_id2');
     }
+
 
     public static function getConversationForSidebar(User $user){
         $users = User::getUsersExceptUser($user);

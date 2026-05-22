@@ -100,9 +100,49 @@ class MessageController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        $lastMessage = null;
+
+        if ($message->group_id) {
+            $group = Group::find($message->group_id);
+            if ($group && (int) $group->last_message_id === (int) $message->id) {
+                $lastMessage = Message::where('group_id', $message->group_id)
+                    ->where('id', '!=', $message->id)
+                    ->latest()
+                    ->first();
+                $group->update(['last_message_id' => $lastMessage ? $lastMessage->id : null]);
+            }
+        } else {
+            $conversation = Conversation::where(function ($query) use ($message) {
+                $query->where('user_id1', $message->sender_id)
+                    ->where('user_id2', $message->receiver_id);
+            })->orWhere(function ($query) use ($message) {
+                $query->where('user_id1', $message->receiver_id)
+                    ->where('user_id2', $message->sender_id);
+            })->first();
+
+            if ($conversation && (int) $conversation->last_message_id === (int) $message->id) {
+                $lastMessage = Message::where(function ($query) use ($message) {
+                    $query->where('sender_id', $message->sender_id)
+                        ->where('receiver_id', $message->receiver_id)
+                        ->orWhere('sender_id', $message->receiver_id)
+                        ->where('receiver_id', $message->sender_id);
+                })
+                    ->where('id', '!=', $message->id)
+                    ->latest()
+                    ->first();
+                $conversation->update(['last_message_id' => $lastMessage ? $lastMessage->id : null]);
+            }
+        }
+
         $message->delete();
 
-        return response('', 204);
+        if ($lastMessage) {
+            $lastMessage->load(['sender', 'attachments']);
+        }
+
+        return response()->json([
+            'message' => $lastMessage ? new MessageResource($lastMessage) : null,
+        ]);
     }
 
     public function loadOlder(Message $message)
