@@ -1,8 +1,9 @@
 import TextInput from '@/Components/TextInput';
 import { PencilSquareIcon } from '@heroicons/react/16/solid';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConversationItem from '../Components/App/ConversationItem';
+import GroupModal from '../Components/App/GroupModal';
 import { useEventBus } from '../EventBus';
 
 const ChatLayout = ({ children }) => {
@@ -12,8 +13,9 @@ const ChatLayout = ({ children }) => {
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [localConversations, setLocalConversations] = useState(conversations);
     const [sortedConversations, setSortedConversations] = useState([]);
+    const [showGroupModal, setShowGroupModal] = useState(false);
     const isUserOnline = (userId) => !!onlineUsers[userId];
-    const { on } = useEventBus();
+    const { emit, on } = useEventBus();
 
     const onSearch = (ev) => {
         const search = ev.target.value.toLowerCase();
@@ -96,12 +98,33 @@ const ChatLayout = ({ children }) => {
         const offDeleted = on('message.deleted', ({ message, prevMessage }) => {
             messageDeleted({ message, prevMessage });
         });
+        const offModalShow = on('GroupModal.show', (group) => {
+            setShowGroupModal(true);
+        });
+
+        const offGroupDeleted = on('group.deleted', ({ id, name }) => {
+            setLocalConversations((oldConversations) => {
+                return oldConversations.filter((con) => con.id != id);
+            });
+
+            emit('toast', `Group "${name}" was deleted`);
+
+            if (
+                selectedConversation &&
+                selectedConversation.is_group &&
+                selectedConversation.id === id
+            ) {
+                router.visit(route('dashboard'), {});
+            }
+        });
+
         return () => {
             offCreated();
             offDeleted();
+            offModalShow();
+            offGroupDeleted();
         };
-    }, [on]);
-
+    }, [on, selectedConversation]);
     useEffect(() => {
         setSortedConversations(
             [...localConversations].sort((a, b) => {
@@ -184,7 +207,10 @@ const ChatLayout = ({ children }) => {
                             className="tolltip tolltip-left"
                             data-tip="Create New Group"
                         >
-                            <button className="text-gray-400 hover:text-gray-200">
+                            <button
+                                onClick={() => setShowGroupModal(true)}
+                                className="text-gray-400 hover:text-gray-200"
+                            >
                                 <PencilSquareIcon className="ml-2 inline-block h-4 w-4" />
                             </button>
                         </div>
@@ -198,7 +224,14 @@ const ChatLayout = ({ children }) => {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {sortedConversations &&
-                            sortedConversations.map((conversation) => (
+                            Array.from(
+                                new Map(
+                                    sortedConversations.map((conversation) => [
+                                        `${conversation.is_group ? 'group' : 'user'}_${conversation.id}`,
+                                        conversation,
+                                    ]),
+                                ).values(),
+                            ).map((conversation) => (
                                 <ConversationItem
                                     key={`${
                                         conversation.is_group
@@ -216,6 +249,10 @@ const ChatLayout = ({ children }) => {
                     {children}
                 </div>
             </div>
+            <GroupModal
+                show={showGroupModal}
+                onClose={() => setShowGroupModal(false)}
+            />
         </>
     );
 };
