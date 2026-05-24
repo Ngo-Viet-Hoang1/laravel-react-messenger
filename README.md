@@ -7,6 +7,22 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Run locally
+
+First time:
+
+```bash
+composer setup
+```
+
+Start the app in development with one command:
+
+```bash
+composer start
+```
+
+This starts the Laravel server, Reverb websocket server, and Vite dev server together.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

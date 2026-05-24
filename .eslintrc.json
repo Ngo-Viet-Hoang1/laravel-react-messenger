@@ -3,6 +3,9 @@
         "browser": true,
         "node": true
     },
+    "globals": {
+        "route": "readonly"
+    },
     "extends": [
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
