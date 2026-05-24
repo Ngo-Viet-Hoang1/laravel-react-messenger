@@ -1,8 +1,11 @@
 import NewMessageNotification from '@/Components/App/NewMessageNotification';
+import NewUserModal from '@/Components/App/NewUserModal';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
+import PrimaryButton from '@/Components/PrimaryButton';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
+import { UserPlusIcon } from '@heroicons/react/24/solid';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import Toast from '../Components/App/Toast';
@@ -14,6 +17,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+    const [showNewUserModal, setShowNewUserModal] = useState(false);
     const { emit } = useEventBus();
 
     useEffect(() => {
@@ -116,7 +120,19 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
 
                             <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                                <div className="relative ms-3">
+                                <div className="relative ms-3 flex items-center gap-2">
+                                    {user?.is_admin && (
+                                        <PrimaryButton
+                                            onClick={() =>
+                                                setShowNewUserModal(true)
+                                            }
+                                            className="flex items-center gap-1"
+                                        >
+                                            <UserPlusIcon className="h-5 w-5" />
+                                            Add new user
+                                        </PrimaryButton>
+                                    )}
+
                                     <Dropdown>
                                         <Dropdown.Trigger>
                                             <span className="inline-flex rounded-md">
@@ -256,6 +272,10 @@ export default function AuthenticatedLayout({ header, children }) {
             </div>
             <Toast />
             <NewMessageNotification />
+            <NewUserModal
+                show={showNewUserModal}
+                onClose={() => setShowNewUserModal(false)}
+            />
         </>
     );
 }
