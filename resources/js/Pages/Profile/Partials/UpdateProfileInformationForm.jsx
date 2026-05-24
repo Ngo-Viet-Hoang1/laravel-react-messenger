@@ -1,9 +1,11 @@
+import UserAvatar from '@/Components/App/UserAvatar';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Transition } from '@headlessui/react';
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 export default function UpdateProfileInformation({
     mustVerifyEmail,
@@ -11,18 +13,51 @@ export default function UpdateProfileInformation({
     className = '',
 }) {
     const user = usePage().props.auth.user;
+    const [previewUrl, setPreviewUrl] = useState('');
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } =
+    const { data, setData, post, errors, processing, recentlySuccessful } =
         useForm({
             name: user.name,
+            avatar: null,
             email: user.email,
+            _method: 'patch',
         });
 
     const submit = (e) => {
         e.preventDefault();
 
-        patch(route('profile.update'));
+        post(route('profile.update'), {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                setPreviewUrl('');
+                router.visit(route('dashboard'));
+            },
+        });
     };
+
+    useEffect(() => {
+        return () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, [previewUrl]);
+
+    const onAvatarChange = (e) => {
+        const file = e.target.files?.[0] || null;
+        setData('avatar', file);
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
+        if (file) {
+            setPreviewUrl(URL.createObjectURL(file));
+        } else {
+            setPreviewUrl('');
+        }
+    };
+
+    const displayUser = previewUrl ? { ...user, avatar_url: previewUrl } : user;
 
     return (
         <section className={className}>
@@ -37,6 +72,24 @@ export default function UpdateProfileInformation({
             </header>
 
             <form onSubmit={submit} className="mt-6 space-y-6">
+                <UserAvatar user={displayUser} profile={true} />
+                <div>
+                    <InputLabel htmlFor="avatar" value="Profile Picture" />
+
+                    <input
+                        id="avatar"
+                        type="file"
+                        accept="image/*"
+                        className="file-input file-input-bordered file-input-primary mt-1 block w-full max-w-xs"
+                        onChange={onAvatarChange}
+                    />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Please upload a square image (1:1 ratio)
+                    </p>
+
+                    <InputError className="mt-2" message={errors.avatar} />
+                </div>
+
                 <div>
                     <InputLabel htmlFor="name" value="Name" />
 

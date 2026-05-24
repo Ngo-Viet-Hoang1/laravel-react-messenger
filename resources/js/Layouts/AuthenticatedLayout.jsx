@@ -25,10 +25,12 @@ export default function AuthenticatedLayout({ header, children }) {
             let channel = `message.group.${conversation.id}`;
 
             if (conversation.is_user) {
-                channel = `message.user.${[
-                    parseInt(user.id),
-                    parseInt(conversation.id),
-                ]
+                const userId = Number(user.id);
+                const otherId = Number(conversation.id);
+                if (!Number.isFinite(userId) || !Number.isFinite(otherId)) {
+                    return;
+                }
+                channel = `message.user.${[userId, otherId]
                     .sort((a, b) => a - b)
                     .join('-')}`;
             }

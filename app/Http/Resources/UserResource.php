@@ -8,7 +8,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserResource extends JsonResource
 {
-    public static $wrap = 'false';
+    public static $wrap = null;
     /**
      * Transform the resource into an array.
      *
@@ -18,7 +18,7 @@ class UserResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'avatar_url' => $this->avatar_url,
+            'avatar_url' => $this->avatar ? Storage::url($this->avatar) : null,
             'name' => $this->name,
             'email' => $this->email,
             'created_at' => $this->created_at,

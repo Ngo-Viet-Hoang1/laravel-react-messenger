@@ -19,7 +19,7 @@ const UserAvatar = ({ user, online = null, profile = false }) => {
                         className={`flex h-8 w-8 items-center justify-center rounded-full bg-gray-400 text-gray-800`}
                     >
                         <span className="text-sm font-semibold">
-                            {user.name.substring(0, 1)}
+                            {(user.name || '?').substring(0, 1)}
                         </span>
                     </div>
                 </div>
