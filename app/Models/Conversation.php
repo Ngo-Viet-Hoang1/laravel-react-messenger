@@ -25,4 +25,52 @@ class Conversation extends Model
     {
         return $this->belongsTo(User::class, 'user_id2');
     }
+
+    public static function getConversationsForSidebar(User $user)
+    {
+        $users = User::getUsersExceptUser($user);
+        $groups = Group::getGroupsForUser($user);
+        return $users->map(function (User $user){
+            return $user -> toConversationArray();
+        })->concat($groups->map(function (Group $group){
+            return $group -> toConversationArray();
+        }));    
+    }
+    public static function updateConversationWithMessage($userId1, $userId2, $message)
+    {
+        $conversation = Conversation::where(function ($query) use ($userId1, $userId2) {
+            $query->where('user_id1', $userId1)
+                ->where('user_id2', $userId2);
+        })->orWhere(function ($query) use ($userId1, $userId2) {
+            $query->where('user_id1', $userId2)
+                ->where('user_id2', $userId1);
+        })->first();
+
+        if ($conversation) {
+            $conversation->update(['last_message_id' => $message->id]);
+        }else {
+            Conversation::create([
+                'user_id1' => $userId1,
+                'user_id2' => $userId2,
+                'last_message_id' => $message->id,
+            ]);
+            }
+    }
+    public static function updateGroupWithMessage($groupId, $message)
+    {
+        if ($message->group_id) {
+            $conversation = Conversation::where('group_id', $message->group_id)->first();
+        } else {
+            $conversation = Conversation::where(function ($query) use ($message) {
+                $query->where('user_id1', $message->sender_id)
+                    ->where('user_id2', $message->receiver_id)
+                    ->orWhere('user_id1', $message->receiver_id)
+                    ->where('user_id2', $message->sender_id);
+            })->first();
+        }
+        if ($conversation) {
+            $conversation->last_message_id = $message->id;
+            $conversation->save();
+        }
+    }
 }
