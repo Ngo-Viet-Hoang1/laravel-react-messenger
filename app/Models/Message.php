@@ -6,36 +6,43 @@ use App\Observers\MessageObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[ObservedBy([MessageObserver::class])]
 class Message extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['message', 'sender_id', 'receiver_id', 'group_id', 'conversation_id'];
+    protected $fillable = [
+        'channel_id',
+        'sender_id',
+        'parent_id',
+        'content',
+    ];
 
-    public function attachments()
+    public function channel(): BelongsTo
     {
-        return $this->hasMany(MessageAttachment::class);
+        return $this->belongsTo(Channel::class);
     }
 
-    public function sender()
+    public function sender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sender_id');
     }
 
-    public function receiver()
+    public function attachments(): HasMany
     {
-        return $this->belongsTo(User::class, 'receiver_id');
+        return $this->hasMany(MessageAttachment::class);
     }
 
-    public function group()
+    public function parent(): BelongsTo
     {
-        return $this->belongsTo(Group::class, 'group_id');
+        return $this->belongsTo(Message::class, 'parent_id');
     }
 
-    public function conversation()
+    public function replies(): HasMany
     {
-        return $this->belongsTo(Conversation::class, 'conversation_id');
+        return $this->hasMany(Message::class, 'parent_id');
     }
 }
