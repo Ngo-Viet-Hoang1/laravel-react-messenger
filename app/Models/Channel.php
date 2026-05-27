@@ -67,6 +67,22 @@ class Channel extends Model
         return $query->where('type', 'group');
     }
 
+    public static function getChannelsForUser(User $user): Collection
+    {
+        return self::select([
+            'channels.*',
+            'messages.content as last_message',
+            'messages.created_at as last_message_date',
+        ])
+            ->join('channel_members', 'channels.id', '=', 'channel_members.channel_id')
+            ->leftJoin('messages', 'channels.last_message_id', '=', 'messages.id')
+            ->with(['members:id,name,avatar_url,is_admin,blocked_at'])
+            ->where('channel_members.user_id', $user->id)
+            ->orderBy('messages.created_at', 'desc')
+            ->orderBy('channels.name')
+            ->get();
+    }
+
     public static function findOrCreateDirect(int $userId1, int $userId2): self
     {
         $directKey = implode(':', [min($userId1, $userId2), max($userId1, $userId2)]);
