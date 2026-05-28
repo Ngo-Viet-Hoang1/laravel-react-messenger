@@ -1,177 +1,71 @@
-import ConversationItem from '@/Components/App/ConversationItem';
+import ChannelItem from '@/Components/App/ChannelItem';
 import TextInput from '@/Components/Breeze/TextInput';
 import {
-    GroupModalProvider,
-    useGroupModal,
-} from '@/Contexts/GroupModalContext';
+    ChannelModalProvider,
+    useChannelModal,
+} from '@/Contexts/ChannelModalContext';
 import { useEventBus } from '@/EventBus';
-import { AppEventMap, ChatItem, ChatMessage, PageProps, User } from '@/types';
-import { isMessageForConversation } from '@/utils';
+import useChannels from '@/hooks/useChannels';
+import useChannelSockets from '@/hooks/useChannelSockets';
+import useOnlinePresence from '@/hooks/useOnlinePresence';
+import { ChatItem, ChatPageProps } from '@/types';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
-import { echo } from '@laravel/echo-react';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 
-const EMPTY_CONVERSATIONS: ChatItem[] = [];
-const getTime = (date?: string | null) => (date ? new Date(date).getTime() : 0);
-
+const EMPTY_CHANNELS: ChatItem[] = [];
 const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
-    const pageProps = usePage<PageProps>().props;
+    const pageProps = usePage<ChatPageProps>().props;
     const currentUser = pageProps.auth.user;
-    const conversations = pageProps.conversations ?? EMPTY_CONVERSATIONS;
-    const selectedConversation = pageProps.selectedConversation ?? null;
+    const channels = pageProps.channels ?? EMPTY_CHANNELS;
+    const selectedChannel = pageProps.selectedChannel ?? null;
 
     const { on, emit } = useEventBus();
-    const [onlineUsers, setOnlineUsers] = useState<Record<number, User>>({});
-    const { openModal } = useGroupModal();
-    const [localConversations, setLocalConversations] = useState<ChatItem[]>(
-        [],
-    );
+    const { openModal } = useChannelModal();
+    const [search, setSearch] = useState('');
 
-    const sortedConversations = useMemo(() => {
-        return [...localConversations].sort((a, b) => {
-            const aBlocked = getTime(a.blocked_at);
-            const bBlocked = getTime(b.blocked_at);
+    const {
+        sortedChannels,
+        updateLastMessage,
+        updateAfterMessageDeleted,
+        removeChannel,
+    } = useChannels(channels, search);
 
-            if (!!aBlocked !== !!bBlocked) return aBlocked ? 1 : -1;
-            if (aBlocked && bBlocked) return bBlocked - aBlocked;
+    const { isOnline } = useOnlinePresence();
 
-            const aLast = getTime(a.last_message_date);
-            const bLast = getTime(b.last_message_date);
-
-            if (aLast && bLast) return bLast - aLast;
-            if (aLast) return -1;
-            if (bLast) return 1;
-
-            return 0;
-        });
-    }, [localConversations]);
-
-    const isUserOnline = (userId: number) => userId in onlineUsers;
-
-    const onSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.currentTarget.value.toLowerCase();
-        if (!value) {
-            setLocalConversations(conversations);
-            return;
-        }
-
-        setLocalConversations(
-            conversations.filter((conversation) =>
-                conversation.name.toLowerCase().includes(value),
-            ),
-        );
-    };
-
-    const messageCreated = useCallback(
-        (message: ChatMessage) => {
-            setLocalConversations((prev) => {
-                const index = prev.findIndex((conv) =>
-                    isMessageForConversation(message, conv, currentUser.id),
-                );
-
-                if (index === -1) return prev;
-
-                return [
-                    {
-                        ...prev[index],
-                        last_message: message.message,
-                        last_message_date: message.created_at,
-                    },
-                    ...prev.slice(0, index),
-                    ...prev.slice(index + 1),
-                ];
-            });
-        },
-        [currentUser.id],
-    );
-
-    const messageDeleted = useCallback(
-        ({ message, newLastMessage }: AppEventMap['message.deleted']) => {
-            setLocalConversations((prev) => {
-                const index = prev.findIndex((conv) =>
-                    isMessageForConversation(message, conv, currentUser.id),
-                );
-
-                if (index === -1) return prev;
-
-                return [
-                    {
-                        ...prev[index],
-                        last_message: newLastMessage?.message || null,
-                        last_message_date: newLastMessage?.created_at || null,
-                    },
-                    ...prev.slice(0, index),
-                    ...prev.slice(index + 1),
-                ];
-            });
-        },
-        [currentUser.id],
-    );
+    useChannelSockets(channels || [], Number(currentUser.id));
 
     useEffect(() => {
-        const offCreated = on('message.created', messageCreated);
-        const offDeleted = on('message.deleted', messageDeleted);
+        const offMessageCreated = on('message.created', updateLastMessage);
+        const offMessageDeleted = on(
+            'message.deleted',
+            updateAfterMessageDeleted,
+        );
 
         return () => {
-            offCreated();
-            offDeleted();
+            offMessageCreated();
+            offMessageDeleted();
         };
-    }, [on, messageCreated, messageDeleted]);
+    }, [on, updateLastMessage, updateAfterMessageDeleted]);
 
     useEffect(() => {
-        on('group.deleted', ({ id, name }) => {
-            setLocalConversations((prev) =>
-                prev.filter((conv) => !(conv.is_group && conv.id === id)),
-            );
-
-            emit('toast.show', `The group "${name}" has been deleted`);
-
-            if (
-                selectedConversation?.is_group &&
-                selectedConversation.id === id
-            ) {
+        const offChannelDeleted = on('channel.deleted', ({ id, name }) => {
+            removeChannel(id);
+            emit('toast.show', `The channel "${name}" has been deleted`);
+            if (selectedChannel?.id === id) {
                 router.visit(route('dashboard'));
             }
         });
-    }, [on, emit, selectedConversation?.id, selectedConversation?.is_group]);
 
-    useEffect(() => {
-        setLocalConversations(conversations);
-    }, [conversations]);
-
-    useEffect(() => {
-        const e = echo();
-        if (!e) return;
-        e.join('online')
-            .here((users: User[]) => {
-                const onlineUsers = Object.fromEntries(
-                    users.map((user) => [user.id, user]),
-                );
-                setOnlineUsers(onlineUsers);
-            })
-            .joining((user: User) => {
-                setOnlineUsers((prev) => ({ ...prev, [user.id]: user }));
-            })
-            .leaving((user: User) => {
-                setOnlineUsers((prev) => {
-                    const newOnlineUsers = { ...prev };
-                    delete newOnlineUsers[user.id];
-                    return newOnlineUsers;
-                });
-            })
-            .error((error: Error) => console.log('error', error));
-
-        return () => e.leave('online');
-    }, []);
-
+        return () => offChannelDeleted();
+    }, [on, emit, selectedChannel?.id, removeChannel]);
     return (
         <div className="flex h-full min-h-0 w-full overflow-hidden">
             <div
-                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-800 sm:flex sm:w-[280px] md:w-[320px] ${selectedConversation ? 'hidden sm:flex' : 'flex'}`}
+                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-800 sm:flex sm:w-[280px] md:w-[320px] ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
             >
                 <div className="flex items-center justify-between px-3 py-2 text-lg font-semibold text-slate-800 dark:border-slate-700 dark:text-slate-100">
-                    My conversations
+                    My channels
                     <div
                         className="tooltip tooltip-left"
                         data-tip="Create new Group"
@@ -187,30 +81,33 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
 
                 <div className="shrink-0 p-3 dark:border-slate-700">
                     <TextInput
-                        onChange={onSearch}
+                        onChange={(e) =>
+                            setSearch(e.target.value.toLowerCase())
+                        }
                         placeholder="Filter users and groups"
                         className="w-full"
                     />
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                    {sortedConversations.map((conversation) => (
-                        <ConversationItem
-                            key={`${conversation.is_group ? 'group' : 'user'}_${conversation.id}`}
-                            conversation={conversation}
+                    {sortedChannels.map((c) => (
+                        <ChannelItem
+                            key={c.id}
+                            channel={c}
                             online={
-                                conversation.is_user
-                                    ? isUserOnline(conversation.id)
+                                c.type === 'direct' && c.peer_user_id != null
+                                    ? isOnline(c.peer_user_id)
                                     : false
                             }
-                            selectedConversation={selectedConversation}
+                            isSelected={selectedChannel?.id === c.id}
+                            canManage={currentUser.is_admin}
                         />
                     ))}
                 </div>
             </div>
 
             <div
-                className={`min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800 xs:m-2 xs:shadow-sm ${selectedConversation ? 'flex' : 'hidden sm:flex'}`}
+                className={`min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800 xs:m-2 xs:shadow-sm ${selectedChannel ? 'flex' : 'hidden sm:flex'}`}
             >
                 <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
             </div>
@@ -220,9 +117,9 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
 
 const ChatLayout = ({ children }: { children: ReactNode }) => {
     return (
-        <GroupModalProvider>
+        <ChannelModalProvider>
             <ChatLayoutInner>{children}</ChatLayoutInner>
-        </GroupModalProvider>
+        </ChannelModalProvider>
     );
 };
 
