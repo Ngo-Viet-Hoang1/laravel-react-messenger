@@ -11,15 +11,17 @@ import {
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
-const UserOptionsDropdown = ({ conversation }: { conversation: ChatItem }) => {
+const UserOptionsDropdown = ({ channel }: { channel: ChatItem }) => {
     const [isLoading, setIsLoading] = useState(false);
     const { emit } = useEventBus();
 
     const executeAction = (actionRoute: string, successMessage: string) => {
-        if (!conversation.is_user || isLoading) return;
+        if (channel.type !== 'direct' || !channel.peer_user_id || isLoading)
+            return;
+
         setIsLoading(true);
         router.patch(
-            route(actionRoute, conversation.id),
+            route(actionRoute, channel.peer_user_id),
             {},
             {
                 preserveScroll: true,
@@ -56,20 +58,20 @@ const UserOptionsDropdown = ({ conversation }: { conversation: ChatItem }) => {
                     <button
                         type="button"
                         onClick={() =>
-                            conversation.blocked_at
+                            channel.blocked_at
                                 ? executeAction(
                                       'users.unblock',
-                                      `${conversation.name} has been unblocked`,
+                                      `${channel.name} has been unblocked`,
                                   )
                                 : executeAction(
                                       'users.block',
-                                      `${conversation.name} has been blocked`,
+                                      `${channel.name} has been blocked`,
                                   )
                         }
                         disabled={isLoading}
                         className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-600 transition-colors disabled:opacity-40 data-[focus]:bg-slate-100 data-[focus]:text-slate-800 dark:text-slate-200 dark:data-[focus]:bg-slate-700/70 dark:data-[focus]:text-slate-100"
                     >
-                        {conversation.blocked_at ? (
+                        {channel.blocked_at ? (
                             <>
                                 <LockOpenIcon className="h-4 w-4" />
                                 Unblock User
@@ -87,20 +89,20 @@ const UserOptionsDropdown = ({ conversation }: { conversation: ChatItem }) => {
                     <button
                         type="button"
                         onClick={() =>
-                            conversation.is_admin
+                            channel.peer_is_admin
                                 ? executeAction(
                                       'users.demote',
-                                      `${conversation.name} is no longer an admin`,
+                                      `${channel.name} is no longer an admin`,
                                   )
                                 : executeAction(
                                       'users.promote',
-                                      `${conversation.name} is now an admin`,
+                                      `${channel.name} is now an admin`,
                                   )
                         }
                         disabled={isLoading}
                         className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-600 transition-colors disabled:opacity-40 data-[focus]:bg-slate-100 data-[focus]:text-slate-800 dark:text-slate-200 dark:data-[focus]:bg-slate-700/70 dark:data-[focus]:text-slate-100"
                     >
-                        {conversation.is_admin ? (
+                        {channel.peer_is_admin ? (
                             <>
                                 <UserIcon className="h-4 w-4" />
                                 Make Regular User

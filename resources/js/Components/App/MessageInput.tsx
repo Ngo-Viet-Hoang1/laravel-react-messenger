@@ -15,30 +15,30 @@ import AudioRecorder from './AudioRecorder';
 import NewMessageInput from './NewMessageInput';
 
 type Props = {
-    conversation: ChatItem | null;
+    channel: ChatItem | null;
 };
 
-const MessageInput = ({ conversation = null }: Props) => {
+const MessageInput = ({ channel = null }: Props) => {
     const [message, setMessage] = useState('');
 
     const { error, showError } = useErrorMessage();
-    const { items, addFiles, remove, clear } = useAttachments(showError);
+    const { attachments, addFiles, remove, clear } = useAttachments(showError);
     const { send, sending, progress } = useSendMessage(showError);
 
     const fileRef = useRef<HTMLInputElement>(null);
     const imageRef = useRef<HTMLInputElement>(null);
 
     const hasMessage = message.trim().length > 0;
-    const hasAttachment = items.length > 0;
+    const hasAttachment = attachments.length > 0;
     const canSend = hasMessage || hasAttachment;
 
     const handleSend = () => {
         if (sending || !canSend) return;
 
         send({
-            conversation,
+            channel,
             content: message.trim(),
-            attachments: items,
+            attachments,
             onSuccess: () => {
                 setMessage('');
                 clear();
@@ -51,7 +51,7 @@ const MessageInput = ({ conversation = null }: Props) => {
     const handleLike = () => {
         if (sending) return;
         send({
-            conversation,
+            channel,
             content: '👍',
             attachments: [],
         });
@@ -67,7 +67,7 @@ const MessageInput = ({ conversation = null }: Props) => {
 
     return (
         <div className="flex w-full flex-col gap-2 px-1 py-2 sm:px-2">
-            {progress > 0 && items.length > 0 ? (
+            {progress > 0 && attachments.length > 0 ? (
                 <progress
                     value={progress}
                     max={100}
@@ -75,8 +75,8 @@ const MessageInput = ({ conversation = null }: Props) => {
                 />
             ) : null}
 
-            {items.length > 0 ? (
-                <AttachedItemList items={items} onRemove={remove} />
+            {attachments.length > 0 ? (
+                <AttachedItemList items={attachments} onRemove={remove} />
             ) : null}
 
             <div className="flex w-full items-end gap-1.5 sm:gap-2">
@@ -84,7 +84,7 @@ const MessageInput = ({ conversation = null }: Props) => {
                     <button
                         type="button"
                         aria-label="Attach generic file"
-                        disabled={!conversation || sending}
+                        disabled={!channel || sending}
                         className="btn btn-circle btn-ghost relative inline-flex h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
                     >
                         <PaperClipIcon className="h-5 w-5" aria-hidden="true" />
@@ -94,7 +94,7 @@ const MessageInput = ({ conversation = null }: Props) => {
                             multiple
                             accept="*"
                             aria-label="Select files to attach"
-                            disabled={!conversation || sending}
+                            disabled={!channel || sending}
                             className="absolute inset-0 z-20 cursor-pointer opacity-0"
                             onChange={handleFiles}
                         />
@@ -103,7 +103,7 @@ const MessageInput = ({ conversation = null }: Props) => {
                     <button
                         type="button"
                         aria-label="Attach images or videos"
-                        disabled={!conversation || sending}
+                        disabled={!channel || sending}
                         className="btn btn-circle btn-ghost relative inline-flex h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
                     >
                         <PhotoIcon className="h-5 w-5" aria-hidden="true" />
@@ -113,7 +113,7 @@ const MessageInput = ({ conversation = null }: Props) => {
                             multiple
                             accept="image/*,video/*"
                             aria-label="Select media to attach"
-                            disabled={!conversation || sending}
+                            disabled={!channel || sending}
                             className="absolute inset-0 z-20 cursor-pointer opacity-0"
                             onChange={handleFiles}
                         />
@@ -133,12 +133,12 @@ const MessageInput = ({ conversation = null }: Props) => {
                         }
                         onSend={handleSend}
                         placeholder="Write a message..."
-                        disabled={!conversation || sending}
+                        disabled={!channel || sending}
                     />
 
                     <div className="absolute right-2 top-1/2 -translate-y-1/2">
                         <EmojiPickerPopover
-                            disabled={!conversation || sending}
+                            disabled={!channel || sending}
                             onSelect={(emoji: string) => {
                                 setMessage((prev) => prev + emoji);
                             }}
@@ -151,7 +151,7 @@ const MessageInput = ({ conversation = null }: Props) => {
                         type="button"
                         aria-label={canSend ? 'Send message' : 'Send like'}
                         onClick={canSend ? handleSend : handleLike}
-                        disabled={!conversation || sending}
+                        disabled={!channel || sending}
                         className="inline-flex aspect-square min-h-[42px] shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-600"
                     >
                         {sending ? (

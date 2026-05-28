@@ -1,8 +1,9 @@
 import { useEventBus } from '@/EventBus';
-import { ChatItem, PageProps } from '@/types';
+import { ChatItem, ChatMember } from '@/types';
 import { ModalBaseProps } from '@/utils/createModalContext';
-import { useForm, usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useForm } from '@inertiajs/react';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
 import InputError from '../Breeze/InputError';
 import InputLabel from '../Breeze/InputLabel';
 import Modal from '../Breeze/Modal';
@@ -22,9 +23,7 @@ type CreateOrEditGroupFormData = {
 };
 
 const CreateOrEditGroupModal = ({ isOpen, entity: group, onClose }: Props) => {
-    const page = usePage<PageProps>();
-    const conversations = page.props.conversations;
-    const users = conversations?.filter((c) => c.is_user);
+    const [availableUsers, setAvailableUsers] = useState<ChatMember[]>([]);
 
     const { emit } = useEventBus();
 
@@ -47,7 +46,7 @@ const CreateOrEditGroupModal = ({ isOpen, entity: group, onClose }: Props) => {
     };
 
     const createGroup = () => {
-        post(route('groups.store'), {
+        post(route('channels.store'), {
             onSuccess: () => {
                 emit(
                     'toast.show',
@@ -61,7 +60,7 @@ const CreateOrEditGroupModal = ({ isOpen, entity: group, onClose }: Props) => {
     const updateGroup = () => {
         if (!group) return;
 
-        put(route('groups.update', group.id), {
+        put(route('channels.update', group.id), {
             onSuccess: () => {
                 emit(
                     'toast.show',
@@ -83,7 +82,7 @@ const CreateOrEditGroupModal = ({ isOpen, entity: group, onClose }: Props) => {
         if (group) {
             setData({
                 id: group.id,
-                name: group.name,
+                name: group.name ?? '',
                 description: group.description ?? '',
                 user_ids:
                     group.users
@@ -94,6 +93,19 @@ const CreateOrEditGroupModal = ({ isOpen, entity: group, onClose }: Props) => {
             reset();
         }
     }, [isOpen, group, reset, setData]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const fetchUsers = async () => {
+            const res = await axios.get<{ data: ChatMember[] }>(
+                route('users.index'),
+            );
+            setAvailableUsers(
+                res.data.data ?? (res.data as unknown as ChatMember[]),
+            );
+        };
+        fetchUsers();
+    }, [isOpen]);
 
     return (
         <Modal show={isOpen} onClose={onClose}>
@@ -136,14 +148,14 @@ const CreateOrEditGroupModal = ({ isOpen, entity: group, onClose }: Props) => {
                     <div className="mt-4">
                         <UserPicker
                             selectedUsers={
-                                users?.filter(
+                                availableUsers?.filter(
                                     (u) =>
                                         group?.owner_id !== u.id &&
                                         data.user_ids.includes(u.id),
                                 ) || []
                             }
-                            users={users || []}
-                            onUsersChange={(selectedUsers: ChatItem[]) =>
+                            users={availableUsers || []}
+                            onUsersChange={(selectedUsers: ChatMember[]) =>
                                 setData(
                                     'user_ids',
                                     selectedUsers.map((u) => u.id),
