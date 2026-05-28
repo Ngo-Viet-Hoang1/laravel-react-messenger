@@ -7,14 +7,39 @@ use App\Http\Requests\DemoteUserRequest;
 use App\Http\Requests\PromoteUserRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UnblockUserRequest;
+use App\Http\Resources\UserResource;
 use App\Mail\UserCreated;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
+    public function index(Request $request): JsonResponse
+    {
+        $query = User::whereKeyNot(auth()->id())
+            ->select('id', 'name', 'email', 'avatar_url', 'is_admin', 'blocked_at')
+            ->orderBy('name');
+
+        if ($request->boolean('include_blocked') && auth()->user()?->is_admin) {
+            // No blocked_at filter
+        } else {
+            $query->whereNull('blocked_at');
+        }
+
+        if ($q = $request->string('q')->trim()) {
+            $query->where(function ($q2) use ($q) {
+                $q2->where('name', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%");
+            });
+        }
+
+        return response()->json(UserResource::collection($query->get()));
+    }
+
     public function store(StoreUserRequest $request): RedirectResponse
     {
         $data = $request->validated();
@@ -50,7 +75,7 @@ class UserController extends Controller
             abort(403, 'You cannot block your own account.');
         }
 
-        if (!$user->blocked_at) {
+        if (! $user->blocked_at) {
             $user->update(['blocked_at' => now()]);
         }
 
