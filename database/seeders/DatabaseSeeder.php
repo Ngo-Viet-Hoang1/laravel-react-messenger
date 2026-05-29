@@ -2,59 +2,66 @@
 
 namespace Database\Seeders;
 
-use App\Models\Conversation;
-use App\Models\User;
-use App\Models\Group;
+use App\Models\Channel;
 use App\Models\Message;
+use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        User::factory()->create([
+        $admin = User::factory()->create([
             'name' => 'John Doe',
             'email' => 'johndoe@example.com',
             'password' => bcrypt('password'),
             'is_admin' => true,
         ]);
-        User::factory()->create([
+
+        $jane = User::factory()->create([
             'name' => 'Jane Smith',
             'email' => 'janesmith@example.com',
             'password' => bcrypt('password'),
             'is_admin' => false,
         ]);
 
-        User::factory(10)->create();
+        $randomUsers = User::factory(10)->create();
+        $allUsers = collect([$admin, $jane])->concat($randomUsers);
 
         for ($i = 0; $i < 5; $i++) {
-            $group = Group::factory()->create(['owner_id' => 1]);
-            $users = User::inRandomOrder()->take(rand(2, 5))->pluck('id');
-            $group->users()->attach(array_unique([1, ...$users]));
+            $channel = Channel::factory()->create(['owner_id' => $admin->id]);
+
+            // Random subset of users + always include admin
+            $members = $allUsers->random(rand(2, 6))->pluck('id')->push($admin->id)->unique()->all();
+            $channel->members()->attach($members);
         }
 
-        Message::factory(1000)->create();
-        $messages = Message::whereNull('group_id')->orderBy('created_at')->get();
+        $dmPairs = collect([[$admin->id, $jane->id]]);
 
-        $conversations = $messages->groupBy(function ($message) {
-            return collect([$message->sender_id, $message->receiver_id])->sort()->implode('-');
-        })->map(function ($groupedMessages) {
-            return [
-                'user_id1' => $groupedMessages->first()->sender_id,
-                'user_id2' => $groupedMessages->first()->receiver_id,
-                'last_message_id' => $groupedMessages->last()->id,
-                'created_at' => new Carbon(),
-                'updated_at' => new Carbon(),
-            ];
-        })->values();
+        for ($i = 0; $i < 5; $i++) {
+            $pair = $allUsers->random(2)->pluck('id')->sort()->values();
+            $dmPairs->push($pair->all());
+        }
 
-        Conversation::insertOrIgnore($conversations->toArray());
+        foreach ($dmPairs as $pair) {
+            Channel::findOrCreateDirect($pair[0], $pair[1]);
+        }
+
+        // ── . Seed messages (without triggering Observer) ─────────────
+        // WithoutModelEvents prevents Observer from firing during seed
+        // We manually update last_message_id after all messages are created
+        Message::factory(200)->create();
+
+        // ── . Update last_message_id for each channel ─────────────────
+        Channel::all()->each(function (Channel $channel) {
+            $lastMsg = Message::where('channel_id', $channel->id)->latest()->first();
+
+            if ($lastMsg) {
+                $channel->update(['last_message_id' => $lastMsg->id]);
+            }
+        });
     }
 }

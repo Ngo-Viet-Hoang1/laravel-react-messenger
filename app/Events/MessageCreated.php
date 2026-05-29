@@ -11,18 +11,15 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class SocketMessage implements ShouldBroadcastNow
+class MessageCreated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    /**
-     * Create a new event instance.
-     */
-    public function __construct(public Message $message)
-    {
-        //
-    }
+    public function __construct(public Message $message) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function broadcastWith()
     {
         return [
@@ -37,15 +34,8 @@ class SocketMessage implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        $m = $this->message;
-        $channels = [];
-
-        if ($m->group_id) {
-            $channels[] = new PrivateChannel('message.group.'.$m->group_id);
-        } else {
-            $channels[] = new PrivateChannel('message.user.'.collect([$m->sender_id, $m->receiver_id])->sort()->implode('-'));
-        }
-
-        return $channels;
+        return [
+            new PrivateChannel('message.channel.'.$this->message->channel_id),
+        ];
     }
 }

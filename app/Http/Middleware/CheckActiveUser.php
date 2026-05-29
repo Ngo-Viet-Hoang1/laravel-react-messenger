@@ -18,8 +18,8 @@ class CheckActiveUser
     {
         if (auth()->check() && auth()->user()->blocked_at) {
             Auth::logout();
-            Auth::invalidate();
-            Auth::regenerateToken();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
             return redirect()->route('login')->withErrors([
                 'email' => 'Your account has been blocked. Please contact support.',

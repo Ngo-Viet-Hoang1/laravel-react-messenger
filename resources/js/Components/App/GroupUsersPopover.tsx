@@ -1,7 +1,7 @@
 import { ChatMember } from '@/types';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { UsersIcon } from '@heroicons/react/24/outline';
-import { Link } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import UserAvatar from './UserAvatar';
 
 type Props = {
@@ -23,10 +23,13 @@ const GroupUsersPopover = ({ users }: Props) => {
             >
                 <div className="flex max-h-64 flex-col overflow-y-auto p-1">
                     {users?.map((user) => (
-                        <Link
+                        <button
                             key={user.id}
-                            href={route('chat.user', user.id)}
-                            className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                            type="button"
+                            onClick={() =>
+                                router.post(route('channels.direct', user.id))
+                            }
+                            className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-700/50"
                         >
                             <div className="shrink-0">
                                 <UserAvatar user={user} />
@@ -36,7 +39,7 @@ const GroupUsersPopover = ({ users }: Props) => {
                                     {user.name}
                                 </p>
                             </div>
-                        </Link>
+                        </button>
                     ))}
                 </div>
             </PopoverPanel>

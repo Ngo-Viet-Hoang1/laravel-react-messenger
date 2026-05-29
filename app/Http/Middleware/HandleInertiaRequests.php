@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use App\Http\Resources\UserResource;
-use App\Models\Conversation;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -38,8 +37,6 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user ? new UserResource($user) : null,
             ],
-            'conversations' => $user ? Conversation::getConversationsForSidebar($user) : [],
-            'selectedConversation' => null,
         ];
     }
 }
