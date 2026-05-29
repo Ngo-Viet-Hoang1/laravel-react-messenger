@@ -1,5 +1,4 @@
 import { ChatItem } from '@/types';
-import { router } from '@inertiajs/react';
 import { formatChatTime } from '../../utils/chatTime.util';
 import GroupAvatar from './GroupAvatar';
 import UserAvatar from './UserAvatar';
@@ -10,6 +9,7 @@ type Props = {
     online: boolean;
     isSelected?: boolean;
     canManage?: boolean;
+    onSelect: (channelId: number) => void;
 };
 
 const ChannelItem = ({
@@ -17,6 +17,7 @@ const ChannelItem = ({
     online,
     isSelected = false,
     canManage = false,
+    onSelect,
 }: Props) => {
     const isDirectChannel = channel.type === 'direct';
     const formattedTime = formatChatTime(channel.last_message_date);
@@ -31,16 +32,10 @@ const ChannelItem = ({
         'min-w-0 max-w-full flex-1 overflow-hidden text-xs ' +
         (isDirectChannel && channel.blocked_at ? 'opacity-60' : '');
 
-    const handleClick = (e: React.MouseEvent) => {
+    const handleClick = (e: React.MouseEvent): void => {
         e.preventDefault();
         if (isSelected) return;
-        // Partial reload: only fetch selectedChannel + messages.
-        // The `channels` prop is intentionally excluded so ChatLayout's
-        // localChannels state is NOT reset and no channels query runs.
-        router.visit(route('channels.show', { channel: channel.id }), {
-            only: ['selectedChannel', 'messages'],
-            preserveScroll: false,
-        });
+        onSelect(channel.id);
     };
 
     return (

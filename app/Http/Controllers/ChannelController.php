@@ -14,7 +14,6 @@ use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Inertia\Inertia;
 use Inertia\Response;
 
 class ChannelController extends Controller
@@ -35,11 +34,9 @@ class ChannelController extends Controller
         $channel->load(['members:id,name,avatar_url,is_admin,blocked_at']);
 
         return inertia('Home', [
-            'channels' => Inertia::lazy(
-                fn() => ChannelResource::collection(
-                    Channel::getChannelsForUser(auth()->user())
-                )->resolve(request())
-            ),
+            'channels' => ChannelResource::collection(
+                Channel::getChannelsForUser(auth()->user())
+            )->resolve(request()),
             'selectedChannel' => new ChannelDetailResource($channel),
             'messages' => MessageResource::collection($messages),
         ]);

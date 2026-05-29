@@ -14,8 +14,9 @@ import { router, usePage } from '@inertiajs/react';
 import { ReactNode, useEffect, useState } from 'react';
 
 const EMPTY_CHANNELS: ChatItem[] = [];
+
 const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
-    const pageProps = usePage<ChatPageProps>().props;
+    const { props: pageProps } = usePage<ChatPageProps>();
     const currentUser = pageProps.auth.user;
     const channels = pageProps.channels ?? EMPTY_CHANNELS;
     const selectedChannel = pageProps.selectedChannel ?? null;
@@ -33,34 +34,38 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
 
     const { isOnline } = useOnlinePresence();
 
-    useChannelSockets(channels || [], Number(currentUser.id));
+    useChannelSockets(channels, Number(currentUser.id));
+
+    const handleChannelSelect = (channelId: number): void => {
+        router.visit(route('channels.show', channelId), {
+            only: ['selectedChannel', 'messages'],
+            preserveScroll: false,
+        });
+    };
 
     useEffect(() => {
-        const offMessageCreated = on('message.created', updateLastMessage);
-        const offMessageDeleted = on(
-            'message.deleted',
-            updateAfterMessageDeleted,
-        );
-
+        const offCreated = on('message.created', updateLastMessage);
+        const offDeleted = on('message.deleted', updateAfterMessageDeleted);
         return () => {
-            offMessageCreated();
-            offMessageDeleted();
+            offCreated();
+            offDeleted();
         };
     }, [on, updateLastMessage, updateAfterMessageDeleted]);
 
     useEffect(() => {
-        const offChannelDeleted = on('channel.deleted', ({ id, name }) => {
+        const offDeleted = on('channel.deleted', ({ id, name }) => {
             removeChannel(id);
             emit('toast.show', `The channel "${name}" has been deleted`);
             if (selectedChannel?.id === id) {
                 router.visit(route('dashboard'));
             }
         });
-
-        return () => offChannelDeleted();
+        return offDeleted;
     }, [on, emit, selectedChannel?.id, removeChannel]);
+
     return (
         <div className="flex h-full min-h-0 w-full overflow-hidden">
+            {/* Sidebar */}
             <div
                 className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-800 sm:flex sm:w-[280px] md:w-[320px] ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
             >
@@ -101,11 +106,13 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
                             }
                             isSelected={selectedChannel?.id === c.id}
                             canManage={currentUser.is_admin}
+                            onSelect={handleChannelSelect}
                         />
                     ))}
                 </div>
             </div>
 
+            {/* Content area */}
             <div
                 className={`min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800 xs:m-2 xs:shadow-sm ${selectedChannel ? 'flex' : 'hidden sm:flex'}`}
             >
@@ -115,12 +122,10 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     );
 };
 
-const ChatLayout = ({ children }: { children: ReactNode }) => {
-    return (
-        <ChannelModalProvider>
-            <ChatLayoutInner>{children}</ChatLayoutInner>
-        </ChannelModalProvider>
-    );
-};
+const ChatLayout = ({ children }: { children: ReactNode }) => (
+    <ChannelModalProvider>
+        <ChatLayoutInner>{children}</ChatLayoutInner>
+    </ChannelModalProvider>
+);
 
 export default ChatLayout;
