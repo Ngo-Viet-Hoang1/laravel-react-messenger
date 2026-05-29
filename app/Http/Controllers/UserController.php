@@ -8,12 +8,11 @@ use App\Http\Requests\PromoteUserRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UnblockUserRequest;
 use App\Http\Resources\UserResource;
-use App\Mail\UserCreated;
+use App\Jobs\SendUserCreatedJob;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class UserController extends Controller
@@ -48,9 +47,10 @@ class UserController extends Controller
         $data['is_admin'] = $data['is_admin'] ?? false;
         $data['email_verified_at'] = now();
 
+
         $user = User::create($data);
 
-        Mail::to($user->email)->send(new UserCreated($user, $rawPassword));
+        SendUserCreatedJob::dispatch($user->id, $rawPassword);
 
         return redirect()->back();
     }
