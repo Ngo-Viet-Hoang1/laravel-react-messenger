@@ -73,3 +73,5 @@ export const formatChatTime = (
         }).format(messageDate),
     };
 };
+export const getTime = (date?: string | null) =>
+    date ? new Date(date).getTime() : 0;

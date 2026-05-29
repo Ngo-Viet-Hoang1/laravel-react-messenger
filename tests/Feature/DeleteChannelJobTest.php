@@ -2,36 +2,36 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\DeleteGroupJob;
-use App\Models\Group;
+use App\Jobs\DeleteChannelJob;
+use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 
-class DeleteGroupJobTest extends TestCase
+class DeleteChannelJobTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_job_deletes_group_and_messages(): void
+    public function test_job_deletes_channel_and_messages(): void
     {
         $owner = User::factory()->create();
         $member = User::factory()->create();
 
-        $group = Group::create([
+        $channel = Channel::create([
+            'type' => 'group',
             'name' => 'Team Alpha',
             'description' => 'Original',
             'owner_id' => $owner->id,
         ]);
 
-        $group->users()->attach([$owner->id, $member->id]);
+        $channel->members()->attach([$owner->id, $member->id]);
 
         $message = Message::create([
-            'message' => 'Hello group',
+            'channel_id' => $channel->id,
             'sender_id' => $owner->id,
-            'receiver_id' => null,
-            'group_id' => $group->id,
+            'content' => 'Hello channel',
         ]);
 
         $attachment = MessageAttachment::create([
@@ -40,20 +40,21 @@ class DeleteGroupJobTest extends TestCase
             'name' => 'file.txt',
             'size' => 12,
             'mime' => 'text/plain',
+            'storage_disk' => 'local',
         ]);
 
-        $group->update(['last_message_id' => $message->id]);
+        $channel->update(['last_message_id' => $message->id]);
 
-        DeleteGroupJob::dispatchSync($group->id);
+        DeleteChannelJob::dispatchSync($channel->id);
 
-        $this->assertModelMissing($group);
+        $this->assertModelMissing($channel);
         $this->assertModelMissing($message);
         $this->assertModelMissing($attachment);
     }
 
-    public function test_job_handles_missing_group(): void
+    public function test_job_handles_missing_channel(): void
     {
-        DeleteGroupJob::dispatchSync(9999);
+        DeleteChannelJob::dispatchSync(9999);
 
         $this->assertTrue(true);
     }

@@ -1,5 +1,5 @@
+import { useChannelModal } from '@/Contexts/ChannelModalContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
-import { useGroupModal } from '@/Contexts/GroupModalContext';
 import { useEventBus } from '@/EventBus';
 import { ChatItem, PageProps } from '@/types';
 import {
@@ -15,17 +15,17 @@ import GroupUsersPopover from './GroupUsersPopover';
 import UserAvatar from './UserAvatar';
 
 type Props = {
-    conversation?: ChatItem | null;
+    channel?: ChatItem | null;
 };
 
-const ConversationHeader = ({ conversation }: Props) => {
+const ChannelHeader = ({ channel }: Props) => {
     const page = usePage<PageProps>();
     const currentUser = page.props.auth.user;
     const isGroupOwner =
-        conversation?.is_group && conversation?.owner_id === currentUser.id;
+        channel?.type === 'group' && channel?.owner_id === currentUser.id;
 
     const { emit } = useEventBus();
-    const { openModal } = useGroupModal();
+    const { openModal } = useChannelModal();
     const confirmDialog = useConfirm();
 
     const onDeleteGroup = async () => {
@@ -41,17 +41,16 @@ const ConversationHeader = ({ conversation }: Props) => {
 
         try {
             const { data } = await axios.delete(
-                route('groups.destroy', conversation?.id),
+                route('channels.destroy', channel?.id),
             );
             emit(
                 'toast.show',
-                data.message ||
-                    `The group "${conversation?.name}" has been deleted`,
+                data.message || `The group "${channel?.name}" has been deleted`,
             );
         } catch (error) {
             emit(
                 'toast.show',
-                `Failed to delete group "${conversation?.name}". Please try again.`,
+                `Failed to delete group "${channel?.name}". Please try again.`,
             );
         }
     };
@@ -67,8 +66,8 @@ const ConversationHeader = ({ conversation }: Props) => {
                 </Link>
 
                 <div className="shrink-0">
-                    {conversation?.is_user ? (
-                        <UserAvatar user={conversation} />
+                    {channel?.type === 'direct' ? (
+                        <UserAvatar user={channel} />
                     ) : (
                         <GroupAvatar />
                     )}
@@ -76,16 +75,16 @@ const ConversationHeader = ({ conversation }: Props) => {
 
                 <div className="flex min-w-0 flex-1 flex-col justify-center">
                     <h3 className="truncate font-semibold text-slate-800 dark:text-slate-100">
-                        {conversation?.name}
+                        {channel?.name}
                     </h3>
 
-                    {conversation?.is_group && (
+                    {channel?.type === 'group' && (
                         <div className="flex items-center gap-2">
-                            <GroupUsersPopover users={conversation?.users} />
+                            <GroupUsersPopover users={channel?.users} />
 
-                            {conversation?.description && (
+                            {channel?.description && (
                                 <GroupDescriptionPopover
-                                    description={conversation?.description}
+                                    description={channel?.description}
                                 />
                             )}
                         </div>
@@ -93,33 +92,37 @@ const ConversationHeader = ({ conversation }: Props) => {
                 </div>
             </div>
 
-            {isGroupOwner && (
-                <div className="ml-4 flex shrink-0 items-center gap-1">
-                    <div data-tip="Edit Group" className="tooltip tooltip-left">
-                        <button
-                            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                            onClick={() => {
-                                openModal(conversation);
-                            }}
+            {channel?.type === 'group' &&
+                (isGroupOwner || currentUser.is_admin) && (
+                    <div className="ml-4 flex shrink-0 items-center gap-1">
+                        <div
+                            data-tip="Edit Group"
+                            className="tooltip tooltip-left"
                         >
-                            <PencilIcon className="h-5 w-5" />
-                        </button>
-                    </div>
-                    <div
-                        data-tip="Delete Group"
-                        className="tooltip tooltip-left"
-                    >
-                        <button
-                            className="flex h-9 w-9 items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                            onClick={onDeleteGroup}
+                            <button
+                                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                                onClick={() => {
+                                    openModal(channel);
+                                }}
+                            >
+                                <PencilIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div
+                            data-tip="Delete Group"
+                            className="tooltip tooltip-left"
                         >
-                            <TrashIcon className="h-5 w-5" />
-                        </button>
+                            <button
+                                className="flex h-9 w-9 items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                                onClick={onDeleteGroup}
+                            >
+                                <TrashIcon className="h-5 w-5" />
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
         </div>
     );
 };
 
-export default ConversationHeader;
+export default ChannelHeader;

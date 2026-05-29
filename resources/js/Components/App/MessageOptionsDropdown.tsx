@@ -10,7 +10,7 @@ const MessageOptionsDropdown = ({ message }: { message: ChatMessage }) => {
     const handleDeleteMessage = async () => {
         try {
             const { data } = await axios.delete(
-                route('message.destroy', message.id),
+                route('messages.destroy', message.id),
             );
 
             const newLastMessage = data?.newLastMessage ?? null;

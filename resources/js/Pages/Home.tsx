@@ -1,191 +1,163 @@
 import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';
-import ConversationHeader from '@/Components/App/ConversationHeader';
+import ChannelHeader from '@/Components/App/ChannelHeader';
 import MessageInput from '@/Components/App/MessageInput';
 import MessageItem from '@/Components/App/MessageItem';
 import { useEventBus } from '@/EventBus';
+import useAttachmentsPreviewModal from '@/hooks/useAttachmentsPreviewModal';
+import useChatScroll from '@/hooks/useChatScroll';
+import useInfiniteScroll from '@/hooks/useInfiniteScroll';
+import useMessages from '@/hooks/useMessages';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ChatLayout from '@/Layouts/ChatLayout';
 import {
-    AppEventMap,
     PageProps as AppPageProps,
     ChatItem,
     ChatMessage,
     ChatMessageCollection,
-    MessageAttachment,
 } from '@/types';
-import { isMessageForConversation } from '@/utils';
+import { MessageDeletedEvent } from '@/types/events';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 
 type PageProps = {
-    selectedConversation?: ChatItem | null;
+    selectedChannel?: ChatItem | null;
     messages?: ChatMessageCollection | null;
 };
 
-function Home({ selectedConversation = null, messages = null }: PageProps) {
+function Home({ selectedChannel = null, messages = null }: PageProps) {
     const currentUser = usePage<AppPageProps>().props.auth.user;
     const myId = Number(currentUser.id);
-
-    const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
-    const [isShowAttachmentPreview, setIsShowAttachmentPreview] =
-        useState(false);
-    const [previewAttachment, setPreviewAttachment] = useState<{
-        id: number;
-        attachments: MessageAttachment[];
-    } | null>(null);
-
-    const messagesCtrRef = useRef<HTMLDivElement>(null);
-    const isUserNearBottomRef = useRef(true);
     const { on } = useEventBus();
 
-    const messageCreated = useCallback(
-        (message: ChatMessage) => {
-            if (!selectedConversation) return;
-            if (
-                !isMessageForConversation(message, selectedConversation, myId)
-            ) {
-                return;
-            }
+    const {
+        chatMessages,
+        isLoadingOlderMessages,
+        hasLoadedAllMessages,
+        firstMessageDate,
+        addMessage,
+        removeMessage,
+        loadOlderMessages,
+    } = useMessages(messages, selectedChannel);
 
-            setLocalMessages((prev) =>
-                prev.some((m) => m.id === message.id)
-                    ? prev
-                    : [...prev, message],
-            );
-        },
-        [selectedConversation, myId],
+    const {
+        scrollContainerRef,
+        isNearBottomRef,
+        handleScroll,
+        scrollToBottom,
+    } = useChatScroll();
+
+    const { triggerRef } = useInfiniteScroll(
+        loadOlderMessages,
+        hasLoadedAllMessages,
     );
 
-    const messageDeleted = useCallback(
-        ({ message }: AppEventMap['message.deleted']) => {
-            if (!selectedConversation) return;
-            if (
-                !isMessageForConversation(message, selectedConversation, myId)
-            ) {
-                return;
-            }
+    const { isOpen, preview, open, close } = useAttachmentsPreviewModal();
 
-            setLocalMessages((prev) => prev.filter((m) => m.id !== message.id));
+    useEffect(
+        () => scrollToBottom('auto'),
+        [selectedChannel?.id, scrollToBottom],
+    );
+
+    const handleMessageCreated = useCallback(
+        (message: ChatMessage) => {
+            if (!selectedChannel || message.channel_id !== selectedChannel.id)
+                return;
+
+            const wasAdded = addMessage(message);
+            const isOwnMessage = message.sender_id === myId;
+            if (wasAdded && (isNearBottomRef.current || isOwnMessage)) {
+                requestAnimationFrame(() => scrollToBottom('smooth'));
+            }
         },
-        [selectedConversation, myId],
+        [myId, scrollToBottom, isNearBottomRef, selectedChannel, addMessage],
+    );
+
+    const handleMessageDeleted = useCallback(
+        ({ message }: MessageDeletedEvent) => {
+            if (!selectedChannel || message.channel_id !== selectedChannel.id)
+                return;
+            removeMessage(message);
+        },
+        [selectedChannel, removeMessage],
     );
 
     useEffect(() => {
-        const offCreated = on('message.created', messageCreated);
-        const offDeleted = on('message.deleted', messageDeleted);
+        const offCreated = on('message.created', handleMessageCreated);
+        const offDeleted = on('message.deleted', handleMessageDeleted);
 
         return () => {
             offCreated();
             offDeleted();
         };
-    }, [messageCreated, messageDeleted, on]);
-
-    const handleScroll = useCallback(() => {
-        if (!messagesCtrRef.current) return;
-        const container = messagesCtrRef.current;
-        isUserNearBottomRef.current =
-            container.scrollHeight -
-                container.scrollTop -
-                container.clientHeight <
-            150;
-    }, []);
-
-    const scrollToBottom = useCallback(
-        (behavior: ScrollBehavior = 'smooth') => {
-            if (messagesCtrRef.current) {
-                messagesCtrRef.current.scrollTo({
-                    top: messagesCtrRef.current.scrollHeight,
-                    behavior,
-                });
-            }
-        },
-        [],
-    );
-
-    useEffect(() => {
-        if (isUserNearBottomRef.current || localMessages.length <= 10) {
-            requestAnimationFrame(() => scrollToBottom('smooth'));
-        }
-    }, [localMessages.length, selectedConversation?.id, scrollToBottom]);
-
-    useEffect(() => {
-        const container = messagesCtrRef.current;
-        if (!container) return;
-
-        const resizeObserver = new ResizeObserver(() => {
-            if (isUserNearBottomRef.current) {
-                scrollToBottom('auto');
-            }
-        });
-
-        if (container.firstElementChild) {
-            resizeObserver.observe(container.firstElementChild);
-        }
-
-        return () => resizeObserver.disconnect();
-    }, [selectedConversation?.id, scrollToBottom]);
-
-    const handleAttachmentClick = (
-        attachments: MessageAttachment[],
-        index: number,
-    ) => {
-        setPreviewAttachment({ id: index, attachments });
-        setIsShowAttachmentPreview(true);
-    };
-
-    useEffect(() => {
-        setLocalMessages(messages?.data ? [...messages.data].reverse() : []);
-    }, [messages]);
-
-    const EmptyState = ({ message }: { message: string }) => (
-        <div className="flex h-full flex-col items-center justify-center gap-2 text-2xl font-semibold opacity-35">
-            <ChatBubbleLeftRightIcon className="h-16 w-16" />
-            {message}
-        </div>
-    );
+    }, [on, handleMessageCreated, handleMessageDeleted]);
 
     if (!messages) {
         return (
-            <EmptyState message="Please select a conversation to start chatting" />
+            <EmptyState message="Please select a channel to start chatting" />
         );
     }
 
     return (
         <>
             <div className="flex h-full flex-col">
-                <ConversationHeader conversation={selectedConversation} />
+                <ChannelHeader channel={selectedChannel} />
 
                 <div
-                    ref={messagesCtrRef}
-                    className="flex flex-1 flex-col overflow-y-auto p-2"
+                    ref={scrollContainerRef}
+                    className="flex flex-1 flex-col-reverse overflow-y-auto p-2"
                     onScroll={handleScroll}
                 >
-                    {localMessages.length === 0 ? (
+                    {chatMessages.length === 0 ? (
                         <EmptyState message="No messages yet. Start the conversation!" />
                     ) : (
-                        <div className="flex shrink-0 flex-col">
-                            {localMessages.map((message) => (
-                                <MessageItem
+                        <>
+                            {chatMessages.map((message) => (
+                                <div
                                     key={message.id}
-                                    message={message}
-                                    onAttachmentClick={handleAttachmentClick}
-                                />
+                                    className="transition-all duration-200 ease-out"
+                                >
+                                    <MessageItem
+                                        message={message}
+                                        isOwnMessage={
+                                            message.sender_id === myId
+                                        }
+                                        onAttachmentClick={open}
+                                    />
+                                </div>
                             ))}
-                        </div>
+
+                            {isLoadingOlderMessages && (
+                                <div className="flex justify-center p-2 opacity-50">
+                                    <span className="loading loading-spinner text-primary" />
+                                </div>
+                            )}
+
+                            {hasLoadedAllMessages && (
+                                <div className="flex flex-col items-center py-3 text-xs opacity-40">
+                                    <div>Start of conversation</div>
+                                    <div className="text-[10px]">
+                                        {firstMessageDate}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* trigger (oldest end = logical TOP due to flex-col-reverse) */}
+                            <div ref={triggerRef} />
+                        </>
                     )}
                 </div>
 
-                <MessageInput conversation={selectedConversation} />
+                <MessageInput channel={selectedChannel} />
             </div>
 
-            {previewAttachment?.attachments && (
+            {preview?.attachments && (
                 <AttachmentPreviewModal
-                    key={`${previewAttachment.id}_${isShowAttachmentPreview}`}
-                    index={previewAttachment.id}
-                    isShow={isShowAttachmentPreview}
-                    onClose={() => setIsShowAttachmentPreview(false)}
-                    attachments={previewAttachment.attachments}
+                    key={preview.startIndex}
+                    index={preview.startIndex}
+                    isShow={isOpen}
+                    onClose={close}
+                    attachments={preview.attachments}
                 />
             )}
         </>
@@ -196,6 +168,13 @@ Home.layout = (page: React.ReactNode) => (
     <AuthenticatedLayout>
         <ChatLayout>{page}</ChatLayout>
     </AuthenticatedLayout>
+);
+
+const EmptyState = ({ message }: { message: string }) => (
+    <div className="flex h-full flex-col items-center justify-center gap-2 text-2xl font-semibold opacity-35">
+        <ChatBubbleLeftRightIcon className="h-16 w-16" />
+        {message}
+    </div>
 );
 
 export default Home;

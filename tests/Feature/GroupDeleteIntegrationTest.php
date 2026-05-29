@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Events\GroupDeleted;
-use App\Jobs\DeleteGroupJob;
-use App\Models\Group;
+use App\Events\ChannelDeleted;
+use App\Jobs\DeleteChannelJob;
+use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
@@ -17,27 +17,27 @@ class GroupDeleteIntegrationTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_delete_endpoint_dispatches_job_and_job_deletes_group(): void
+    public function test_delete_endpoint_dispatches_job_and_job_deletes_channel(): void
     {
         Queue::fake();
-        Event::fake([GroupDeleted::class]);
+        Event::fake([ChannelDeleted::class]);
 
         $owner = User::factory()->create();
         $member = User::factory()->create();
 
-        $group = Group::create([
+        $channel = Channel::create([
+            'type' => 'group',
             'name' => 'Team Alpha',
             'description' => 'Original',
             'owner_id' => $owner->id,
         ]);
 
-        $group->users()->attach([$owner->id, $member->id]);
+        $channel->members()->attach([$owner->id, $member->id]);
 
         $message = Message::create([
-            'message' => 'Hello group',
+            'channel_id' => $channel->id,
             'sender_id' => $owner->id,
-            'receiver_id' => null,
-            'group_id' => $group->id,
+            'content' => 'Hello channel',
         ]);
 
         $attachment = MessageAttachment::create([
@@ -46,22 +46,24 @@ class GroupDeleteIntegrationTest extends TestCase
             'name' => 'file.txt',
             'size' => 12,
             'mime' => 'text/plain',
+            'storage_disk' => 'local',
         ]);
 
         $this->actingAs($owner)
-            ->delete(route('groups.destroy', $group))
+            ->delete(route('channels.destroy', $channel))
             ->assertOk();
 
-        Queue::assertPushed(DeleteGroupJob::class, function (DeleteGroupJob $job) use ($group) {
-            return $job->groupId === $group->id;
+        Queue::assertPushed(DeleteChannelJob::class, function (DeleteChannelJob $job) use ($channel) {
+            return $job->channelId === $channel->id;
         });
 
-        (new DeleteGroupJob($group->id))->handle();
+        (new DeleteChannelJob($channel->id))->handle();
 
-        $this->assertModelMissing($group);
+        $this->assertModelMissing($channel);
         $this->assertModelMissing($message);
         $this->assertModelMissing($attachment);
 
-        Event::assertDispatched(GroupDeleted::class, 2);
+        // ChannelDeleted is broadcast to each member (owner + member = 2)
+        Event::assertDispatched(ChannelDeleted::class, 2);
     }
 }

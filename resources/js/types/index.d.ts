@@ -24,8 +24,8 @@ export type {
 
 export type {
     AppEventMap,
-    NewMessageNotification,
-    SocketMessageEvent,
+    ChannelDeletedEvent,
+    MessageCreatedEvent,
 } from './events';
 
-export type { PageProps } from './page-props';
+export type { ChatPageProps, PageProps } from './page-props';
