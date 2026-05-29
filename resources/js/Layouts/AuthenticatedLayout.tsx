@@ -7,7 +7,6 @@ import NavLink from '@/Components/Breeze/NavLink';
 import PrimaryButton from '@/Components/Breeze/PrimaryButton';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
 import { UserModalProvider, useUserModal } from '@/Contexts/UserModalContext';
-import useConversationSockets from '@/hooks/useConversationSockets';
 import { PageProps } from '@/types';
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 import { Link, usePage } from '@inertiajs/react';
@@ -19,14 +18,10 @@ const AuthenticatedInner = ({
 }: PropsWithChildren<{ header?: ReactNode }>) => {
     const page = usePage<PageProps>();
     const user = page.props.auth.user;
-    const conversations = page.props.conversations;
-
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
 
     const { openModal } = useUserModal();
-
-    useConversationSockets(conversations || [], Number(user.id));
 
     return (
         <div className="flex h-screen flex-col overflow-hidden bg-gray-100 dark:bg-gray-900">

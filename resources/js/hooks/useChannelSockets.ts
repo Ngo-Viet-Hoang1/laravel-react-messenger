@@ -1,0 +1,82 @@
+import { useEventBus } from '@/EventBus';
+import { ChatItem, MessageCreatedEvent } from '@/types';
+import { ChannelDeletedEvent } from '@/types/events';
+import { getChannelName } from '@/utils';
+import { echo } from '@laravel/echo-react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+
+const useChannelSockets = (channels: ChatItem[], userId: number) => {
+    const { emit } = useEventBus();
+    const subscribedRef = useRef<Set<string>>(new Set());
+
+    const channelNames = useMemo(
+        () => channels.map(getChannelName).sort(),
+        [channels],
+    );
+
+    const messageCreated = useCallback(
+        (event: MessageCreatedEvent) => {
+            emit('message.created', event.message);
+        },
+        [emit],
+    );
+
+    useEffect(() => {
+        const e = echo();
+        if (!e) return;
+
+        const next = new Set(channelNames);
+        const prev = subscribedRef.current;
+
+        for (const cName of next) {
+            if (!prev.has(cName)) {
+                e.private(cName)
+                    .stopListening('MessageCreated')
+                    .listen('MessageCreated', messageCreated);
+            }
+        }
+
+        for (const cName of prev) {
+            if (!next.has(cName)) {
+                e.leave(cName);
+            }
+        }
+
+        subscribedRef.current = next;
+    }, [channelNames, messageCreated]);
+
+    useEffect(() => {
+        const e = echo();
+        if (!e) return;
+
+        const channelName = `user.${userId}`;
+        const channel = e.private(channelName);
+
+        channel
+            .error((error: Error) =>
+                console.error('User channel error:', error),
+            )
+            .listen('ChannelDeleted', ({ id, name }: ChannelDeletedEvent) => {
+                emit('channel.deleted', { id, name });
+            });
+
+        return () => {
+            e.leave(channelName);
+        };
+    }, [emit, userId]);
+
+    useEffect(() => {
+        return () => {
+            const e = echo();
+            if (!e) return;
+
+            for (const channel of subscribedRef.current) {
+                e.leave(channel);
+            }
+
+            subscribedRef.current = new Set();
+        };
+    }, []);
+};
+
+export default useChannelSockets;

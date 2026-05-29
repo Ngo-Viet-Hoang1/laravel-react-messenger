@@ -1,6 +1,5 @@
-import { ChatMessage, MessageAttachment, PageProps } from '@/types';
+import { ChatMessage, MessageAttachment } from '@/types';
 import { formatChatTime } from '@/utils/chatTime.util';
-import { usePage } from '@inertiajs/react';
 import React from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
@@ -10,6 +9,7 @@ import UserAvatar from './UserAvatar';
 
 type Props = {
     message: ChatMessage;
+    isOwnMessage?: boolean;
     onAttachmentClick?: (
         attachments: MessageAttachment[],
         index: number,
@@ -43,9 +43,7 @@ const markdownComponents: Components = {
     ),
 };
 
-const MessageItem = ({ message, onAttachmentClick }: Props) => {
-    const currentUser = usePage<PageProps>().props.auth.user;
-    const isOwnMessage = message.sender_id === currentUser.id;
+const MessageItem = ({ message, isOwnMessage, onAttachmentClick }: Props) => {
     const sender = message.sender ?? DELETED_USER;
     const senderName = sender.name;
     const formattedTime = formatChatTime(message.created_at);
@@ -93,7 +91,7 @@ const MessageItem = ({ message, onAttachmentClick }: Props) => {
                             rehypePlugins={[rehypeSanitize]}
                             components={markdownComponents}
                         >
-                            {message.message ?? ''}
+                            {message.content ?? ''}
                         </ReactMarkdown>
                     </div>
                     <MessageAttachments

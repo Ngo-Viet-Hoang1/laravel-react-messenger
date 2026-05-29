@@ -18,12 +18,12 @@ class MessageResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'message' => $this->message,
+            'content' => $this->content,
+            'channel_id' => $this->channel_id,
             'sender_id' => $this->sender_id,
-            'receiver_id' => $this->receiver_id,
+            'parent_id' => $this->parent_id,
             'sender' => new UserResource($this->whenLoaded('sender')),
-            'receiver' => new UserResource($this->whenLoaded('receiver')),
-            'group_id' => $this->group_id,
+            'parent' => new MessageResource($this->whenLoaded('parent')),
             'attachments' => MessageAttachmentResource::collection($this->whenLoaded('attachments')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

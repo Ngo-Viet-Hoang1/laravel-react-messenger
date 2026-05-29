@@ -2,105 +2,56 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\SocketMessage;
+use App\Events\MessageCreated;
 use App\Http\Requests\StoreMessageRequest;
 use App\Http\Resources\MessageResource;
-use App\Models\Conversation;
-use App\Models\Group;
+use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageAttachment;
-use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
-    public function byUser(User $user)
+    public function index(Channel $channel)
     {
-        $selectedUser = $this->resolveSelectedUserConversation($user);
+        $isUserInChannel = auth()->user()?->channels()->whereKey($channel->id)->exists();
+        abort_unless($isUserInChannel, 403, 'Unauthorized');
 
-        $messages = $this->directMessageQuery(auth()->id(), $user->id)
-            ->with(['sender', 'receiver', 'attachments'])
-            ->latest()
-            ->paginate(10);
+        $beforeId = (int) request()->query('before_id', 0);
+        $beforeAt = request()->query('before_at');
 
-        return inertia('Home', [
-            'selectedConversation' => $selectedUser->toConversationArray(),
-            'messages' => MessageResource::collection($messages),
-        ]);
-    }
+        $query = Message::where('channel_id', $channel->id)
+            ->with(['sender', 'attachments', 'parent.sender']);
 
-    public function byGroup(Group $group)
-    {
-        $this->abortIfUserCannotAccessGroup($group->id);
-
-        $messages = Message::query()
-            ->where('group_id', $group->id)
-            ->with(['sender', 'receiver', 'attachments'])
-            ->latest()
-            ->paginate(10);
-
-        $group->load(['users', 'lastMessage']);
-        $group->setAttribute('last_message', $group->lastMessage?->message);
-        $group->setAttribute('last_message_date', $group->lastMessage?->created_at?->toISOString());
-
-        return inertia('Home', [
-            'selectedConversation' => $group->toConversationArray(),
-            'messages' => MessageResource::collection($messages),
-        ]);
-    }
-
-    public function loadOlder(Message $message)
-    {
-        $isGroupChat = (bool) $message->group_id;
-
-        if ($isGroupChat) {
-            $this->abortIfUserCannotAccessGroup((int) $message->group_id);
-
-            $olderMessages = Message::query()
-                ->where('group_id', $message->group_id)
-                ->where('created_at', '<', $message->created_at)
-                ->with(['sender', 'receiver', 'attachments'])
-                ->latest()
-                ->paginate(10);
-        } else {
-            $this->abortIfUserCannotAccessDirectMessage($message);
-
-            $olderMessages = $this->directMessageQuery((int) $message->sender_id, (int) $message->receiver_id)
-                ->where('created_at', '<', $message->created_at)
-                ->with(['sender', 'receiver', 'attachments'])
-                ->latest()
-                ->paginate(10);
+        if ($beforeId && $beforeAt) {
+            $query->where(function ($q) use ($beforeAt, $beforeId) {
+                $q->where('created_at', '<', $beforeAt)
+                    ->orWhere(function ($q2) use ($beforeAt, $beforeId) {
+                        $q2->where('created_at', $beforeAt)
+                            ->where('id', '<', $beforeId);
+                    });
+            });
         }
 
-        return MessageResource::collection($olderMessages);
+        $messages = $query
+            ->latest()
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        return MessageResource::collection($messages);
     }
 
-    public function store(StoreMessageRequest $request)
+    public function store(StoreMessageRequest $request, Channel $channel)
     {
         $data = $request->validated();
-        $senderId = (int) $request->user()->id;
-        $data['sender_id'] = $senderId;
-        $receiverId = isset($data['receiver_id']) ? (int) $data['receiver_id'] : null;
-        $groupId = isset($data['group_id']) ? (int) $data['group_id'] : null;
+        $data['sender_id'] = (int) $request->user()->id;
+        $data['channel_id'] = $channel->id;
         $files = $data['attachments'] ?? [];
         unset($data['attachments']);
 
-        if ($groupId !== null) {
-            $canPost = $request->user()->groups()->whereKey($groupId)->exists();
-            abort_unless($canPost, 403, 'Unauthorized');
-        }
-
-        if ($receiverId !== null && ! $request->user()->is_admin) {
-            $receiverBlocked = User::whereKey($receiverId)
-                ->whereNotNull('blocked_at')
-                ->exists();
-            abort_if($receiverBlocked, 403, 'Unauthorized');
-        }
-
-        $message = DB::transaction(function () use ($data, $files, $receiverId, $groupId, $senderId) {
+        $message = DB::transaction(function () use ($data, $files) {
             $message = Message::create($data);
 
             if ($files !== []) {
@@ -114,121 +65,45 @@ class MessageController extends Controller
                         'name' => $file->getClientOriginalName(),
                         'size' => $file->getSize(),
                         'mime' => $file->getMimeType(),
+                        'storage_disk' => 'public',
+                        'thumbnail_path' => null,
                     ]);
                 }
             }
 
-            if ($receiverId !== null) {
-                Conversation::updateConversationWithMessage($senderId, $receiverId, $message);
-            }
-
-            if ($groupId !== null) {
-                Group::updateGroupWithMessage($groupId, $message);
-            }
-
-            return $message->load(['sender', 'receiver', 'attachments']);
+            return $message->load(['sender', 'attachments', 'parent.sender']);
         });
 
-        broadcast(new SocketMessage($message))->toOthers();
+        // Note: MessageObserver::created fires AFTER DB transaction completes
+        // and handles last_message_id update + ChannelUpdated broadcast
+        DB::afterCommit(function () use ($message) {
+            broadcast(new MessageCreated($message))->toOthers();
+        });
 
         return new MessageResource($message);
     }
 
     public function destroy(Message $message)
     {
-        if ($message->sender_id !== auth()->id()) {
-            abort(403);
-        }
+        abort_unless($message->sender_id === auth()->id(), 403);
 
         $newLastMessage = null;
 
         DB::transaction(function () use ($message, &$newLastMessage) {
-            $message->delete();
+            $channelId = $message->channel_id;
+            $deletedMessageId = $message->id;
 
-            if ($message->group_id) {
-                $group = Group::find($message->group_id);
+            $message->delete(); // triggers Observer::deleting + Observer::deleted
 
-                if ($group) {
-                    $newLastMessage = Message::where('group_id', $group->id)
-                        ->latest()
-                        ->first();
-
-                    $group->update(['last_message_id' => $newLastMessage?->id]);
-                }
-            } else {
-                $newLastMessage = Message::where(function ($q) use ($message) {
-                    $q->where([
-                        ['sender_id', $message->sender_id],
-                        ['receiver_id', $message->receiver_id],
-                    ])->orWhere([
-                        ['sender_id', $message->receiver_id],
-                        ['receiver_id', $message->sender_id],
-                    ]);
-                })->latest()->first();
-
-                Conversation::where(function ($q) use ($message) {
-                    $q->where('user_id1', $message->sender_id)
-                        ->where('user_id2', $message->receiver_id);
-                })->orWhere(function ($q) use ($message) {
-                    $q->where('user_id1', $message->receiver_id)
-                        ->where('user_id2', $message->sender_id);
-                })->update(['last_message_id' => $newLastMessage?->id]);
+            // Observer already recomputed last_message_id, fetch updated value
+            $channel = Channel::find($channelId);
+            if ($channel && (int) $channel->last_message_id !== $deletedMessageId) {
+                $newLastMessage = Message::find($channel->last_message_id);
             }
         });
 
         return response()->json([
             'newLastMessage' => $newLastMessage ? new MessageResource($newLastMessage) : null,
         ]);
-    }
-
-    private function abortIfUserCannotAccessGroup(int $groupId): void
-    {
-        $user = auth()->user();
-        abort_unless($user && $user->groups()->whereKey($groupId)->exists(), 403, 'Unauthorized');
-    }
-
-    private function abortIfUserCannotAccessDirectMessage(Message $message): void
-    {
-        $userId = auth()->id();
-        abort_unless($userId === $message->sender_id || $userId === $message->receiver_id, 403, 'Unauthorized');
-    }
-
-    private function directMessageQuery(int $firstUserId, int $secondUserId): Builder
-    {
-        return Message::query()->where(function (Builder $query) use ($firstUserId, $secondUserId) {
-            $query->where(function (Builder $subQuery) use ($firstUserId, $secondUserId) {
-                $subQuery
-                    ->where('sender_id', $firstUserId)
-                    ->where('receiver_id', $secondUserId);
-            })->orWhere(function (Builder $subQuery) use ($firstUserId, $secondUserId) {
-                $subQuery
-                    ->where('sender_id', $secondUserId)
-                    ->where('receiver_id', $firstUserId);
-            });
-        });
-    }
-
-    private function resolveSelectedUserConversation(User $user): User
-    {
-        $authUserId = (int) auth()->id();
-
-        $conversation = Conversation::query()
-            ->where(function (Builder $query) use ($authUserId, $user) {
-                $query
-                    ->where('user_id1', $authUserId)
-                    ->where('user_id2', $user->id);
-            })
-            ->orWhere(function (Builder $query) use ($authUserId, $user) {
-                $query
-                    ->where('user_id1', $user->id)
-                    ->where('user_id2', $authUserId);
-            })
-            ->with(['lastMessage:id,message,created_at'])
-            ->first();
-
-        $user->setAttribute('last_message', $conversation?->lastMessage?->message);
-        $user->setAttribute('last_message_date', $conversation?->lastMessage?->created_at?->toISOString());
-
-        return $user;
     }
 }
