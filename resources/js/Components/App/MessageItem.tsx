@@ -1,7 +1,7 @@
 import { ChatMessage, MessageAttachment } from '@/types';
 import { formatChatTime } from '@/utils/chatTime.util';
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import MessageAttachments from './MessageAttachments';
 import MessageOptionsDropdown from './MessageOptionsDropdown';
@@ -17,6 +17,31 @@ type Props = {
 };
 
 const DELETED_USER = { name: 'Deleted User', avatar_url: null };
+
+const markdownComponents: Components = {
+    pre: ({ className, children, ...props }) => (
+        <pre
+            className={`whitespace-pre-wrap break-words overflow-x-hidden ${className ?? ''}`}
+            style={{
+                whiteSpace: 'pre-wrap',
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+            }}
+            {...props}
+        >
+            {children}
+        </pre>
+    ),
+    code: ({ className, children, ...props }) => (
+        <code
+            className={`break-words ${className ?? ''}`}
+            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+            {...props}
+        >
+            {children}
+        </code>
+    ),
+};
 
 const MessageItem = ({ message, isOwnMessage, onAttachmentClick }: Props) => {
     const sender = message.sender ?? DELETED_USER;
@@ -61,8 +86,11 @@ const MessageItem = ({ message, isOwnMessage, onAttachmentClick }: Props) => {
                 )}
 
                 <div className="chat-message flex flex-col gap-1.5">
-                    <div className="chat-message-content prose-sm dark:prose-invert prose max-w-none text-current">
-                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                    <div className="chat-message-content prose prose-sm max-w-none break-words text-current dark:prose-invert">
+                        <ReactMarkdown
+                            rehypePlugins={[rehypeSanitize]}
+                            components={markdownComponents}
+                        >
                             {message.content ?? ''}
                         </ReactMarkdown>
                     </div>
