@@ -12,7 +12,7 @@ class StoreMessageRequest extends FormRequest
     {
         $channel = $this->route('channel');
 
-        if (! $channel || ! $this->user()) {
+        if (!$channel || !$this->user()) {
             return false;
         }
 
@@ -29,7 +29,7 @@ class StoreMessageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'content' => ['nullable', 'required_without:attachments', 'string', 'max:1000'],
+            'content' => ['nullable', 'required_without:attachments', 'string', 'max:10000'],
             'parent_id' => ['nullable', 'integer', Rule::exists('messages', 'id')],
             'attachments' => ['nullable', 'array', 'required_without:content', 'max:10'],
             'attachments.*' => ['file', 'max:1024000'],

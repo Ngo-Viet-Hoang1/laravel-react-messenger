@@ -9,10 +9,17 @@ import {
     PaperClipIcon,
     PhotoIcon,
 } from '@heroicons/react/24/outline';
-import { type ChangeEvent, useRef, useState } from 'react';
+import React, {
+    type ChangeEvent,
+    Suspense,
+    useCallback,
+    useRef,
+    useState,
+} from 'react';
 import AttachedItemList from './AttachedItemList';
-import AudioRecorder from './AudioRecorder';
 import NewMessageInput from './NewMessageInput';
+
+const AudioRecorder = React.lazy(() => import('./AudioRecorder'));
 
 type Props = {
     channel: ChatItem | null;
@@ -64,6 +71,10 @@ const MessageInput = ({ channel = null }: Props) => {
     };
 
     const handleAudioFileReady = (file: File) => addFiles([file]);
+
+    const handleEmojiSelect = useCallback((emoji: string) => {
+        setMessage((prev) => prev + emoji);
+    }, []);
 
     return (
         <div className="flex w-full flex-col gap-2 px-1 py-2 sm:px-2">
@@ -119,10 +130,12 @@ const MessageInput = ({ channel = null }: Props) => {
                         />
                     </button>
 
-                    <AudioRecorder
-                        onFileReady={handleAudioFileReady}
-                        onError={showError}
-                    />
+                    <Suspense fallback={null}>
+                        <AudioRecorder
+                            onFileReady={handleAudioFileReady}
+                            onError={showError}
+                        />
+                    </Suspense>
                 </div>
 
                 <div className="relative min-w-0 flex-1">
@@ -139,9 +152,7 @@ const MessageInput = ({ channel = null }: Props) => {
                     <div className="absolute right-2 top-1/2 -translate-y-1/2">
                         <EmojiPickerPopover
                             disabled={!channel || sending}
-                            onSelect={(emoji: string) => {
-                                setMessage((prev) => prev + emoji);
-                            }}
+                            onSelect={handleEmojiSelect}
                         />
                     </div>
                 </div>

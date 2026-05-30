@@ -1,8 +1,11 @@
 import { useTheme } from '@/hooks/useTheme';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { FaceSmileIcon } from '@heroicons/react/24/outline';
-import EmojiPicker, { Theme } from 'emoji-picker-react';
-import { useMemo } from 'react';
+import { Theme } from 'emoji-picker-react';
+import React, { Suspense, useMemo } from 'react';
+
+const loadEmojiPicker = () => import('emoji-picker-react');
+const LazyEmojiPicker = React.lazy(loadEmojiPicker);
 
 type Props = {
     disabled?: boolean;
@@ -33,6 +36,7 @@ export default function EmojiPickerPopover({
                     <PopoverButton
                         type="button"
                         disabled={disabled}
+                        onMouseEnter={loadEmojiPicker}
                         className={triggerClassName}
                     >
                         <FaceSmileIcon className="h-5 w-5" />
@@ -42,13 +46,15 @@ export default function EmojiPickerPopover({
                         anchor="top end"
                         className="z-50 mb-2 w-[22rem] max-w-[calc(100vw-1rem)] origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10 focus:outline-none dark:border-slate-700 dark:bg-slate-900"
                     >
-                        <EmojiPicker
-                            theme={pickerTheme}
-                            onEmojiClick={(emojiData) => {
-                                onSelect(emojiData.emoji);
-                                close();
-                            }}
-                        />
+                        <Suspense fallback={<div className="h-[320px]" />}>
+                            <LazyEmojiPicker
+                                theme={pickerTheme}
+                                onEmojiClick={(emojiData) => {
+                                    onSelect(emojiData.emoji);
+                                    close();
+                                }}
+                            />
+                        </Suspense>
                     </PopoverPanel>
                 </>
             )}
