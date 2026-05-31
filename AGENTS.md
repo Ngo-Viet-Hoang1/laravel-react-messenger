@@ -12,13 +12,12 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - php - 8.3
 - inertiajs/inertia-laravel (INERTIA_LARAVEL) - v2
 - laravel/framework (LARAVEL) - v13
-- laravel/prompts (PROMPTS) - v0
 - laravel/reverb (REVERB) - v1
 - laravel/sanctum (SANCTUM) - v4
+- laravel/tinker (TINKER) - v3
 - tightenco/ziggy (ZIGGY) - v2
 - laravel/boost (BOOST) - v2
 - laravel/breeze (BREEZE) - v2
-- laravel/mcp (MCP) - v0
 - laravel/pail (PAIL) - v1
 - laravel/pint (PINT) - v1
 - phpunit/phpunit (PHPUNIT) - v12
@@ -39,6 +38,13 @@ This project has domain-specific skills available. You MUST activate the relevan
 - `echo-react-development` — Develops real-time broadcasting in React applications with Laravel Echo. Activates when configuring Echo in React (configureEcho); using hooks (useEcho, useEchoPublic, useEchoPresence, useEchoModel, useEchoNotification, useConnectionStatus); listening for broadcast events in React components; implementing client events (whisper) in React; or when the user mentions Echo with React, real-time React hooks, or broadcasting in React components.
 - `echo-development` — Develops real-time broadcasting with Laravel Echo. Activates when setting up broadcasting (Reverb, Pusher, Ably); creating ShouldBroadcast events; defining broadcast channels (public, private, presence, encrypted); authorizing channels; configuring Echo; listening for events; implementing client events (whisper); setting up model broadcasting; broadcasting notifications; or when the user mentions broadcasting, Echo, WebSockets, real-time events, Reverb, or presence channels.
 - `tailwindcss-development` — Always invoke when the user's message includes 'tailwind' in any form. Also invoke for: building responsive grid layouts (multi-column card grids, product grids), flex/grid page structures (dashboards with sidebars, fixed topbars, mobile-toggle navs), styling UI components (cards, tables, navbars, pricing sections, forms, inputs, badges), adding dark mode variants, fixing spacing or typography, and Tailwind v3/v4 work. The core use case: writing or fixing Tailwind utility classes in HTML templates (Blade, JSX, Vue). Skip for backend PHP logic, database queries, API routes, JavaScript with no HTML/CSS component, CSS file audits, build tool configuration, and vanilla CSS.
+- `deploy-to-vercel` — Use for deploying the application or generating a preview deployment via Vercel.
+- `vercel-composition-patterns` — Apply when refactoring components with boolean prop proliferation, building flexible component libraries, or designing reusable APIs using compound components, render props, or context providers.
+- `vercel-react-best-practices` — Apply when writing, reviewing, or refactoring React/Next.js code to ensure optimal performance patterns.
+- `web-design-guidelines` — Use to review UI code against Web Interface Guidelines compliance, accessibility, and UX best practices.
+
+**Agent Skill Configuration (`boost.json`)**:
+- The `boost.json` file in the project root configures which domain-specific skills are enabled for AI engines (e.g. `laravel-best-practices`, `inertia-react-development`, etc.). Ensure any new or custom skills are listed in `boost.json` to allow correct loading by agents.
 
 ## Conventions
 
@@ -46,7 +52,10 @@ This project has domain-specific skills available. You MUST activate the relevan
 - Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
 - Check for existing components to reuse before writing a new one.
 - Frontend: Use TypeScript strict mode (`strict: true`). Write explicit type annotations for function parameters and return types. Example: `const toggleGroup = (groupId: number): void => {...}`.
-- Backend: Use Form Requests for validation (e.g., `StoreMessageRequest`, `UpdateGroupRequest`). Use API Resources for data transformation (e.g., `UserResource`, `MessageResource`).
+- Backend: Use Form Requests for validation (e.g., `StoreMessageRequest`, `UpdateChannelRequest`). Use API Resources for data transformation (e.g., `UserResource`, `MessageResource`).
+- Model serialization: Do not write custom serialization methods like `toConversationArray` or `toArray` directly on Eloquent models for frontend responses; always use API Resources.
+- RESTful nested routing: Nest subresources logically under channels (e.g., `/channels/{channel}/messages`, `/channels/{channel}/members`). Avoid flat endpoint names.
+- Two-Tier API Resources: Use `ChannelResource` for the lightweight sidebar channel listings and `ChannelDetailResource` (which extends `ChannelResource`) for active, opened channels.
 - Use Inertia page names that map to file paths under `resources/js/Pages`.
 - Use the `@/` alias for imports from `resources/js` (configured in `tsconfig.json`).
 - Keep auth-protected routes inside middleware groups and preserve route names used by frontend `route()` calls.
@@ -56,26 +65,47 @@ This project has domain-specific skills available. You MUST activate the relevan
 ## Frontend State & Broadcasting
 
 - Real-time messaging uses an **EventBus pattern** (`EventBus.tsx`, `EventBusProvider`) for cross-component event emission. Use `useEventBus()` to access `emit()` and `on()` methods for app-level events.
-- **Echo/Reverb hooks** in `resources/js/hooks/` manage real-time subscriptions:
-    - `useConversationSockets`: Subscribes to message channels (`message.user.*`, `message.group.*`) and broadcasts from private channels; emits `message.created` and `notification.new-message` events.
+- **EventBus Events** (defined in `AppEventMap` in `resources/js/types/events.d.ts`):
+    - `message.created`: Fired when a message is created (payload: `ChatMessage`).
+    - `message.deleted`: Fired when a message is deleted (payload: `MessageDeletedEvent` `{message: ChatMessage, newLastMessage: ChatMessage | null}`).
+    - `channel.deleted`: Fired when a channel is deleted (payload: `ChannelDeletedEvent` `{id: number, name: string}`).
+    - `toast.show`: Triggers a toast notification with the given message (payload: `string`).
+- **Echo/Reverb hooks** in `resources/js/hooks/` manage real-time subscriptions and app state:
+    - `useChannelSockets`: Subscribes to message channels (`message.channel.{channelId}`) and user channels (`user.{userId}`); emits `message.created` on incoming `MessageCreated` events and `channel.deleted` on `ChannelDeleted` events.
+    - `useChannels`: Manages sidebar channel lists, last message updates, and sidebar metadata when `ChannelUpdated` or message events are received.
+    - `useMessages`: Manages message lists, appends new messages, and handles deletions.
     - `useSendMessage`: Handles message creation via API and UI feedback.
     - `useAttachments`: Manages file uploads (max 10 files, 1MB each per `StoreMessageRequest`).
     - `useErrorMessage`: Displays error feedback to users.
     - `useTheme`: Manages UI theme state.
+    - `useOnlinePresence`: Subscribes to the public `online` Presence channel to track online statuses of peer users.
+    - `useInfiniteScroll`: Utilizes `IntersectionObserver` to trigger cursor pagination for infinite scrolling through older messages.
+    - `useChatScroll`: Handles scroll position management (including auto-scroll and stick-to-bottom) for reverse-scroll layouts (`flex-col-reverse`).
+    - `useAttachmentsPreviewModal`: Manages open/close states and currently selected media for file/image preview modals.
 - **Broadcast Channels** (defined in `routes/channels.php`):
-    - `online`: Public channel for tracking online users.
-    - `message.user.{userId1}-{userId2}`: Private channel for 1:1 messaging between two users.
-    - `message.group.{groupId}`: Private channel for group messaging (user must be member).
-    - `user.{userId}`: Private channel for user-specific notifications (e.g., `GroupDeleted` events).
+    - `online`: Public Presence channel for tracking online users.
+    - `message.channel.{channelId}`: Private channel for message broadcasting, authorized if the user is a member of that channel.
+    - `user.{userId}`: Private channel for user-specific notifications (e.g. `ChannelDeleted`, `ChannelUpdated` updates).
+- **Real-Time Events**:
+    - `MessageCreated`: Broadcasts on `message.channel.{channelId}` (payload: `{message: MessageResource}`) to notify others of new messages.
+    - `ChannelUpdated`: Broadcasts on `user.{userId}` to all channel members to update their sidebar list with the latest metadata and members (payload: `{channel: ...}`).
+    - `ChannelDeleted`: Broadcasts on `user.{userId}` when a group is deleted (payload: `{id, name}`).
+    - Message Deletion: Triggered purely client-side via EventBus event `'message.deleted'` after calling `DELETE /messages/{message}`.
 - Realtime/broadcasting plumbing exists, but channel/event wiring may be incomplete; verify end-to-end flow before claiming realtime behavior works.
 - Always unsubscribe from channels on component unmount to prevent memory leaks.
 
 ## Frontend UI Libraries
 
 - **daisyui** (v4.12+) provides pre-built Tailwind components; use classes like `btn`, `card`, `input` instead of creating primitives.
-- **@headlessui/react** (v2.2+) for unstyled, accessible components (dropdowns, dialogs, menus).
+- **@headlessui/react** (v2.2+) for unstyled, accessible components (dropdowns, dialogs, menus, transition-wrapped elements). Used widely in `Dropdown`, `Modal`, etc.
+- **@heroicons/react** (v2.2+) for SVG icons. Use it instead of custom SVGs when possible.
 - **emoji-picker-react** for emoji selection in message composer.
 - **react-markdown** with **rehype-sanitize** for rendering markdown in messages safely.
+- **uuid** for client-side unique identifier generation.
+- **Modal Context Utility (`createModalContext.tsx` in `resources/js/utils/`)**: A generic context factory used to build type-safe, lazy-loaded modal state contexts, eliminating layout boilerplate for modally-driven views.
+- **App Modals & Dialogs**:
+    - `CreateOrEditGroupModal`: Accessible group creation and editing dialog under `resources/js/Components/App/`.
+    - `CreateOrEditUserModal`: Accessible user management modal for administration under `resources/js/Components/App/`.
 - Prefer existing components in `resources/js/Components/` over creating new UI primitives.
 
 ## Verification Scripts
@@ -89,15 +119,28 @@ This project has domain-specific skills available. You MUST activate the relevan
 
 - **Form Requests** validate and authorize incoming data. Create with `php artisan make:request StoreMessageRequest --no-interaction`. Define `rules()` method with all validation constraints (e.g., `required_without`, `prohibited_with`, `Rule::exists()`, `Rule::notIn()`). Use the `authorize()` method for policy checks.
 - **API Resources** transform models for JSON responses. Create with `php artisan make:resource MessageResource --no-interaction`. Use in controllers: `return MessageResource::collection($messages)`. Leverage resource wrapping and conditional attributes for fine-grained API control.
-- **Observers** handle model events. The `MessageObserver` listens for model lifecycle hooks (e.g., `created`, `deleting`) to trigger broadcasts or jobs.
+- **Eloquent Scopes**:
+    - `Message` model: Defines `scopeForChannel` (fetches messages for a channel) and `scopeBeforeCursor` (handles cursor pagination queries based on timestamps and message IDs).
+    - `MessageAttachment` model: Defines `scopeDeleteAllForChannel` (cleans up channel attachment records in bulk).
+- **Observers & Model Lifecycle**: The `MessageObserver` manages database consistency and cleanup on model operations:
+    - `created`: Performs a conditional atomic update on `channels.last_message_id` to handle concurrent inserts without race conditions.
+    - `deleting`: Cleans up and deletes attachment directories from storage before database records are deleted.
+    - `deleted`: Recomputes `last_message_id` for the channel if and only if the deleted message was the current last message.
+- **Asynchronous Deletion Jobs**: `DeleteChannelJob` handles background group channel deletion. It collects attachment directories, zeroes out `last_message_id` to avoid foreign key constraints, deletes database records, physically deletes attachment directories from storage, detaches members, deletes the channel, and dispatches a `ChannelDeleted` event to every channel member.
+- **Mailables**: The `UserCreated` mailable (`app/Mail/UserCreated.php`) is sent automatically when an administrator creates a new user, notifying them of their account creation.
 
 ## Application Structure & Architecture
 
 - Stick to existing directory structure; don't create new base folders without approval.
 - Do not change the application's dependencies without approval.
-- Backend is Laravel 13 in `app/` with route entry points in `routes/web.php` and `routes/auth.php`.
+- Backend is Laravel 13 in `app/` with route entry points in `routes/web.php`, `routes/auth.php`, `routes/channels.php`, and `routes/console.php`. The `routes/console.php` registers an `inspire` command.
+- Backend routing utilizes `active` middleware alongside standard auth, and role-based actions (e.g., promote/demote/block) are protected by `admin` middleware.
 - Frontend is Inertia + React in `resources/js/` with pages resolved from `resources/js/Pages/**/*.tsx` in `resources/js/app.tsx`.
+- **Profile Edit Page**: The user profile management interface lives in `resources/js/Pages/Profile/Edit.tsx` and utilizes sub-components: `UpdateProfileInformationForm.tsx`, `UpdatePasswordForm.tsx`, and `DeleteUserForm.tsx`.
+- **Sidebar Loading Performance**: Eager loading is used to fetch channels in `HomeController@index` and `ChannelController@show`. In the frontend, selecting a channel does a partial reload via Inertia request options (e.g. updating the active channel state and reloading message data), which preserves the already loaded sidebar channels without re-fetching them from the server.
+- **Message Loading & Cursor Pagination**: `MessageController@index` supports loading older messages using cursor pagination. It queries messages with compound cursor parameters `before_id` and `before_at` to load pages smoothly and avoid duplicate/skipped messages.
 - Authentication baseline comes from Breeze-style controllers/pages; preserve middleware and named-route patterns.
+- Global and feature-specific UI states are managed via React Context providers in `resources/js/Contexts/` (e.g., `ConfirmProvider` in `ConfirmContext.tsx` for confirmations, and `ChannelModalProvider` in `ChannelModalContext.tsx` & `UserModalProvider` in `UserModalContext.tsx` for managing channel/user modals).
 - Real-time stack uses Reverb/Echo (`configureEcho` in `resources/js/app.tsx`).
 - `README.md` is mostly upstream Laravel boilerplate; prioritize repository files over README assumptions.
 
@@ -176,10 +219,12 @@ This project has domain-specific skills available. You MUST activate the relevan
 
 === tests rules ===
 
-# Test Enforcement
+## Test Enforcement
 
 - Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
 - Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test --compact` with a specific filename or filter.
+- **Known Issues / Gotchas**:
+    - `database/factories/GroupFactory.php` references `App\Models\Group` which does not exist in this application. The primary model representing both group and direct conversations is `App\Models\Channel`. Do not rely on `GroupFactory` for creating group channels; instead, use `ChannelFactory` with the appropriate state or attributes.
 
 === inertia-laravel/core rules ===
 
