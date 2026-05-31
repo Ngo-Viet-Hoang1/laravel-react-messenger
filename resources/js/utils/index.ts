@@ -1,5 +1,6 @@
 import type { AttachmentKind, AttachmentSource } from '@/types';
 import { ChatItem } from '@/types';
+import React from 'react';
 
 export const getChannelName = (channel: ChatItem): string =>
     `message.channel.${channel.id}`;
@@ -50,4 +51,20 @@ export const formatDuration = (totalSeconds: number) => {
 
 export const revokeBlobUrl = (url: string): void => {
     if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+};
+
+export const reactNodeToText = (node: React.ReactNode): string => {
+    if (typeof node === 'string') return node;
+    if (typeof node === 'number') return String(node);
+    if (!node) return '';
+    if (Array.isArray(node)) return node.map(reactNodeToText).join('');
+    if (React.isValidElement(node)) {
+        const el = node as React.ReactElement<{ children?: React.ReactNode }>;
+        return reactNodeToText(el.props.children);
+    }
+    return '';
+};
+
+export const cx = (...classes: (string | undefined | false)[]): string => {
+    return classes.filter(Boolean).join(' ');
 };

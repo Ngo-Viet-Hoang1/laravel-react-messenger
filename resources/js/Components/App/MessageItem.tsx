@@ -3,6 +3,7 @@ import { formatChatTime } from '@/utils/chatTime.util';
 import React from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import CodeBlock from './CodeBlock';
 import MessageAttachments from './MessageAttachments';
 import MessageOptionsDropdown from './MessageOptionsDropdown';
 import UserAvatar from './UserAvatar';
@@ -17,30 +18,29 @@ type Props = {
 };
 
 const DELETED_USER = { name: 'Deleted User', avatar_url: null };
+const REHYPE_PLUGINS = [rehypeSanitize];
 
 const markdownComponents: Components = {
-    pre: ({ className, children, ...props }) => (
-        <pre
-            className={`whitespace-pre-wrap break-words overflow-x-hidden ${className ?? ''}`}
-            style={{
-                whiteSpace: 'pre-wrap',
-                overflowWrap: 'anywhere',
-                wordBreak: 'break-word',
-            }}
-            {...props}
-        >
-            {children}
-        </pre>
-    ),
-    code: ({ className, children, ...props }) => (
-        <code
-            className={`break-words ${className ?? ''}`}
-            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
-            {...props}
-        >
-            {children}
-        </code>
-    ),
+    pre: ({ children }) => <>{children}</>,
+    code: ({ className, children, ...props }) => {
+        // react-markdown passes node — if parent is pre, it's a block
+        const isBlock =
+            !props.node?.position ||
+            props.node.data?.meta !== undefined ||
+            className?.startsWith('language-') ||
+            // heuristic: if children contain newlines it's a block
+            (typeof children === 'string' && children.includes('\n'));
+
+        if (isBlock) {
+            return <CodeBlock className={className}>{children}</CodeBlock>;
+        }
+
+        return (
+            <CodeBlock inline className={className}>
+                {children}
+            </CodeBlock>
+        );
+    },
 };
 
 const MessageItem = ({ message, isOwnMessage, onAttachmentClick }: Props) => {
@@ -86,9 +86,9 @@ const MessageItem = ({ message, isOwnMessage, onAttachmentClick }: Props) => {
                 )}
 
                 <div className="chat-message flex flex-col gap-1.5">
-                    <div className="chat-message-content prose prose-sm max-w-none break-words text-current dark:prose-invert">
+                    <div className="chat-message-content prose-sm dark:prose-invert prose max-w-none break-words text-current">
                         <ReactMarkdown
-                            rehypePlugins={[rehypeSanitize]}
+                            rehypePlugins={REHYPE_PLUGINS}
                             components={markdownComponents}
                         >
                             {message.content ?? ''}

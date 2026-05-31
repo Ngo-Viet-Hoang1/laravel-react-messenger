@@ -31,7 +31,7 @@ export default {
         styled: true,
         utils: true,
         prefix: '',
-        logs: true,
+        logs: process.env.NODE_ENV === 'development',
         themeRoot: ':root',
     },
 };
