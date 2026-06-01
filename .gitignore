@@ -1,8 +1,7 @@
 *.log
 .DS_Store
 .env
-.env.backup
-.env.production
+.env.*
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -22,3 +21,26 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# .NET Clean Architecture
+[bB]in/
+[oO]bj/
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.slnx.sqlite
+
+# Client FSD SPA
+node_modules/
+**/node_modules/
+client/node_modules/
+dist/
+**/dist/
+client/dist/
+*.tsbuildinfo
+**/*.tsbuildinfo
+.npm/
