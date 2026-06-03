@@ -3,6 +3,7 @@ import { useAttachments } from '@/hooks/useAttachments';
 import useDraftMessage from '@/hooks/useDraftMessages';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useSendMessage } from '@/hooks/useSendMessage';
+import useTypingIndicator from '@/hooks/useTypingIndicator';
 import { type ChatItem, type ChatMessage } from '@/types';
 import {
     HandThumbUpIcon,
@@ -10,6 +11,8 @@ import {
     PaperClipIcon,
     PhotoIcon,
 } from '@heroicons/react/24/outline';
+import { usePage } from '@inertiajs/react';
+import { PageProps } from '@/types';
 import React, { type ChangeEvent, Suspense, useCallback, useRef } from 'react';
 import AttachedItemList from './AttachedItemList';
 import NewMessageInput from './NewMessageInput';
@@ -32,6 +35,20 @@ const MessageInput = ({
         setValue: setMessage,
         clearDraft,
     } = useDraftMessage(channel?.id ?? null);
+
+    const page = usePage<PageProps>();
+    const currentUser = page.props.auth.user;
+
+    const channelName = channel ? `message.channel.${channel.id}` : '';
+    const { sendTyping } = useTypingIndicator(
+        {
+            channelName,
+            userId: String(currentUser.id),
+            userName: currentUser.name,
+            userAvatarUrl: currentUser.avatar_url ?? null,
+        },
+        { debounceMs: 800, expireMs: 2500, channelType: 'private' },
+    );
 
     const { error, showError } = useErrorMessage();
     const { attachments, addFiles, remove, clear } = useAttachments(showError);
@@ -177,6 +194,7 @@ const MessageInput = ({
                         onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
                             setMessage(e.target.value)
                         }
+                        onTyping={sendTyping}
                         onSend={handleSend}
                         placeholder="Write a message..."
                         disabled={!channel || sending}
