@@ -1,6 +1,6 @@
 import { useEventBus } from '@/EventBus';
 import { ChatItem, MessageCreatedEvent } from '@/types';
-import { ChannelDeletedEvent } from '@/types/events';
+import { ChannelDeletedEvent, ChannelReadUpdatedEvent } from '@/types/events';
 import { getChannelName } from '@/utils';
 import { echo } from '@laravel/echo-react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
@@ -17,6 +17,13 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
     const messageCreated = useCallback(
         (event: MessageCreatedEvent) => {
             emit('message.created', event.message);
+        },
+        [emit],
+    );
+
+    const channelReadUpdated = useCallback(
+        (event: ChannelReadUpdatedEvent) => {
+            emit('channel.read.updated', event);
         },
         [emit],
     );
@@ -58,12 +65,18 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
             )
             .listen('ChannelDeleted', ({ id, name }: ChannelDeletedEvent) => {
                 emit('channel.deleted', { id, name });
-            });
+            })
+            .listen(
+                'ChannelReadUpdated',
+                (event: ChannelReadUpdatedEvent) => {
+                    channelReadUpdated(event);
+                },
+            );
 
         return () => {
             e.leave(channelName);
         };
-    }, [emit, userId]);
+    }, [emit, userId, channelReadUpdated]);
 
     useEffect(() => {
         return () => {

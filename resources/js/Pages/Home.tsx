@@ -18,6 +18,7 @@ import {
 import { MessageDeletedEvent } from '@/types/events';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
+import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 
 type PageProps = {
@@ -73,6 +74,10 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
             const isOwnMessage = message.sender_id === myId;
             if (wasAdded && (isNearBottomRef.current || isOwnMessage)) {
                 requestAnimationFrame(() => scrollToBottom('smooth'));
+            }
+
+            if (!isOwnMessage) {
+                void axios.post(route('channels.read', selectedChannel.id));
             }
         },
         [myId, scrollToBottom, isNearBottomRef, selectedChannel, addMessage],

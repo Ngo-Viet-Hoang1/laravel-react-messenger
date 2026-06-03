@@ -9,7 +9,9 @@ import useChannels from '@/hooks/useChannels';
 import useChannelSockets from '@/hooks/useChannelSockets';
 import useOnlinePresence from '@/hooks/useOnlinePresence';
 import { ChatItem, ChatPageProps } from '@/types';
+import { ChannelReadUpdatedEvent } from '@/types/events';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
 import { router, usePage } from '@inertiajs/react';
 import { ReactNode, useEffect, useState } from 'react';
 
@@ -29,8 +31,9 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         sortedChannels,
         updateLastMessage,
         updateAfterMessageDeleted,
+        markChannelAsRead,
         removeChannel,
-    } = useChannels(channels, search);
+    } = useChannels(channels, search, selectedChannel?.id ?? null, Number(currentUser.id));
 
     const { isOnline } = useOnlinePresence();
 
@@ -46,11 +49,18 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const offCreated = on('message.created', updateLastMessage);
         const offDeleted = on('message.deleted', updateAfterMessageDeleted);
+        const offReadUpdated = on(
+            'channel.read.updated',
+            ({ channel_id, last_read_message_id }: ChannelReadUpdatedEvent) => {
+                markChannelAsRead(channel_id, last_read_message_id);
+            },
+        );
         return () => {
             offCreated();
             offDeleted();
+            offReadUpdated();
         };
-    }, [on, updateLastMessage, updateAfterMessageDeleted]);
+    }, [on, updateLastMessage, updateAfterMessageDeleted, markChannelAsRead]);
 
     useEffect(() => {
         const offDeleted = on('channel.deleted', ({ id, name }) => {
@@ -62,6 +72,27 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         });
         return offDeleted;
     }, [on, emit, selectedChannel?.id, removeChannel]);
+
+    useEffect(() => {
+        if (!selectedChannel) return;
+
+        const markAsRead = async (): Promise<void> => {
+            try {
+                const { data } = await axios.post(
+                    route('channels.read', selectedChannel.id),
+                );
+
+                markChannelAsRead(
+                    data.channel_id,
+                    data.last_read_message_id ?? null,
+                );
+            } catch {
+                // Ignore read-state sync failures; the UI will recover on next refresh.
+            }
+        };
+
+        void markAsRead();
+    }, [selectedChannel?.id, markChannelAsRead]);
 
     return (
         <div className="flex h-full min-h-0 w-full overflow-hidden">

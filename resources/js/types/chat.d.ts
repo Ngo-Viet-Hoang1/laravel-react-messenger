@@ -46,6 +46,8 @@ export type ChatItem = {
 
     last_message?: string | null;
     last_message_date?: string | null;
+    last_read_message_id?: number | null;
+    unread_count?: number;
 
     created_at?: string;
     updated_at?: string;
