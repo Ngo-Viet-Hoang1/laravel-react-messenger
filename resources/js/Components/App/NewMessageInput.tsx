@@ -5,6 +5,7 @@ type Props = {
     placeholder?: string;
     disabled?: boolean;
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+    onTyping?: () => void;
     onSend?: () => void;
 };
 
@@ -13,6 +14,7 @@ const NewMessageInput = ({
     placeholder,
     disabled,
     onChange,
+    onTyping,
     onSend,
 }: Props) => {
     const input = useRef<HTMLTextAreaElement>(null);
@@ -48,7 +50,10 @@ const NewMessageInput = ({
             disabled={disabled}
             rows={1}
             className="textarea textarea-bordered block max-h-40 min-h-[42px] w-full resize-none rounded-[22px] border-slate-300 bg-slate-50 py-2 pl-3 pr-11 leading-5 text-slate-800 transition-colors duration-150 placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-500 dark:focus:border-slate-500 dark:focus-visible:ring-slate-600"
-            onChange={onChange}
+            onChange={(e) => {
+                onTyping?.();
+                onChange(e);
+            }}
             onKeyDown={onInputKeyDown}
         />
     );
