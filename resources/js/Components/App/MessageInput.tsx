@@ -1,5 +1,6 @@
 import EmojiPickerPopover from '@/Components/App/EmojiPickerPopover';
 import { useAttachments } from '@/hooks/useAttachments';
+import useDraftMessage from '@/hooks/useDraftMessages';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useSendMessage } from '@/hooks/useSendMessage';
 import { type ChatItem, type ChatMessage } from '@/types';
@@ -9,13 +10,7 @@ import {
     PaperClipIcon,
     PhotoIcon,
 } from '@heroicons/react/24/outline';
-import React, {
-    type ChangeEvent,
-    Suspense,
-    useCallback,
-    useRef,
-    useState,
-} from 'react';
+import React, { type ChangeEvent, Suspense, useCallback, useRef } from 'react';
 import AttachedItemList from './AttachedItemList';
 import NewMessageInput from './NewMessageInput';
 
@@ -32,7 +27,11 @@ const MessageInput = ({
     replyTo = null,
     onCancelReply,
 }: Props) => {
-    const [message, setMessage] = useState('');
+    const {
+        value: message,
+        setValue: setMessage,
+        clearDraft,
+    } = useDraftMessage(channel?.id ?? null);
 
     const { error, showError } = useErrorMessage();
     const { attachments, addFiles, remove, clear } = useAttachments(showError);
@@ -54,7 +53,7 @@ const MessageInput = ({
             parentId: replyTo?.id ?? null,
             attachments,
             onSuccess: () => {
-                setMessage('');
+                clearDraft();
                 clear();
                 onCancelReply?.();
                 if (fileRef.current) fileRef.current.value = '';
@@ -81,9 +80,13 @@ const MessageInput = ({
 
     const handleAudioFileReady = (file: File) => addFiles([file]);
 
-    const handleEmojiSelect = useCallback((emoji: string) => {
-        setMessage((prev) => prev + emoji);
-    }, []);
+    const handleEmojiSelect = useCallback(
+        (emoji: string) => {
+            const newMessage = message + emoji;
+            setMessage(newMessage);
+        },
+        [message, setMessage],
+    );
 
     return (
         <div className="flex w-full flex-col gap-2 px-1 py-2 sm:px-2">
