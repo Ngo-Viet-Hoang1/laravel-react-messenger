@@ -7,12 +7,18 @@ type UseChannelsReturn = {
     sortedChannels: ChatItem[];
     updateLastMessage: (message: ChatMessage) => void;
     updateAfterMessageDeleted: (event: MessageDeletedEvent) => void;
+    markChannelAsRead: (
+        channelId: number,
+        lastReadMessageId?: number | null,
+    ) => void;
     removeChannel: (id: number) => void;
 };
 
 const useChannels = (
     initialChannels: ChatItem[],
     search: string,
+    currentUserId: number,
+    selectedChannelId?: number | null,
 ): UseChannelsReturn => {
     const [channelsMap, setChannelsMap] = useState<Record<number, ChatItem>>(
         () => Object.fromEntries(initialChannels.map((c) => [c.id, c])),
@@ -24,20 +30,31 @@ const useChannels = (
         );
     }, [initialChannels]);
 
-    const updateLastMessage = useCallback((message: ChatMessage) => {
-        setChannelsMap((prev) => {
-            const channel = prev[message.channel_id];
-            if (!channel) return prev;
-            return {
-                ...prev,
-                [message.channel_id]: {
-                    ...channel,
-                    last_message: message.content,
-                    last_message_date: message.created_at,
-                },
-            };
-        });
-    }, []);
+    const updateLastMessage = useCallback(
+        (message: ChatMessage) => {
+            setChannelsMap((prev) => {
+                const channel = prev[message.channel_id];
+                if (!channel) return prev;
+
+                const shouldIncrementUnread =
+                    message.sender_id !== currentUserId &&
+                    message.channel_id !== selectedChannelId;
+
+                return {
+                    ...prev,
+                    [message.channel_id]: {
+                        ...channel,
+                        last_message: message.content,
+                        last_message_date: message.created_at,
+                        unread_count: shouldIncrementUnread
+                            ? (channel.unread_count ?? 0) + 1
+                            : (channel.unread_count ?? 0),
+                    },
+                };
+            });
+        },
+        [currentUserId, selectedChannelId],
+    );
 
     const updateAfterMessageDeleted = useCallback(
         ({ message, newLastMessage }: MessageDeletedEvent) => {
@@ -65,6 +82,26 @@ const useChannels = (
         });
     }, []);
 
+    const markChannelAsRead = useCallback(
+        (channelId: number, lastReadMessageId?: number | null): void => {
+            setChannelsMap((prev) => {
+                const channel = prev[channelId];
+                if (!channel || (channel.unread_count ?? 0) === 0) return prev;
+
+                return {
+                    ...prev,
+                    [channelId]: {
+                        ...channel,
+                        unread_count: 0,
+                        last_message_id:
+                            lastReadMessageId ?? channel.last_message_id,
+                    },
+                };
+            });
+        },
+        [],
+    );
+
     const sortedChannels = useMemo(() => {
         return Object.values(channelsMap)
             .filter((c) => c.name?.toLocaleLowerCase().includes(search))
@@ -90,6 +127,7 @@ const useChannels = (
         sortedChannels,
         updateLastMessage,
         updateAfterMessageDeleted,
+        markChannelAsRead,
         removeChannel,
     };
 };

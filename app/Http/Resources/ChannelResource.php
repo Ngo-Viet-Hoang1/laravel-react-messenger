@@ -41,10 +41,14 @@ class ChannelResource extends JsonResource
 
             // last_message / last_message_date come from join-aliased columns in
             // getChannelsForUser(). Carbon::parse handles mixed string/Carbon values.
+            'last_message_id' => $this->last_message_id !== null
+                ? (int) $this->last_message_id
+                : null,
             'last_message' => $this->last_message ?? null,
             'last_message_date' => $this->last_message_date !== null
                 ? Carbon::parse($this->last_message_date)->toISOString()
                 : null,
+            'unread_count' => (int) ($this->unread_count ?? 0),
 
             'peer_user_id' => $isDirect ? $otherUser?->id : null,
             'peer_is_admin' => $isDirect ? (bool) $otherUser?->is_admin : null,

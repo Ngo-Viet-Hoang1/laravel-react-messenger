@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Repositories\Interfaces\IChannelRepo;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,55 +16,126 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        $driver = DB::getDriverName();
+
+        if ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = OFF');
+        }
+
+        DB::table('channel_members')->truncate();
+        DB::table('messages')->truncate();
+        DB::table('channels')->truncate();
+        DB::table('users')->truncate();
+
+        if ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = ON');
+        }
+
         $admin = User::factory()->create([
-            'name' => 'John Doe',
-            'email' => 'johndoe@example.com',
+            'name' => 'Avery Stone',
+            'email' => 'avery.stone@example.com',
             'password' => bcrypt('password'),
             'is_admin' => true,
         ]);
 
         $jane = User::factory()->create([
-            'name' => 'Jane Smith',
-            'email' => 'janesmith@example.com',
+            'name' => 'Maya Tran',
+            'email' => 'maya.tran@example.com',
             'password' => bcrypt('password'),
             'is_admin' => false,
         ]);
 
-        $randomUsers = User::factory(10)->create();
+        $randomUsers = User::factory(12)->create();
         $allUsers = collect([$admin, $jane])->concat($randomUsers);
 
-        for ($i = 0; $i < 5; $i++) {
-            $channel = Channel::factory()->create(['owner_id' => $admin->id]);
+        $groupNames = [
+            'Design Studio',
+            'Product Launch',
+            'Support Crew',
+            'Operations Hub',
+            'Weekend Plans',
+        ];
 
-            // Random subset of users + always include admin
-            $members = $allUsers->random(rand(2, 6))->pluck('id')->push($admin->id)->unique()->all();
+        foreach ($groupNames as $groupName) {
+            $channel = Channel::factory()->create([
+                'name' => $groupName,
+                'description' => fake()->sentence(),
+                'owner_id' => $admin->id,
+            ]);
+
+            $members = $allUsers
+                ->random(rand(4, 7))
+                ->pluck('id')
+                ->push($admin->id)
+                ->push($jane->id)
+                ->unique()
+                ->values()
+                ->all();
+
             $channel->members()->attach($members);
         }
 
-        $dmPairs = collect([[$admin->id, $jane->id]]);
-
-        for ($i = 0; $i < 5; $i++) {
-            $pair = $allUsers->random(2)->pluck('id')->sort()->values();
-            $dmPairs->push($pair->all());
-        }
+        $dmPairs = collect([
+            [$admin->id, $jane->id],
+            [$admin->id, $randomUsers[0]->id],
+            [$admin->id, $randomUsers[1]->id],
+            [$jane->id, $randomUsers[2]->id],
+            [$randomUsers[3]->id, $randomUsers[4]->id],
+        ]);
 
         $channelRepo = app(IChannelRepo::class);
         foreach ($dmPairs as $pair) {
             $channelRepo->findOrCreateDirect($pair[0], $pair[1]);
         }
 
-        // ── . Seed messages (without triggering Observer) ─────────────
-        // WithoutModelEvents prevents Observer from firing during seed
-        // We manually update last_message_id after all messages are created
-        Message::factory(200)->create();
+        Channel::query()
+            ->with('members')
+            ->get()
+            ->each(function (Channel $channel): void {
+                $memberIds = $channel->members->pluck('id')->all();
+                $messageCount = fake()->numberBetween(8, 24);
 
-        // ── . Update last_message_id for each channel ─────────────────
-        Channel::all()->each(function (Channel $channel) {
-            $lastMsg = Message::where('channel_id', $channel->id)->latest()->first();
+                for ($i = 0; $i < $messageCount; $i++) {
+                    $senderId = fake()->randomElement($memberIds);
 
-            if ($lastMsg) {
-                $channel->update(['last_message_id' => $lastMsg->id]);
-            }
-        });
+                    Message::factory()->create([
+                        'channel_id' => $channel->id,
+                        'sender_id' => $senderId,
+                        'content' => fake()->sentence(fake()->numberBetween(4, 14)),
+                        'created_at' => now()->subDays(fake()->numberBetween(0, 45))->subMinutes($i),
+                    ]);
+                }
+
+                $lastMessage = Message::where('channel_id', $channel->id)
+                    ->orderByDesc('id')
+                    ->first();
+
+                if ($lastMessage !== null) {
+                    $channel->update([
+                        'last_message_id' => $lastMessage->id,
+                    ]);
+                }
+
+                $channel->members->each(function (User $member) use ($channel): void {
+                    $lastReadMessage = Message::where('channel_id', $channel->id)
+                        ->where('id', '<=', $channel->last_message_id)
+                        ->where('sender_id', '!=', $member->id)
+                        ->inRandomOrder()
+                        ->first();
+
+                    $channel->members()->updateExistingPivot($member->id, [
+                        'last_read_message_id' => $lastReadMessage?->id,
+                    ]);
+                });
+            });
+
+        $firstChannel = Channel::query()->first();
+        if ($firstChannel !== null) {
+            $firstChannel->markAsReadFor($admin);
+        }
     }
 }

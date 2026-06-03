@@ -8,10 +8,11 @@ import { useEventBus } from '@/EventBus';
 import useChannels from '@/hooks/useChannels';
 import useChannelSockets from '@/hooks/useChannelSockets';
 import useOnlinePresence from '@/hooks/useOnlinePresence';
-import { ChatItem, ChatPageProps } from '@/types';
+import { ChatItem, ChatMessage, ChatPageProps } from '@/types';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
-import { ReactNode, useEffect, useState } from 'react';
+import axios from 'axios';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 
 const EMPTY_CHANNELS: ChatItem[] = [];
 
@@ -20,6 +21,11 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     const currentUser = pageProps.auth.user;
     const channels = pageProps.channels ?? EMPTY_CHANNELS;
     const selectedChannel = pageProps.selectedChannel ?? null;
+    const selectedChannelId = selectedChannel?.id ?? null;
+    const currentUserId = Number(currentUser.id);
+    const [activeChannelId, setActiveChannelId] = useState<number | null>(
+        selectedChannelId,
+    );
 
     const { on, emit } = useEventBus();
     const { openModal } = useChannelModal();
@@ -29,45 +35,80 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         sortedChannels,
         updateLastMessage,
         updateAfterMessageDeleted,
+        markChannelAsRead,
         removeChannel,
-    } = useChannels(channels, search);
+    } = useChannels(channels, search, currentUserId, activeChannelId);
 
     const { isOnline } = useOnlinePresence();
 
     useChannelSockets(channels, Number(currentUser.id));
 
+    useEffect(() => {
+        setActiveChannelId(selectedChannelId);
+    }, [selectedChannelId]);
+
     const handleChannelSelect = (channelId: number): void => {
+        setActiveChannelId(channelId);
         router.visit(route('channels.show', channelId), {
-            only: ['selectedChannel', 'messages'],
             preserveScroll: false,
         });
     };
 
+    const markReadOnServer = useCallback(
+        (channelId: number, lastReadMessageId?: number | null): void => {
+            markChannelAsRead(channelId, lastReadMessageId);
+            void axios.patch(route('channels.read', channelId), {
+                last_read_message_id: lastReadMessageId,
+            });
+        },
+        [markChannelAsRead],
+    );
+
     useEffect(() => {
-        const offCreated = on('message.created', updateLastMessage);
+        if (!selectedChannelId) return;
+
+        markReadOnServer(selectedChannelId, selectedChannel?.last_message_id);
+    }, [selectedChannelId, selectedChannel?.last_message_id, markReadOnServer]);
+
+    const handleMessageCreated = useCallback(
+        (message: ChatMessage): void => {
+            updateLastMessage(message);
+
+            if (
+                activeChannelId === message.channel_id &&
+                message.sender_id !== currentUserId
+            ) {
+                markReadOnServer(message.channel_id, message.id);
+            }
+        },
+        [activeChannelId, currentUserId, markReadOnServer, updateLastMessage],
+    );
+
+    useEffect(() => {
+        const offCreated = on('message.created', handleMessageCreated);
         const offDeleted = on('message.deleted', updateAfterMessageDeleted);
         return () => {
             offCreated();
             offDeleted();
         };
-    }, [on, updateLastMessage, updateAfterMessageDeleted]);
+    }, [on, handleMessageCreated, updateAfterMessageDeleted]);
 
     useEffect(() => {
         const offDeleted = on('channel.deleted', ({ id, name }) => {
             removeChannel(id);
             emit('toast.show', `The channel "${name}" has been deleted`);
-            if (selectedChannel?.id === id) {
+            if (selectedChannelId === id) {
                 router.visit(route('dashboard'));
             }
         });
         return offDeleted;
-    }, [on, emit, selectedChannel?.id, removeChannel]);
+    }, [on, emit, selectedChannelId, removeChannel]);
 
     return (
         <div className="flex h-full min-h-0 w-full overflow-hidden">
             {/* Sidebar */}
             <div
-                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-800 sm:flex sm:w-[280px] md:w-[320px] ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
+                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-800 sm:flex sm:w-[280px] md:w-[320px] ${selectedChannelId ? 'hidden sm:flex' : 'flex'}`}
             >
                 <div className="flex items-center justify-between px-3 py-2 text-lg font-semibold text-slate-800 dark:border-slate-700 dark:text-slate-100">
                     My channels
@@ -104,7 +145,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
                                     ? isOnline(c.peer_user_id)
                                     : false
                             }
-                            isSelected={selectedChannel?.id === c.id}
+                            isSelected={selectedChannelId === c.id}
                             canManage={currentUser.is_admin}
                             onSelect={handleChannelSelect}
                         />
@@ -114,7 +155,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
 
             {/* Content area */}
             <div
-                className={`min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800 xs:m-2 xs:shadow-sm ${selectedChannel ? 'flex' : 'hidden sm:flex'}`}
+                className={`min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800 xs:m-2 xs:shadow-sm ${selectedChannelId ? 'flex' : 'hidden sm:flex'}`}
             >
                 <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
             </div>

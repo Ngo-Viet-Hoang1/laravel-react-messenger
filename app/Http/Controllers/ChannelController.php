@@ -80,6 +80,22 @@ class ChannelController extends Controller
         return response()->json(UserResource::collection($members));
     }
 
+    public function markAsRead(Channel $channel): JsonResponse
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $user?->channels()->whereKey($channel->id)->exists(),
+            403,
+        );
+
+        $channel->markAsReadFor($user);
+
+        return response()->json([
+            'last_read_message_id' => $channel->last_message_id,
+        ]);
+    }
+
     public function update(UpdateChannelRequest $request, Channel $channel): RedirectResponse
     {
         abort_if($channel->type === 'direct', 403, 'Cannot edit a direct message channel.');
