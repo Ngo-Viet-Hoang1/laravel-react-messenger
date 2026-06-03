@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react';
 type SendArgs = {
     channel: ChatItem | null;
     content: string;
+    parentId?: number | null;
     attachments: AttachedItem[];
     onSuccess?: () => void;
 };
@@ -16,7 +17,13 @@ export const useSendMessage = (onError: (msg: string) => void) => {
     const [progress, setProgress] = useState(0);
 
     const send = useCallback(
-        async ({ channel, content, attachments, onSuccess }: SendArgs) => {
+        async ({
+            channel,
+            content,
+            parentId,
+            attachments,
+            onSuccess,
+        }: SendArgs) => {
             if (!channel) {
                 onError('Please select a channel first');
                 return;
@@ -26,6 +33,10 @@ export const useSendMessage = (onError: (msg: string) => void) => {
 
             const formData = new FormData();
             formData.append('content', content);
+
+            if (parentId) {
+                formData.append('parent_id', String(parentId));
+            }
 
             attachments.forEach((item) => {
                 formData.append('attachments[]', item.file);

@@ -1,10 +1,20 @@
 import { useEventBus } from '@/EventBus';
 import { ChatMessage } from '@/types';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
-import { EllipsisHorizontalIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+    ArrowUturnLeftIcon,
+    EllipsisHorizontalIcon,
+    TrashIcon,
+} from '@heroicons/react/24/outline';
 import axios from 'axios';
 
-const MessageOptionsDropdown = ({ message }: { message: ChatMessage }) => {
+type Props = {
+    message: ChatMessage;
+    onReply?: (message: ChatMessage) => void;
+    isOwnMessage?: boolean;
+};
+
+const MessageOptionsDropdown = ({ message, onReply, isOwnMessage }: Props) => {
     const { emit } = useEventBus();
 
     const handleDeleteMessage = async () => {
@@ -39,13 +49,26 @@ const MessageOptionsDropdown = ({ message }: { message: ChatMessage }) => {
                 <MenuItem>
                     <button
                         type="button"
-                        onClick={handleDeleteMessage}
-                        className="group flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors data-[focus]:bg-red-50 data-[focus]:text-red-600 dark:text-slate-200 dark:data-[focus]:bg-red-500/10 dark:data-[focus]:text-red-400"
+                        onClick={() => onReply?.(message)}
+                        className="group flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors data-[focus]:bg-slate-100 data-[focus]:text-slate-900 dark:text-slate-200 dark:data-[focus]:bg-slate-700 dark:data-[focus]:text-white"
                     >
-                        <TrashIcon className="mr-2.5 h-4 w-4" />
-                        Delete Message
+                        <ArrowUturnLeftIcon className="mr-2.5 h-4 w-4" />
+                        Reply
                     </button>
                 </MenuItem>
+
+                {isOwnMessage ? (
+                    <MenuItem>
+                        <button
+                            type="button"
+                            onClick={handleDeleteMessage}
+                            className="group flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors data-[focus]:bg-red-50 data-[focus]:text-red-600 dark:text-slate-200 dark:data-[focus]:bg-red-500/10 dark:data-[focus]:text-red-400"
+                        >
+                            <TrashIcon className="mr-2.5 h-4 w-4" />
+                            Delete Message
+                        </button>
+                    </MenuItem>
+                ) : null}
             </MenuItems>
         </Menu>
     );

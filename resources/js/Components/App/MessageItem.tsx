@@ -11,6 +11,7 @@ import UserAvatar from './UserAvatar';
 type Props = {
     message: ChatMessage;
     isOwnMessage?: boolean;
+    onReply?: (message: ChatMessage) => void;
     onAttachmentClick?: (
         attachments: MessageAttachment[],
         index: number,
@@ -43,10 +44,16 @@ const markdownComponents: Components = {
     },
 };
 
-const MessageItem = ({ message, isOwnMessage, onAttachmentClick }: Props) => {
+const MessageItem = ({
+    message,
+    isOwnMessage,
+    onReply,
+    onAttachmentClick,
+}: Props) => {
     const sender = message.sender ?? DELETED_USER;
     const senderName = sender.name;
     const formattedTime = formatChatTime(message.created_at);
+    const parentSenderName = message.parent?.sender?.name ?? 'Deleted User';
 
     return (
         <div
@@ -75,17 +82,35 @@ const MessageItem = ({ message, isOwnMessage, onAttachmentClick }: Props) => {
             <div
                 className={`chat-bubble relative rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[70%] ${
                     isOwnMessage
-                        ? 'chat-bubble-info text-white'
+                        ? 'chat-bubble-success text-white'
                         : 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100'
                 }`}
             >
-                {isOwnMessage && (
-                    <div className="absolute -left-10 top-1/2 -translate-y-1/2">
-                        <MessageOptionsDropdown message={message} />
-                    </div>
-                )}
+                <div
+                    className={`absolute top-1/2 -translate-y-1/2 ${
+                        isOwnMessage ? '-left-10' : '-right-10'
+                    }`}
+                >
+                    <MessageOptionsDropdown
+                        message={message}
+                        onReply={onReply}
+                        isOwnMessage={isOwnMessage}
+                    />
+                </div>
 
                 <div className="chat-message flex flex-col gap-1.5">
+                    {message.parent ? (
+                        <div className="rounded-xl border border-dashed border-slate-300/70 bg-white/50 px-3 py-2 text-xs text-slate-600 dark:border-slate-600/70 dark:bg-slate-800/50 dark:text-slate-300">
+                            <div className="mb-0.5 font-semibold">
+                                Replying to {parentSenderName}
+                            </div>
+                            <div className="line-clamp-2 break-words opacity-90">
+                                {message.parent.content?.trim() ||
+                                    'Deleted message'}
+                            </div>
+                        </div>
+                    ) : null}
+
                     <div className="chat-message-content prose-sm dark:prose-invert prose max-w-none break-words text-current">
                         <ReactMarkdown
                             rehypePlugins={REHYPE_PLUGINS}

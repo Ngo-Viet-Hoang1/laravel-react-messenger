@@ -2,7 +2,7 @@ import EmojiPickerPopover from '@/Components/App/EmojiPickerPopover';
 import { useAttachments } from '@/hooks/useAttachments';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useSendMessage } from '@/hooks/useSendMessage';
-import { type ChatItem } from '@/types';
+import { type ChatItem, type ChatMessage } from '@/types';
 import {
     HandThumbUpIcon,
     PaperAirplaneIcon,
@@ -23,9 +23,15 @@ const AudioRecorder = React.lazy(() => import('./AudioRecorder'));
 
 type Props = {
     channel: ChatItem | null;
+    replyTo?: ChatMessage | null;
+    onCancelReply?: () => void;
 };
 
-const MessageInput = ({ channel = null }: Props) => {
+const MessageInput = ({
+    channel = null,
+    replyTo = null,
+    onCancelReply,
+}: Props) => {
     const [message, setMessage] = useState('');
 
     const { error, showError } = useErrorMessage();
@@ -45,10 +51,12 @@ const MessageInput = ({ channel = null }: Props) => {
         send({
             channel,
             content: message.trim(),
+            parentId: replyTo?.id ?? null,
             attachments,
             onSuccess: () => {
                 setMessage('');
                 clear();
+                onCancelReply?.();
                 if (fileRef.current) fileRef.current.value = '';
                 if (imageRef.current) imageRef.current.value = '';
             },
@@ -60,6 +68,7 @@ const MessageInput = ({ channel = null }: Props) => {
         send({
             channel,
             content: '👍',
+            parentId: replyTo?.id ?? null,
             attachments: [],
         });
     };
@@ -88,6 +97,27 @@ const MessageInput = ({ channel = null }: Props) => {
 
             {attachments.length > 0 ? (
                 <AttachedItemList items={attachments} onRemove={remove} />
+            ) : null}
+
+            {replyTo ? (
+                <div className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    <div className="min-w-0">
+                        <div className="text-xs font-semibold uppercase tracking-wide opacity-70">
+                            Replying to {replyTo.sender.name}
+                        </div>
+                        <div className="mt-0.5 line-clamp-2 break-words">
+                            {replyTo.content?.trim() || 'Deleted message'}
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={onCancelReply}
+                        className="rounded-full px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+                    >
+                        Cancel
+                    </button>
+                </div>
             ) : null}
 
             <div className="flex w-full items-end gap-1.5 sm:gap-2">

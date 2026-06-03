@@ -36,4 +36,36 @@ class MessageStoreTest extends TestCase
         $this->assertNotNull($message);
         $this->assertModelExists($message);
     }
+
+    public function test_store_message_supports_reply_parent_id_within_same_channel(): void
+    {
+        $sender = User::factory()->create();
+        $receiver = User::factory()->create();
+
+        $channel = Channel::findOrCreateDirect($sender->id, $receiver->id);
+
+        $parentMessage = Message::create([
+            'channel_id' => $channel->id,
+            'sender_id' => $receiver->id,
+            'content' => 'Parent message',
+        ]);
+
+        $response = $this->actingAs($sender)
+            ->post(route('channels.messages.store', $channel), [
+                'content' => 'Reply message',
+                'parent_id' => $parentMessage->id,
+            ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('parent_id', $parentMessage->id);
+
+        $message = Message::query()
+            ->where('channel_id', $channel->id)
+            ->where('sender_id', $sender->id)
+            ->where('content', 'Reply message')
+            ->first();
+
+        $this->assertNotNull($message);
+        $this->assertSame($parentMessage->id, $message->parent_id);
+    }
 }

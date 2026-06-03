@@ -18,7 +18,7 @@ import {
 import { MessageDeletedEvent } from '@/types/events';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type PageProps = {
     selectedChannel?: ChatItem | null;
@@ -29,6 +29,7 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     const currentUser = usePage<AppPageProps>().props.auth.user;
     const myId = Number(currentUser.id);
     const { on } = useEventBus();
+    const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
 
     const {
         chatMessages,
@@ -59,6 +60,10 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         [selectedChannel?.id, scrollToBottom],
     );
 
+    useEffect(() => {
+        setReplyTo(null);
+    }, [selectedChannel?.id]);
+
     const handleMessageCreated = useCallback(
         (message: ChatMessage) => {
             if (!selectedChannel || message.channel_id !== selectedChannel.id)
@@ -81,6 +86,10 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         },
         [selectedChannel, removeMessage],
     );
+
+    const handleReply = useCallback((message: ChatMessage) => {
+        setReplyTo(message);
+    }, []);
 
     useEffect(() => {
         const offCreated = on('message.created', handleMessageCreated);
@@ -122,6 +131,7 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                                         isOwnMessage={
                                             message.sender_id === myId
                                         }
+                                        onReply={handleReply}
                                         onAttachmentClick={open}
                                     />
                                 </div>
@@ -148,7 +158,11 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                     )}
                 </div>
 
-                <MessageInput channel={selectedChannel} />
+                <MessageInput
+                    channel={selectedChannel}
+                    replyTo={replyTo}
+                    onCancelReply={() => setReplyTo(null)}
+                />
             </div>
 
             {preview?.attachments && (

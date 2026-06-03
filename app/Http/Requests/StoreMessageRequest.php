@@ -28,9 +28,16 @@ class StoreMessageRequest extends FormRequest
      */
     public function rules(): array
     {
+        $channel = $this->route('channel');
+        $channelId = $channel instanceof Channel ? $channel->id : (int) $channel;
+
         return [
             'content' => ['nullable', 'required_without:attachments', 'string', 'max:10000'],
-            'parent_id' => ['nullable', 'integer', Rule::exists('messages', 'id')],
+            'parent_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('messages', 'id')->where('channel_id', $channelId),
+            ],
             'attachments' => ['nullable', 'array', 'required_without:content', 'max:10'],
             'attachments.*' => ['file', 'max:1024000'],
         ];
