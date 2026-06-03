@@ -15,7 +15,6 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::get('/channels/{channel}', [ChannelController::class, 'show'])->name('channels.show');
     Route::put('/channels/{channel}', [ChannelController::class, 'update'])->name('channels.update');
     Route::delete('/channels/{channel}', [ChannelController::class, 'destroy'])->name('channels.destroy');
-    Route::patch('/channels/{channel}/read', [ChannelController::class, 'markAsRead'])->name('channels.read');
 
     Route::get('/channels/{channel}/members', [ChannelController::class, 'getMembers'])->name('channels.members');
     Route::post('/channels/direct/{user}', [ChannelController::class, 'findOrCreateDirect'])->name('channels.direct');
@@ -41,4 +40,4 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
