@@ -6,6 +6,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import CodeBlock from './CodeBlock';
 import MessageAttachments from './MessageAttachments';
 import MessageOptionsDropdown from './MessageOptionsDropdown';
+import ReplyPreview from './ReplyPreview';
 import UserAvatar from './UserAvatar';
 
 type Props = {
@@ -100,15 +101,14 @@ const MessageItem = ({
 
                 <div className="chat-message flex flex-col gap-1.5">
                     {message.parent ? (
-                        <div className="rounded-xl border border-dashed border-slate-300/70 bg-white/50 px-3 py-2 text-xs text-slate-600 dark:border-slate-600/70 dark:bg-slate-800/50 dark:text-slate-300">
-                            <div className="mb-0.5 font-semibold">
-                                Replying to {parentSenderName}
-                            </div>
-                            <div className="line-clamp-2 break-words opacity-90">
-                                {message.parent.content?.trim() ||
-                                    'Deleted message'}
-                            </div>
-                        </div>
+                        <ReplyPreview
+                            message={{
+                                content: message.parent.content,
+                                sender: { name: parentSenderName },
+                                attachments: message.parent.attachments,
+                            }}
+                            variant="message"
+                        />
                     ) : null}
 
                     <div className="chat-message-content prose-sm dark:prose-invert prose max-w-none break-words text-current">
