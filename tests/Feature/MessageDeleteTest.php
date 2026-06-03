@@ -2,22 +2,29 @@
 
 namespace Tests\Feature;
 
-use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use App\Repositories\Interfaces\IChannelRepo;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 
 class MessageDeleteTest extends TestCase
 {
     use LazilyRefreshDatabase;
+    private IChannelRepo $repo;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->repo = app(IChannelRepo::class);
+    }
 
     public function test_deleting_last_message_returns_previous_and_updates_channel(): void
     {
         $sender = User::factory()->create();
         $receiver = User::factory()->create();
 
-        $channel = Channel::findOrCreateDirect($sender->id, $receiver->id);
+        $channel = $this->repo->findOrCreateDirect($sender->id, $receiver->id);
 
         $firstMessage = Message::create([
             'channel_id' => $channel->id,
@@ -50,7 +57,7 @@ class MessageDeleteTest extends TestCase
         $sender = User::factory()->create();
         $other = User::factory()->create();
 
-        $channel = Channel::findOrCreateDirect($sender->id, $other->id);
+        $channel = $this->repo->findOrCreateDirect($sender->id, $other->id);
 
         $message = Message::create([
             'channel_id' => $channel->id,
@@ -69,7 +76,7 @@ class MessageDeleteTest extends TestCase
     {
         $sender = User::factory()->create();
         $receiver = User::factory()->create();
-        $channel = Channel::findOrCreateDirect($sender->id, $receiver->id);
+        $channel = $this->repo->findOrCreateDirect($sender->id, $receiver->id);
 
         $message = Message::create([
             'channel_id' => $channel->id,
