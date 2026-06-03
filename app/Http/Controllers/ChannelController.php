@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ChannelReadUpdated;
 use App\Http\Requests\StoreChannelRequest;
 use App\Http\Requests\UpdateChannelRequest;
 use App\Http\Resources\ChannelDetailResource;
@@ -43,6 +44,24 @@ class ChannelController extends Controller
         );
 
         return inertia('Home', compact('channels', 'selectedChannel', 'messages'));
+    }
+
+    public function markAsRead(Channel $channel): JsonResponse
+    {
+        $user = auth()->user();
+
+        abort_unless($user?->channels()->whereKey($channel->id)->exists(), 403);
+
+        $lastReadMessageId = $channel->last_message_id;
+
+        $this->channelService->markAsRead($channel, (int) $user->id, $lastReadMessageId ? (int) $lastReadMessageId : null);
+
+        broadcast(new ChannelReadUpdated($channel->id, (int) $user->id, $lastReadMessageId ? (int) $lastReadMessageId : null))->toOthers();
+
+        return response()->json([
+            'channel_id' => $channel->id,
+            'last_read_message_id' => $lastReadMessageId ? (int) $lastReadMessageId : null,
+        ]);
     }
 
     public function store(StoreChannelRequest $request): RedirectResponse
