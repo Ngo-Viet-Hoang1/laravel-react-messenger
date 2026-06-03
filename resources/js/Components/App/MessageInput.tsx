@@ -4,6 +4,7 @@ import useDraftMessage from '@/hooks/useDraftMessages';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useSendMessage } from '@/hooks/useSendMessage';
 import { type ChatItem, type ChatMessage } from '@/types';
+import { useUploads } from '@/Contexts/UploadContext';
 import {
     HandThumbUpIcon,
     PaperAirplaneIcon,
@@ -36,6 +37,7 @@ const MessageInput = ({
     const { error, showError } = useErrorMessage();
     const { attachments, addFiles, remove, clear } = useAttachments(showError);
     const { send, sending, progress } = useSendMessage(showError);
+    const { uploadFile } = useUploads();
 
     const fileRef = useRef<HTMLInputElement>(null);
     const imageRef = useRef<HTMLInputElement>(null);
@@ -46,6 +48,25 @@ const MessageInput = ({
 
     const handleSend = () => {
         if (sending || !canSend) return;
+
+        const hasLargeFile = attachments.some((item) => item.file.size > 5 * 1024 * 1024);
+
+        if (hasLargeFile && channel) {
+            attachments.forEach((item, index) => {
+                uploadFile(
+                    item.file,
+                    channel.id,
+                    index === 0 ? message.trim() : '',
+                    replyTo?.id ?? null
+                );
+            });
+            clearDraft();
+            clear();
+            onCancelReply?.();
+            if (fileRef.current) fileRef.current.value = '';
+            if (imageRef.current) imageRef.current.value = '';
+            return;
+        }
 
         send({
             channel,

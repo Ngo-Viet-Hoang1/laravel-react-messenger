@@ -21,6 +21,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
     Route::get('/channels/{channel}/messages', [MessageController::class, 'index'])->name('channels.messages');
     Route::post('/channels/{channel}/messages', [MessageController::class, 'store'])->name('channels.messages.store');
+    Route::post('/messages/upload-chunk', [MessageController::class, 'uploadChunk'])->name('messages.upload-chunk');
 
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
 
@@ -40,4 +41,4 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

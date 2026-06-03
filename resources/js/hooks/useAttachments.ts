@@ -3,8 +3,8 @@ import { getAttachmentKind, revokeBlobUrl } from '@/utils';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const MAX_FILES = 5;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
+const MAX_FILE_SIZE = 2048 * 1024 * 1024; // 2GB
+const MAX_TOTAL_SIZE = 5096 * 1024 * 1024; // 5GB
 
 export const useAttachments = (onError: (msg: string) => void) => {
     const [attachments, setAttachments] = useState<AttachedItem[]>([]);
@@ -24,7 +24,7 @@ export const useAttachments = (onError: (msg: string) => void) => {
 
                 for (const file of files) {
                     if (file.size > MAX_FILE_SIZE) {
-                        onError(`${file.name} exceeds 10MB`);
+                        onError(`${file.name} exceeds 2GB`);
                         continue;
                     }
 

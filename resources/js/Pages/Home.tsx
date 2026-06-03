@@ -2,6 +2,7 @@ import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';
 import ChannelHeader from '@/Components/App/ChannelHeader';
 import MessageInput from '@/Components/App/MessageInput';
 import MessageItem from '@/Components/App/MessageItem';
+import ActiveUploadsList from '@/Components/App/ActiveUploadsList';
 import { useEventBus } from '@/EventBus';
 import useAttachmentsPreviewModal from '@/hooks/useAttachmentsPreviewModal';
 import useChatScroll from '@/hooks/useChatScroll';
@@ -157,6 +158,8 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                         </>
                     )}
                 </div>
+
+                {selectedChannel && <ActiveUploadsList channelId={selectedChannel.id} />}
 
                 <MessageInput
                     channel={selectedChannel}
