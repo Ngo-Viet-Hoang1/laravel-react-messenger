@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\DeleteChannelJob;
 use App\Models\Channel;
 use App\Models\User;
+use App\Repositories\Interfaces\IChannelRepo;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
@@ -12,6 +13,13 @@ use Tests\TestCase;
 class GroupDeleteEndpointTest extends TestCase
 {
     use LazilyRefreshDatabase;
+    private IChannelRepo $repo;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->repo = app(IChannelRepo::class);
+    }
 
     public function test_non_owner_cannot_delete_channel(): void
     {
@@ -93,7 +101,7 @@ class GroupDeleteEndpointTest extends TestCase
     {
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
-        $channel = Channel::findOrCreateDirect($user1->id, $user2->id);
+        $channel = $this->repo->findOrCreateDirect($user1->id, $user2->id);
 
         $this->actingAs($user1)
             ->delete(route('channels.destroy', $channel))

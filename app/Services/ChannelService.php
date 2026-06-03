@@ -12,7 +12,8 @@ class ChannelService
 {
     public function __construct(
         private IChannelRepo $channelRepo
-    ) {}
+    ) {
+    }
 
     public function getChannelsForUser(User $user): Collection
     {
@@ -57,7 +58,7 @@ class ChannelService
 
     public function deleteChannel(Channel $channel): void
     {
-        DeleteChannelJob::dispatch($channel);
+        DeleteChannelJob::dispatch($channel->id)->delay(now()->addSeconds(1));
     }
 
     public function getChannelDetail(Channel $channel): Channel

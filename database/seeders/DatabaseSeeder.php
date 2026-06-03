@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use App\Repositories\Interfaces\IChannelRepo;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -46,8 +47,9 @@ class DatabaseSeeder extends Seeder
             $dmPairs->push($pair->all());
         }
 
+        $channelRepo = app(IChannelRepo::class);
         foreach ($dmPairs as $pair) {
-            Channel::findOrCreateDirect($pair[0], $pair[1]);
+            $channelRepo->findOrCreateDirect($pair[0], $pair[1]);
         }
 
         // ── . Seed messages (without triggering Observer) ─────────────
