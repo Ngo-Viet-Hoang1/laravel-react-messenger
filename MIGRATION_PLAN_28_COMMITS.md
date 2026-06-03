@@ -10,7 +10,7 @@ Khi giao việc cho AI, chỉ cần đưa câu lệnh:
 > *"Hãy đọc file `MIGRATION_PLAN_28_COMMITS.md` và thực hiện chính xác các yêu cầu của **Commit #X**. Tuân thủ nghiêm ngặt danh sách file được phép sửa, code contract, quy tắc phòng tránh lỗi ẩn và chạy verification test trước khi hoàn thành."*
 
 ### ⚠️ NGUYÊN TẮC CỐT LÕI (STRICT CONSTRAINTS)
-1. **Zero Broken Builds:** Mỗi commit khi hoàn thành bắt buộc phải build thành công (`dotnet build` và `npm run build` không lỗi).
+1. **Zero Broken Builds:** Mỗi commit khi hoàn thành bắt buộc phải build thành công (`dotnet build` và `pnpm run build` không lỗi).
 2. **Strict File Boundaries:** Không tạo hoặc sửa file ngoài phạm vi được chỉ định của commit đó.
 3. **Enterprise Standards:** Không dùng mock data tạm bợ; áp dụng Result pattern, Strongly-typed contracts và CSS Tailwind hoàn chỉnh.
 
@@ -141,9 +141,11 @@ Khi giao việc cho AI, chỉ cần đưa câu lệnh:
   * `src/Infrastructure/Security/JwtTokenService.cs`
   * `src/Domain/Entities/RefreshToken.cs`
   * `src/WebAPI/Controllers/AuthController.cs`
+  * `src/WebAPI/Program.cs`
 * **Technical Spec:**
   * Hashing mật khẩu bằng Argon2id.
   * Access Token 15 phút, Refresh Token 7 ngày. Endpoints: `register`, `login`, `refresh`.
+  * Cấu hình OpenAPI: Đăng ký `builder.Services.AddOpenApi()` và `app.MapOpenApi()` để expose endpoint contract `/openapi/v1.json` phục vụ tự động đồng bộ Types sang Frontend.
 * **Git Command:**
   ```powershell
   $env:GIT_AUTHOR_DATE="2026-06-12T10:10:00"; $env:GIT_COMMITTER_DATE="2026-06-12T10:10:00"
@@ -154,18 +156,23 @@ Khi giao việc cho AI, chỉ cần đưa câu lệnh:
 
 #### 🔹 COMMIT 7
 * **Date:** `2026-06-14T16:40:00`
-* **Message:** `feat(auth/fe): build entities/user and features/auth-by-email in FSD`
+* **Message:** `feat(auth/fe): build entities/user and features/auth-by-email in FSD with openapi-typescript`
 * **Files Allowed:**
+  * `client/package.json`
+  * `client/pnpm-lock.yaml`
+  * `client/src/shared/api/schema.d.ts`
   * `client/src/entities/user/model/types.ts`
   * `client/src/entities/user/ui/UserAvatar.tsx`
   * `client/src/features/auth-by-email/ui/LoginForm.tsx`
   * `client/src/features/auth-by-email/ui/RegisterForm.tsx`
 * **Technical Spec:**
-  * Form đăng nhập/đăng ký giao diện chuẩn FSD, có xử lý inline validation error và loading state.
+  * Cài đặt `openapi-typescript` (devDependency), cấu hình script `"gen:api": "openapi-typescript http://localhost:5000/openapi/v1.json -o src/shared/api/schema.d.ts"`.
+  * Type-safe Contract: Sử dụng types tự sinh từ `schema.d.ts` cho `entities/user/model/types.ts` đảm bảo End-to-End Type Safety 100%.
+  * Form đăng nhập/đăng ký giao diện chuẩn FSD, có xử lý inline validation error từ RFC 7807 và loading state.
 * **Git Command:**
   ```powershell
   $env:GIT_AUTHOR_DATE="2026-06-14T16:40:00"; $env:GIT_COMMITTER_DATE="2026-06-14T16:40:00"
-  git commit -m "feat(auth/fe): build entities/user and features/auth-by-email in FSD"
+  git commit -m "feat(auth/fe): build entities/user and features/auth-by-email in FSD with openapi-typescript"
   ```
 
 ---
