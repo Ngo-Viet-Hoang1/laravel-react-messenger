@@ -9,6 +9,7 @@ export type {
     ChatMessage,
     ChatMessageCollection,
     MessageAttachment,
+    ParentMessage,
 } from './chat';
 
 export type {

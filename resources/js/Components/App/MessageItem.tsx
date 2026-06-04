@@ -54,7 +54,6 @@ const MessageItem = ({
     const sender = message.sender ?? DELETED_USER;
     const senderName = sender.name;
     const formattedTime = formatChatTime(message.created_at);
-    const parentSenderName = message.parent?.sender?.name ?? 'Deleted User';
 
     return (
         <div
@@ -101,14 +100,7 @@ const MessageItem = ({
 
                 <div className="chat-message flex flex-col gap-1.5">
                     {message.parent ? (
-                        <ReplyPreview
-                            message={{
-                                content: message.parent.content,
-                                sender: { name: parentSenderName },
-                                attachments: message.parent.attachments,
-                            }}
-                            variant="message"
-                        />
+                        <ReplyPreview message={message.parent} />
                     ) : null}
 
                     <div className="chat-message-content prose-sm dark:prose-invert prose max-w-none break-words text-current">

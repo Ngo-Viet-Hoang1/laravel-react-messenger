@@ -104,11 +104,7 @@ const MessageInput = ({
             ) : null}
 
             {replyTo ? (
-                <ReplyPreview
-                    message={replyTo}
-                    onCancel={onCancelReply}
-                    variant="composer"
-                />
+                <ReplyPreview message={replyTo} onCancel={onCancelReply} />
             ) : null}
 
             <div className="flex w-full items-end gap-1.5 sm:gap-2">
