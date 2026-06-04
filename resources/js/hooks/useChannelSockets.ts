@@ -3,7 +3,7 @@ import { ChatItem, MessageCreatedEvent } from '@/types';
 import { ChannelDeletedEvent, ChannelReadUpdatedEvent } from '@/types/events';
 import { getChannelName } from '@/utils';
 import { echo } from '@laravel/echo-react';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 const useChannelSockets = (channels: ChatItem[], userId: number) => {
     const { emit } = useEventBus();
@@ -12,20 +12,6 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
     const channelNames = useMemo(
         () => channels.map(getChannelName).sort(),
         [channels],
-    );
-
-    const messageCreated = useCallback(
-        (event: MessageCreatedEvent) => {
-            emit('message.created', event.message);
-        },
-        [emit],
-    );
-
-    const channelReadUpdated = useCallback(
-        (event: ChannelReadUpdatedEvent) => {
-            emit('channel.read.updated', event);
-        },
-        [emit],
     );
 
     useEffect(() => {
@@ -39,7 +25,9 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
             if (!prev.has(cName)) {
                 e.private(cName)
                     .stopListening('MessageCreated')
-                    .listen('MessageCreated', messageCreated);
+                    .listen('MessageCreated', (event: MessageCreatedEvent) => {
+                        emit('message.created', event.message);
+                    });
             }
         }
 
@@ -50,7 +38,7 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
         }
 
         subscribedRef.current = next;
-    }, [channelNames, messageCreated]);
+    }, [channelNames, emit]);
 
     useEffect(() => {
         const e = echo();
@@ -66,17 +54,14 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
             .listen('ChannelDeleted', ({ id, name }: ChannelDeletedEvent) => {
                 emit('channel.deleted', { id, name });
             })
-            .listen(
-                'ChannelReadUpdated',
-                (event: ChannelReadUpdatedEvent) => {
-                    channelReadUpdated(event);
-                },
-            );
+            .listen('ChannelReadUpdated', (event: ChannelReadUpdatedEvent) => {
+                emit('channel.read.updated', event);
+            });
 
         return () => {
             e.leave(channelName);
         };
-    }, [emit, userId, channelReadUpdated]);
+    }, [emit, userId]);
 
     useEffect(() => {
         return () => {

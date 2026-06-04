@@ -14,7 +14,6 @@ type UseChannelsReturn = {
 const useChannels = (
     initialChannels: ChatItem[],
     search: string,
-    selectedChannelId: number | null,
     currentUserId: number,
 ): UseChannelsReturn => {
     const [channelsMap, setChannelsMap] = useState<Record<number, ChatItem>>(
@@ -23,7 +22,7 @@ const useChannels = (
 
     useEffect(() => {
         setChannelsMap(
-            Object.fromEntries(initialChannels.map((c) => [c.id, c])),
+            Object.fromEntries(initialChannels.map((channel) => [channel.id, channel])),
         );
     }, [initialChannels]);
 
@@ -33,7 +32,6 @@ const useChannels = (
                 const channel = prev[message.channel_id];
                 if (!channel) return prev;
 
-                const isActiveChannel = channel.id === selectedChannelId;
                 const isOwnMessage = message.sender_id === currentUserId;
 
                 return {
@@ -42,19 +40,14 @@ const useChannels = (
                         ...channel,
                         last_message: message.content,
                         last_message_date: message.created_at,
-                        unread_count:
-                            isActiveChannel || isOwnMessage
-                                ? 0
-                                : (channel.unread_count ?? 0) + 1,
-                        last_read_message_id:
-                            isActiveChannel || isOwnMessage
-                                ? message.id
-                                : channel.last_read_message_id ?? null,
+                        unread_count: isOwnMessage
+                            ? channel.unread_count ?? 0
+                            : (channel.unread_count ?? 0) + 1,
                     },
                 };
             });
         },
-        [selectedChannelId],
+        [currentUserId],
     );
 
     const updateAfterMessageDeleted = useCallback(
