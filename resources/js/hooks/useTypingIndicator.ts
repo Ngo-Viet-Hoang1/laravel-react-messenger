@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
 import { echo } from '@laravel/echo-react';
+import type { Channel } from 'laravel-echo';
+import { useEffect, useRef, useState } from 'react';
 
 export interface TypingUser {
     id: string;
@@ -18,13 +19,20 @@ export const useTypingIndicator = (
     options: UseTypingIndicatorOptions = {},
     channelName?: string,
 ) => {
-    const { debounceMs = 800, expireMs = 2500, channelType = 'private' } = options;
+    const {
+        debounceMs = 800,
+        expireMs = 2500,
+        channelType = 'private',
+    } = options;
 
-    const [typingUsers, setTypingUsers] = useState<Map<string, TypingUser>>(new Map());
+    const [typingUsers, setTypingUsers] = useState<Map<string, TypingUser>>(
+        new Map(),
+    );
     const lastEmitRef = useRef<number>(0);
-    const expiresRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const channelRef = useRef<any>(null);
+    const expiresRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+        new Map(),
+    );
+    const channelRef = useRef<Channel | null>(null);
 
     // Send typing whisper (throttled)
     const sendTyping = () => {
@@ -48,16 +56,18 @@ export const useTypingIndicator = (
         if (!e) return;
 
         const channel =
-            channelType === 'private' ? e.private(channelName) : e.channel(channelName);
+            channelType === 'private'
+                ? e.private(channelName)
+                : e.channel(channelName);
 
-        channel.listenForWhisper('typing', (data: { user: TypingUser }) => {
+        channel.listenForWhisper('typing', ({ user }: { user: TypingUser }) => {
             setTypingUsers((prev) => {
                 const updated = new Map(prev);
-                updated.set(data.user.id, data.user);
+                updated.set(user.id, user);
                 return updated;
             });
 
-            const existingTimer = expiresRef.current.get(data.user.id);
+            const existingTimer = expiresRef.current.get(user.id);
             if (existingTimer) {
                 clearTimeout(existingTimer);
             }
@@ -65,13 +75,13 @@ export const useTypingIndicator = (
             const timer = setTimeout(() => {
                 setTypingUsers((prev) => {
                     const updated = new Map(prev);
-                    updated.delete(data.user.id);
+                    updated.delete(user.id);
                     return updated;
                 });
-                expiresRef.current.delete(data.user.id);
+                expiresRef.current.delete(user.id);
             }, expireMs);
 
-            expiresRef.current.set(data.user.id, timer);
+            expiresRef.current.set(user.id, timer);
         });
 
         channelRef.current = channel;

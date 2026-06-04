@@ -1,5 +1,5 @@
-import { TypingUser, useTypingIndicator } from '@/hooks/useTypingIndicator';
 import UserAvatar from '@/Components/App/UserAvatar';
+import { TypingUser, useTypingIndicator } from '@/hooks/useTypingIndicator';
 
 type Props = {
     channelName: string;
@@ -11,7 +11,7 @@ type Props = {
 
 const Dot = ({ delay }: { delay: string }) => (
     <span
-        className="h-1.5 w-1.5 rounded-full bg-slate-300/80 animate-typing-dot dark:bg-slate-200/80"
+        className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-slate-300/80 dark:bg-slate-200/80"
         style={{ animationDelay: delay }}
     />
 );

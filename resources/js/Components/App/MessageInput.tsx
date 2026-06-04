@@ -4,7 +4,8 @@ import useDraftMessage from '@/hooks/useDraftMessages';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useSendMessage } from '@/hooks/useSendMessage';
 import useTypingIndicator from '@/hooks/useTypingIndicator';
-import { type ChatItem, type ChatMessage } from '@/types';
+import { type ChatItem, type ChatMessage, PageProps } from '@/types';
+import { getChannelName } from '@/utils';
 import {
     HandThumbUpIcon,
     PaperAirplaneIcon,
@@ -12,7 +13,6 @@ import {
     PhotoIcon,
 } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
-import { PageProps } from '@/types';
 import React, { type ChangeEvent, Suspense, useCallback, useRef } from 'react';
 import AttachedItemList from './AttachedItemList';
 import NewMessageInput from './NewMessageInput';
@@ -39,9 +39,13 @@ const MessageInput = ({
     const page = usePage<PageProps>();
     const currentUser = page.props.auth.user;
 
-    const channelName = channel ? `message.channel.${channel.id}` : undefined;
+    const channelName = channel ? getChannelName(channel) : undefined;
     const { sendTyping } = useTypingIndicator(
-        { id: String(currentUser.id), name: currentUser.name, avatarUrl: currentUser.avatar_url ?? '' },
+        {
+            id: String(currentUser.id),
+            name: currentUser.name,
+            avatarUrl: currentUser.avatar_url ?? '',
+        },
         {},
         channelName,
     );
