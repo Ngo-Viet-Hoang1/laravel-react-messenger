@@ -1,18 +1,10 @@
 import { useUploads } from '@/Contexts/UploadContext';
+import { UPLOAD_STATUS_CONFIG } from '@/utils/chunkedUpload';
+import { formatFileSize } from '@/utils';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import React from 'react';
 
 type Props = {
     channelId: number;
-};
-
-const formatBytes = (bytes: number, decimals = 2): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
 const ActiveUploadsList = ({ channelId }: Props) => {
@@ -27,12 +19,10 @@ const ActiveUploadsList = ({ channelId }: Props) => {
             <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Sending files ({channelUploads.length})
             </div>
-            <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+            <div className="flex max-h-40 flex-col gap-2 overflow-y-auto pr-1">
                 {channelUploads.map((upload) => {
                     const isUploading = upload.status === 'uploading';
-                    const isCompleted = upload.status === 'completed';
-                    const isFailed = upload.status === 'failed';
-                    const isCancelled = upload.status === 'cancelled';
+                    const config = UPLOAD_STATUS_CONFIG[upload.status];
 
                     return (
                         <div
@@ -45,65 +35,40 @@ const ActiveUploadsList = ({ channelId }: Props) => {
                                         {upload.name}
                                     </div>
                                     <div className="text-[10px] text-slate-500">
-                                        {formatBytes(upload.size)}
-                                        {isUploading && ` • ${upload.progress}%`}
-                                        {isCompleted && ' • Complete'}
-                                        {isFailed && ' • Failed'}
-                                        {isCancelled && ' • Cancelled'}
+                                        {formatFileSize(upload.size)}
+                                        {isUploading
+                                            ? ` • ${upload.progress}%`
+                                            : config.label}
                                     </div>
                                 </div>
 
                                 <div className="shrink-0">
-                                    {isUploading ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => cancelUpload(upload.id)}
-                                            className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                                            title="Cancel upload"
-                                        >
-                                            <XMarkIcon className="h-4 w-4" />
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={() => clearUpload(upload.id)}
-                                            className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                                            title="Clear"
-                                        >
-                                            <XMarkIcon className="h-4 w-4" />
-                                        </button>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            isUploading
+                                                ? cancelUpload(upload.id)
+                                                : clearUpload(upload.id)
+                                        }
+                                        className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                                        title={
+                                            isUploading
+                                                ? 'Cancel upload'
+                                                : 'Clear'
+                                        }
+                                    >
+                                        <XMarkIcon className="h-4 w-4" />
+                                    </button>
                                 </div>
                             </div>
 
-                            {isUploading && (
-                                <progress
-                                    value={upload.progress}
-                                    max={100}
-                                    className="progress progress-info h-1.5 w-full"
-                                />
-                            )}
-                            {isCompleted && (
-                                <progress
-                                    value={100}
-                                    max={100}
-                                    className="progress progress-success h-1.5 w-full"
-                                />
-                            )}
-                            {isFailed && (
-                                <progress
-                                    value={100}
-                                    max={100}
-                                    className="progress progress-error h-1.5 w-full opacity-50"
-                                />
-                            )}
-                            {isCancelled && (
-                                <progress
-                                    value={100}
-                                    max={100}
-                                    className="progress progress-warning h-1.5 w-full opacity-50"
-                                />
-                            )}
+                            <progress
+                                value={
+                                    isUploading ? upload.progress : config.value
+                                }
+                                max={100}
+                                className={`progress ${config.progressClass} h-1.5 w-full${config.opaque ? ' opacity-50' : ''}`}
+                            />
                         </div>
                     );
                 })}

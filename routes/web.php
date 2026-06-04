@@ -21,9 +21,10 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
     Route::get('/channels/{channel}/messages', [MessageController::class, 'index'])->name('channels.messages');
     Route::post('/channels/{channel}/messages', [MessageController::class, 'store'])->name('channels.messages.store');
-    Route::post('/messages/upload-chunk', [MessageController::class, 'uploadChunk'])->name('messages.upload-chunk');
 
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
+
+    Route::post('/messages/upload-chunk', [MessageController::class, 'uploadChunk'])->name('messages.upload-chunk');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::middleware('admin')->group(function () {
