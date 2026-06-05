@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Repositories\Interfaces\IChannelRepo;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -37,7 +38,7 @@ class DatabaseSeeder extends Seeder
 
             // Random subset of users + always include admin
             $members = $allUsers->random(rand(2, 6))->pluck('id')->push($admin->id)->unique()->all();
-            $channel->members()->attach($members);
+            $channel->members()->syncWithPivotValues($members, ['last_read_message_id' => 0]);
         }
 
         $dmPairs = collect([[$admin->id, $jane->id]]);
@@ -49,13 +50,37 @@ class DatabaseSeeder extends Seeder
 
         $channelRepo = app(IChannelRepo::class);
         foreach ($dmPairs as $pair) {
-            $channelRepo->findOrCreateDirect($pair[0], $pair[1]);
+            $channel = $channelRepo->findOrCreateDirect($pair[0], $pair[1]);
+            $channel->members()->syncWithPivotValues($pair, ['last_read_message_id' => 0]);
         }
 
-        // ── . Seed messages (without triggering Observer) ─────────────
-        // WithoutModelEvents prevents Observer from firing during seed
-        // We manually update last_message_id after all messages are created
-        Message::factory(200)->create();
+        // ── . Seed messages per channel (without triggering Observer) ──
+        // Each channel gets its own time window so sidebar ordering stays stable.
+        $channels = Channel::with('members')->orderBy('id')->get();
+        $baseTime = now()->subDays($channels->count());
+
+        foreach ($channels as $offset => $channel) {
+            $members = $channel->members->sortBy('id')->values();
+            if ($members->isEmpty()) {
+                continue;
+            }
+
+            $messageCount = $channel->type === 'direct' ? 6 : 8;
+            $channelBaseTime = (clone $baseTime)->addDays($offset);
+
+            for ($messageIndex = 0; $messageIndex < $messageCount; $messageIndex++) {
+                $sender = $members[$messageIndex % $members->count()];
+
+                Message::create([
+                    'channel_id' => $channel->id,
+                    'sender_id' => $sender->id,
+                    'parent_id' => null,
+                    'content' => Str::limit(fake()->realText(120), 120, ''),
+                    'created_at' => (clone $channelBaseTime)->addMinutes($messageIndex),
+                    'updated_at' => (clone $channelBaseTime)->addMinutes($messageIndex),
+                ]);
+            }
+        }
 
         // ── . Update last_message_id for each channel ─────────────────
         Channel::all()->each(function (Channel $channel) {
@@ -63,6 +88,23 @@ class DatabaseSeeder extends Seeder
 
             if ($lastMsg) {
                 $channel->update(['last_message_id' => $lastMsg->id]);
+
+                $memberIds = $channel->members()->pluck('users.id')->sort()->values()->all();
+                $readMemberIds = $channel->type === 'direct'
+                    ? [($memberIds[0] ?? 0)]
+                    : ($channel->owner_id ? [$channel->owner_id] : []);
+
+                $channel->members()->syncWithoutDetaching(
+                    collect($memberIds)->mapWithKeys(
+                        fn (int $userId) => [
+                            $userId => [
+                                'last_read_message_id' => in_array($userId, $readMemberIds, true)
+                                    ? $lastMsg->id
+                                    : 0,
+                            ],
+                        ]
+                    )->all()
+                );
             }
         });
     }
