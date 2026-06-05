@@ -7,6 +7,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { ConfirmProvider } from './Contexts/ConfirmContext';
 import { EventBusProvider } from './EventBus';
+import { UploadProvider } from './Contexts/UploadContext';
 
 configureEcho({
     broadcaster: 'reverb',
@@ -27,7 +28,9 @@ createInertiaApp({
         root.render(
             <EventBusProvider>
                 <ConfirmProvider>
-                    <App {...props} />
+                    <UploadProvider>
+                        <App {...props} />
+                    </UploadProvider>
                 </ConfirmProvider>
             </EventBusProvider>,
         );

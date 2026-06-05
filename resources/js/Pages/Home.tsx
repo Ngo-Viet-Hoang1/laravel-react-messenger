@@ -2,6 +2,7 @@ import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';
 import ChannelHeader from '@/Components/App/ChannelHeader';
 import MessageInput from '@/Components/App/MessageInput';
 import MessageItem from '@/Components/App/MessageItem';
+import ActiveUploadsList from '@/Components/App/ActiveUploadsList';
 import TypingIndicator from '@/Components/App/TypingIndicator';
 import { useEventBus } from '@/EventBus';
 import useAttachmentsPreviewModal from '@/hooks/useAttachmentsPreviewModal';
@@ -249,6 +250,8 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                     )}
                 </div>
 
+                {selectedChannel && <ActiveUploadsList channelId={selectedChannel.id} />}
+              
                 {selectedChannel ? (
                     <div className="px-2 pb-1">
                         <TypingIndicator
