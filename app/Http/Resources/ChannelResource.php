@@ -45,6 +45,12 @@ class ChannelResource extends JsonResource
             'last_message_date' => $this->last_message_date !== null
                 ? Carbon::parse($this->last_message_date)->toISOString()
                 : null,
+            'last_read_message_id' => $this->last_read_message_id !== null
+                ? (int) $this->last_read_message_id
+                : null,
+            'unread_count' => isset($this->unread_count)
+                ? (int) $this->unread_count
+                : 0,
 
             'peer_user_id' => $isDirect ? $otherUser?->id : null,
             'peer_is_admin' => $isDirect ? (bool) $otherUser?->is_admin : null,

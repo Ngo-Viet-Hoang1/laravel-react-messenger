@@ -8,11 +8,13 @@ type UseChannelsReturn = {
     updateLastMessage: (message: ChatMessage) => void;
     updateAfterMessageDeleted: (event: MessageDeletedEvent) => void;
     removeChannel: (id: number) => void;
+    markChannelAsRead: (channelId: number, lastReadMessageId: number | null) => void;
 };
 
 const useChannels = (
     initialChannels: ChatItem[],
     search: string,
+    currentUserId: number,
 ): UseChannelsReturn => {
     const [channelsMap, setChannelsMap] = useState<Record<number, ChatItem>>(
         () => Object.fromEntries(initialChannels.map((c) => [c.id, c])),
@@ -20,24 +22,33 @@ const useChannels = (
 
     useEffect(() => {
         setChannelsMap(
-            Object.fromEntries(initialChannels.map((c) => [c.id, c])),
+            Object.fromEntries(initialChannels.map((channel) => [channel.id, channel])),
         );
     }, [initialChannels]);
 
-    const updateLastMessage = useCallback((message: ChatMessage) => {
-        setChannelsMap((prev) => {
-            const channel = prev[message.channel_id];
-            if (!channel) return prev;
-            return {
-                ...prev,
-                [message.channel_id]: {
-                    ...channel,
-                    last_message: message.content,
-                    last_message_date: message.created_at,
-                },
-            };
-        });
-    }, []);
+    const updateLastMessage = useCallback(
+        (message: ChatMessage) => {
+            setChannelsMap((prev) => {
+                const channel = prev[message.channel_id];
+                if (!channel) return prev;
+
+                const isOwnMessage = message.sender_id === currentUserId;
+
+                return {
+                    ...prev,
+                    [message.channel_id]: {
+                        ...channel,
+                        last_message: message.content,
+                        last_message_date: message.created_at,
+                        unread_count: isOwnMessage
+                            ? channel.unread_count ?? 0
+                            : (channel.unread_count ?? 0) + 1,
+                    },
+                };
+            });
+        },
+        [currentUserId],
+    );
 
     const updateAfterMessageDeleted = useCallback(
         ({ message, newLastMessage }: MessageDeletedEvent) => {
@@ -50,6 +61,25 @@ const useChannels = (
                         ...channel,
                         last_message: newLastMessage?.content ?? null,
                         last_message_date: newLastMessage?.created_at ?? null,
+                    },
+                };
+            });
+        },
+        [],
+    );
+
+    const markChannelAsRead = useCallback(
+        (channelId: number, lastReadMessageId: number | null) => {
+            setChannelsMap((prev) => {
+                const channel = prev[channelId];
+                if (!channel) return prev;
+
+                return {
+                    ...prev,
+                    [channelId]: {
+                        ...channel,
+                        unread_count: 0,
+                        last_read_message_id: lastReadMessageId,
                     },
                 };
             });
@@ -91,6 +121,7 @@ const useChannels = (
         updateLastMessage,
         updateAfterMessageDeleted,
         removeChannel,
+        markChannelAsRead,
     };
 };
 

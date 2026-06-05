@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Repositories\Interfaces\IChannelRepo;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -11,6 +12,7 @@ use Tests\TestCase;
 class MessageStoreTest extends TestCase
 {
     use LazilyRefreshDatabase;
+
     private IChannelRepo $repo;
 
     protected function setUp(): void
@@ -49,7 +51,7 @@ class MessageStoreTest extends TestCase
         $sender = User::factory()->create();
         $receiver = User::factory()->create();
 
-        $channel = Channel::findOrCreateDirect($sender->id, $receiver->id);
+        $channel = $this->repo->findOrCreateDirect($sender->id, $receiver->id);
 
         $parentMessage = Message::create([
             'channel_id' => $channel->id,
@@ -74,5 +76,41 @@ class MessageStoreTest extends TestCase
 
         $this->assertNotNull($message);
         $this->assertSame($parentMessage->id, $message->parent_id);
+    }
+
+    public function test_channel_messages_include_parent_attachments_for_reply_previews(): void
+    {
+        $sender = User::factory()->create();
+        $receiver = User::factory()->create();
+
+        $channel = $this->repo->findOrCreateDirect($sender->id, $receiver->id);
+
+        $parentMessage = Message::create([
+            'channel_id' => $channel->id,
+            'sender_id' => $receiver->id,
+            'content' => null,
+        ]);
+
+        MessageAttachment::create([
+            'message_id' => $parentMessage->id,
+            'path' => 'attachments/test/photo.jpg',
+            'name' => 'photo.jpg',
+            'size' => 1234,
+            'mime' => 'image/jpeg',
+            'storage_disk' => 'local',
+        ]);
+
+        Message::create([
+            'channel_id' => $channel->id,
+            'sender_id' => $sender->id,
+            'parent_id' => $parentMessage->id,
+            'content' => 'Reply message',
+        ]);
+
+        $response = $this->actingAs($sender)
+            ->get(route('channels.messages', $channel));
+
+        $response->assertOk();
+        $response->assertJsonPath('data.0.parent.attachments.0.name', 'photo.jpg');
     }
 }

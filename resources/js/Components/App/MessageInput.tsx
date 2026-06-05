@@ -3,17 +3,21 @@ import { useAttachments } from '@/hooks/useAttachments';
 import useDraftMessage from '@/hooks/useDraftMessages';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useSendMessage } from '@/hooks/useSendMessage';
-import { type ChatItem, type ChatMessage } from '@/types';
 import { useUploads } from '@/Contexts/UploadContext';
+import useTypingIndicator from '@/hooks/useTypingIndicator';
+import { type ChatItem, type ChatMessage, PageProps } from '@/types';
+import { getChannelName } from '@/utils';
 import {
     HandThumbUpIcon,
     PaperAirplaneIcon,
     PaperClipIcon,
     PhotoIcon,
 } from '@heroicons/react/24/outline';
+import { usePage } from '@inertiajs/react';
 import React, { type ChangeEvent, Suspense, useCallback, useRef } from 'react';
 import AttachedItemList from './AttachedItemList';
 import NewMessageInput from './NewMessageInput';
+import ReplyPreview from './ReplyPreview';
 
 const AudioRecorder = React.lazy(() => import('./AudioRecorder'));
 
@@ -33,6 +37,20 @@ const MessageInput = ({
         setValue: setMessage,
         clearDraft,
     } = useDraftMessage(channel?.id ?? null);
+
+    const page = usePage<PageProps>();
+    const currentUser = page.props.auth.user;
+
+    const channelName = channel ? getChannelName(channel) : undefined;
+    const { sendTyping } = useTypingIndicator(
+        {
+            id: String(currentUser.id),
+            name: currentUser.name,
+            avatarUrl: currentUser.avatar_url ?? '',
+        },
+        {},
+        channelName,
+    );
 
     const { error, showError } = useErrorMessage();
     const { attachments, addFiles, remove, clear } = useAttachments(showError);
@@ -124,24 +142,7 @@ const MessageInput = ({
             ) : null}
 
             {replyTo ? (
-                <div className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                    <div className="min-w-0">
-                        <div className="text-xs font-semibold uppercase tracking-wide opacity-70">
-                            Replying to {replyTo.sender.name}
-                        </div>
-                        <div className="mt-0.5 line-clamp-2 break-words">
-                            {replyTo.content?.trim() || 'Deleted message'}
-                        </div>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onCancelReply}
-                        className="rounded-full px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
-                    >
-                        Cancel
-                    </button>
-                </div>
+                <ReplyPreview message={replyTo} onCancel={onCancelReply} />
             ) : null}
 
             <div className="flex w-full items-end gap-1.5 sm:gap-2">
@@ -198,6 +199,7 @@ const MessageInput = ({
                         onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
                             setMessage(e.target.value)
                         }
+                        onTyping={sendTyping}
                         onSend={handleSend}
                         placeholder="Write a message..."
                         disabled={!channel || sending}

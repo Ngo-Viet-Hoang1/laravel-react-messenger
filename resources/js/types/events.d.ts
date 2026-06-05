@@ -14,11 +14,18 @@ export type ChannelDeletedEvent = {
     name: string;
 };
 
+export type ChannelReadUpdatedEvent = {
+    channel_id: number;
+    user_id: number;
+    last_read_message_id: number | null;
+};
+
 export type AppEventMap = {
     'message.created': ChatMessage;
     'message.deleted': MessageDeletedEvent;
 
     'channel.deleted': ChannelDeletedEvent;
+    'channel.read.updated': ChannelReadUpdatedEvent;
 
     'toast.show': string;
 };

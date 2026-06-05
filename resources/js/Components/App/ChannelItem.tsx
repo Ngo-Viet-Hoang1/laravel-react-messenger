@@ -57,6 +57,14 @@ const ChannelItem = ({
                             {channel.name}
                         </h3>
 
+                        {channel.unread_count ? (
+                            <span className="badge badge-primary badge-sm text-[10px] font-semibold">
+                                {channel.unread_count > 9
+                                    ? '9+'
+                                    : channel.unread_count}
+                            </span>
+                        ) : null}
+
                         {formattedTime && (
                             <time
                                 dateTime={formattedTime.dateTime}
