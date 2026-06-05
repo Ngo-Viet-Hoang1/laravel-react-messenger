@@ -9,6 +9,7 @@ import useChannels from '@/hooks/useChannels';
 import useChannelSockets from '@/hooks/useChannelSockets';
 import useOnlinePresence from '@/hooks/useOnlinePresence';
 import { ChatItem, ChatPageProps } from '@/types';
+import { ChannelReadUpdatedEvent } from '@/types/events';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
 import { ReactNode, useEffect, useState } from 'react';
@@ -29,8 +30,9 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         sortedChannels,
         updateLastMessage,
         updateAfterMessageDeleted,
+        markChannelAsRead,
         removeChannel,
-    } = useChannels(channels, search);
+    } = useChannels(channels, search, Number(currentUser.id));
 
     const { isOnline } = useOnlinePresence();
 
@@ -43,14 +45,24 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         });
     };
 
+    const handleReadUpdated = ({
+        channel_id,
+        last_read_message_id,
+    }: ChannelReadUpdatedEvent): void => {
+        markChannelAsRead(channel_id, last_read_message_id);
+    };
+
     useEffect(() => {
         const offCreated = on('message.created', updateLastMessage);
         const offDeleted = on('message.deleted', updateAfterMessageDeleted);
+        const offReadUpdated = on('channel.read.updated', handleReadUpdated);
+
         return () => {
             offCreated();
             offDeleted();
+            offReadUpdated();
         };
-    }, [on, updateLastMessage, updateAfterMessageDeleted]);
+    }, [on, updateLastMessage, updateAfterMessageDeleted, handleReadUpdated]);
 
     useEffect(() => {
         const offDeleted = on('channel.deleted', ({ id, name }) => {

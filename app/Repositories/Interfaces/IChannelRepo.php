@@ -15,4 +15,6 @@ interface IChannelRepo
     public function create(array $data, array $memberIds): Channel;
 
     public function findOrCreateDirect(int $userId1, int $userId2): Channel;
+
+    public function markAsRead(Channel $channel, int $userId, ?int $lastReadMessageId): void;
 }

@@ -30,7 +30,9 @@ class Channel extends Model
 
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'channel_members');
+        return $this->belongsToMany(User::class, 'channel_members')
+            ->withPivot('last_read_message_id')
+            ->withTimestamps();
     }
 
     public function messages(): HasMany
