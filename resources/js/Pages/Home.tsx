@@ -2,6 +2,7 @@ import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';
 import ChannelHeader from '@/Components/App/ChannelHeader';
 import MessageInput from '@/Components/App/MessageInput';
 import MessageItem from '@/Components/App/MessageItem';
+import TypingIndicator from '@/Components/App/TypingIndicator';
 import { useEventBus } from '@/EventBus';
 import useAttachmentsPreviewModal from '@/hooks/useAttachmentsPreviewModal';
 import useChatScroll from '@/hooks/useChatScroll';
@@ -157,6 +158,18 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                         </>
                     )}
                 </div>
+
+                {selectedChannel ? (
+                    <div className="px-2 pb-1">
+                        <TypingIndicator
+                            channelName={`message.channel.${selectedChannel.id}`}
+                            userId={String(currentUser.id)}
+                            userName={currentUser.name}
+                            userAvatarUrl={currentUser.avatar_url}
+                            className="mb-2"
+                        />
+                    </div>
+                ) : null}
 
                 <MessageInput
                     channel={selectedChannel}
