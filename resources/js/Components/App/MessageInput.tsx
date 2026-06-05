@@ -13,6 +13,7 @@ import {
 import React, { type ChangeEvent, Suspense, useCallback, useRef } from 'react';
 import AttachedItemList from './AttachedItemList';
 import NewMessageInput from './NewMessageInput';
+import ReplyPreview from './ReplyPreview';
 
 const AudioRecorder = React.lazy(() => import('./AudioRecorder'));
 
@@ -103,24 +104,7 @@ const MessageInput = ({
             ) : null}
 
             {replyTo ? (
-                <div className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                    <div className="min-w-0">
-                        <div className="text-xs font-semibold uppercase tracking-wide opacity-70">
-                            Replying to {replyTo.sender.name}
-                        </div>
-                        <div className="mt-0.5 line-clamp-2 break-words">
-                            {replyTo.content?.trim() || 'Deleted message'}
-                        </div>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onCancelReply}
-                        className="rounded-full px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
-                    >
-                        Cancel
-                    </button>
-                </div>
+                <ReplyPreview message={replyTo} onCancel={onCancelReply} />
             ) : null}
 
             <div className="flex w-full items-end gap-1.5 sm:gap-2">

@@ -23,7 +23,7 @@ class MessageController extends Controller
         $beforeAt = request()->query('before_at');
 
         $query = Message::where('channel_id', $channel->id)
-            ->with(['sender', 'attachments', 'parent.sender']);
+            ->with(['sender', 'attachments', 'parent.sender', 'parent.attachments']);
 
         if ($beforeId && $beforeAt) {
             $query->where(function ($q) use ($beforeAt, $beforeId) {
@@ -71,7 +71,12 @@ class MessageController extends Controller
                 }
             }
 
-            return $message->load(['sender', 'attachments', 'parent.sender']);
+            return $message->load([
+                'sender',
+                'attachments',
+                'parent.sender',
+                'parent.attachments',
+            ]);
         });
 
         // Note: MessageObserver::created fires AFTER DB transaction completes

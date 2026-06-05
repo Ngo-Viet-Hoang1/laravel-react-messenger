@@ -16,6 +16,7 @@ class MessageRepo implements IMessageRepo
                 'sender:id,name,avatar_url',
                 'attachments',
                 'parent.sender:id,name,avatar_url',
+                'parent.attachments',
             ])
             ->latest()
             ->paginate($perPage);

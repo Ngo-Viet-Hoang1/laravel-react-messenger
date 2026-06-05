@@ -18,6 +18,7 @@ export type ParentMessage = {
     id: number;
     content: string | null;
     sender: User;
+    attachments: MessageAttachment[];
 };
 
 export type ChatMessage = DbMessage & {
