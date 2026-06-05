@@ -4,6 +4,6 @@
   "tabWidth": 2,
   "trailingComma": "es5",
   "printWidth": 100,
-  "tailwindConfig": "./tailwind.config.js",
+  "tailwindStylesheet": "./src/app/styles/index.css",
   "plugins": ["prettier-plugin-tailwindcss"]
 }

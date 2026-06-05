@@ -49,7 +49,7 @@ export const HealthPage = () => {
 
         <div className="space-y-4">
           <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 p-4">
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <div className="mb-1 text-xs font-semibold tracking-wider text-slate-400 uppercase">
               Frontend Client
             </div>
             <div className="flex items-center justify-between text-sm">
@@ -61,7 +61,7 @@ export const HealthPage = () => {
           </div>
 
           <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 p-4">
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <div className="mb-1 text-xs font-semibold tracking-wider text-slate-400 uppercase">
               Backend Service
             </div>
             {loading ? (
