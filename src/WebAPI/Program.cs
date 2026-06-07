@@ -1,3 +1,4 @@
+using MessengerApp.Infrastructure;
 using MessengerApp.WebAPI.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
