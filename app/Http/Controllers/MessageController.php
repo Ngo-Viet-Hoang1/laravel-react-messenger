@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Events\MessageCreated;
+use App\Events\MessageDeleted;
+use App\Events\MessagesCleared;
 use App\Http\Requests\StoreMessageRequest;
 use App\Http\Resources\MessageResource;
 use App\Models\Channel;
@@ -93,6 +95,7 @@ class MessageController extends Controller
         abort_unless($message->sender_id === auth()->id(), 403);
 
         $newLastMessage = null;
+        $deletedSnapshot = $this->buildMessageSnapshot($message);
 
         DB::transaction(function () use ($message, &$newLastMessage) {
             $channelId = $message->channel_id;
@@ -107,8 +110,65 @@ class MessageController extends Controller
             }
         });
 
+        $deletedSnapshot['deleted_at'] = now()->toISOString();
+
+        if ($newLastMessage) {
+            $newLastMessage = $this->buildMessageSnapshot($newLastMessage);
+        }
+
+        DB::afterCommit(function () use ($deletedSnapshot, $newLastMessage): void {
+            broadcast(new MessageDeleted($deletedSnapshot, $newLastMessage))->toOthers();
+        });
+
         return response()->json([
-            'newLastMessage' => $newLastMessage ? new MessageResource($newLastMessage) : null,
+            'message' => $deletedSnapshot,
+            'newLastMessage' => $newLastMessage,
         ]);
+    }
+
+    public function destroyAll(Channel $channel)
+    {
+        $isUserInChannel = auth()->user()?->channels()->whereKey($channel->id)->exists();
+        abort_unless($isUserInChannel, 403, 'Unauthorized');
+        abort_if($channel->type !== 'direct', 403, 'Only direct chats can be cleared.');
+
+        $messages = Message::where('channel_id', $channel->id)->get();
+        $deletedCount = $messages->count();
+
+        DB::transaction(function () use ($messages): void {
+            foreach ($messages as $message) {
+                $message->delete();
+            }
+        });
+
+        DB::afterCommit(function () use ($channel): void {
+            broadcast(new MessagesCleared($channel->id))->toOthers();
+        });
+
+        return response()->json([
+            'channel_id' => $channel->id,
+            'deleted_count' => $deletedCount,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildMessageSnapshot(Message $message): array
+    {
+        $message->loadMissing(['sender', 'attachments', 'parent.sender', 'parent.attachments']);
+
+        return [
+            'id' => $message->id,
+            'content' => $message->content,
+            'channel_id' => $message->channel_id,
+            'sender_id' => $message->sender_id,
+            'parent_id' => $message->parent_id,
+            'sender' => $message->sender?->toArray(),
+            'parent' => $message->parent?->toArray(),
+            'attachments' => $message->attachments->toArray(),
+            'created_at' => $message->created_at?->toISOString(),
+            'updated_at' => $message->updated_at?->toISOString(),
+        ];
     }
 }
