@@ -60,10 +60,11 @@ const useMessages = (
                 current.id === message.id
                     ? {
                           ...current,
-                          content: 'Bạn đã xóa một tin nhắn',
-                          deleted_at: message.deleted_at ?? new Date().toISOString(),
+                          content: 'You have deleted a message.',
+                          deleted_at:
+                              message.deleted_at ?? new Date().toISOString(),
                           attachments: [],
-                        }
+                      }
                     : current,
             ),
         );
