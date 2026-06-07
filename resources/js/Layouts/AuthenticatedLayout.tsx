@@ -4,11 +4,10 @@ import UserAvatar from '@/Components/App/UserAvatar';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
-import PrimaryButton from '@/Components/Breeze/PrimaryButton';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
-import { UserModalProvider, useUserModal } from '@/Contexts/UserModalContext';
+import { UserModalProvider } from '@/Contexts/UserModalContext';
 import { PageProps } from '@/types';
-import { UserPlusIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 
@@ -21,7 +20,7 @@ const AuthenticatedInner = ({
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
 
-    const { openModal } = useUserModal();
+
 
     return (
         <div className="flex h-screen flex-col overflow-hidden bg-gray-100 dark:bg-gray-900">
@@ -49,12 +48,13 @@ const AuthenticatedInner = ({
                             <ThemeToggle />
 
                             {user.is_admin && (
-                                <PrimaryButton
-                                    onClick={() => openModal()}
-                                    className="ms-3"
+                                <Link
+                                    href={route('admin.users.index')}
+                                    className="ms-3 inline-flex items-center gap-1.5 rounded-md border border-transparent bg-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:bg-gray-900 dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white dark:focus:bg-white dark:focus:ring-offset-gray-800 dark:active:bg-gray-300"
                                 >
-                                    <UserPlusIcon className="h-4 w-4" />
-                                </PrimaryButton>
+                                    <UserGroupIcon className="h-4 w-4" />
+                                    Users
+                                </Link>
                             )}
 
                             <div className="relative ms-3">
