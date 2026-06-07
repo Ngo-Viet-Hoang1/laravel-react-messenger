@@ -9,6 +9,10 @@ export type MessageDeletedEvent = {
     newLastMessage: ChatMessage | null;
 };
 
+export type MessagesClearedEvent = {
+    channel_id: number;
+};
+
 export type ChannelDeletedEvent = {
     id: number;
     name: string;
@@ -23,6 +27,7 @@ export type ChannelReadUpdatedEvent = {
 export type AppEventMap = {
     'message.created': ChatMessage;
     'message.deleted': MessageDeletedEvent;
+    'messages.cleared': MessagesClearedEvent;
 
     'channel.deleted': ChannelDeletedEvent;
     'channel.read.updated': ChannelReadUpdatedEvent;

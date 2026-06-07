@@ -9,6 +9,7 @@ type UseChannelsReturn = {
     updateAfterMessageDeleted: (event: MessageDeletedEvent) => void;
     removeChannel: (id: number) => void;
     markChannelAsRead: (channelId: number, lastReadMessageId: number | null) => void;
+    clearChannelMessages: (channelId: number) => void;
 };
 
 const useChannels = (
@@ -68,6 +69,22 @@ const useChannels = (
         [],
     );
 
+    const clearChannelMessages = useCallback((channelId: number) => {
+        setChannelsMap((prev) => {
+            const channel = prev[channelId];
+            if (!channel) return prev;
+
+            return {
+                ...prev,
+                [channelId]: {
+                    ...channel,
+                    last_message: null,
+                    last_message_date: null,
+                },
+            };
+        });
+    }, []);
+
     const markChannelAsRead = useCallback(
         (channelId: number, lastReadMessageId: number | null) => {
             setChannelsMap((prev) => {
@@ -122,6 +139,7 @@ const useChannels = (
         updateAfterMessageDeleted,
         removeChannel,
         markChannelAsRead,
+        clearChannelMessages,
     };
 };
 

@@ -1,6 +1,11 @@
 import { useEventBus } from '@/EventBus';
 import { ChatItem, MessageCreatedEvent } from '@/types';
-import { ChannelDeletedEvent, ChannelReadUpdatedEvent } from '@/types/events';
+import {
+    ChannelDeletedEvent,
+    ChannelReadUpdatedEvent,
+    MessageDeletedEvent,
+    MessagesClearedEvent,
+} from '@/types/events';
 import { getChannelName } from '@/utils';
 import { echo } from '@laravel/echo-react';
 import { useEffect, useMemo, useRef } from 'react';
@@ -27,6 +32,14 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
                     .stopListening('MessageCreated')
                     .listen('MessageCreated', (event: MessageCreatedEvent) => {
                         emit('message.created', event.message);
+                    })
+                    .stopListening('MessageDeleted')
+                    .listen('MessageDeleted', (event: MessageDeletedEvent) => {
+                        emit('message.deleted', event);
+                    })
+                    .stopListening('MessagesCleared')
+                    .listen('MessagesCleared', (event: MessagesClearedEvent) => {
+                        emit('messages.cleared', event);
                     });
             }
         }

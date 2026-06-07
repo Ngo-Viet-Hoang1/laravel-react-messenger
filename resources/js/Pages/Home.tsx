@@ -16,7 +16,7 @@ import {
     ChatMessage,
     ChatMessageCollection,
 } from '@/types';
-import { MessageDeletedEvent } from '@/types/events';
+import { MessageDeletedEvent, MessagesClearedEvent } from '@/types/events';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -42,7 +42,8 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         hasLoadedAllMessages,
         firstMessageDate,
         addMessage,
-        removeMessage,
+        markMessageDeleted,
+        clearMessages,
         loadOlderMessages,
     } = useMessages(messages, selectedChannel);
 
@@ -153,9 +154,17 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         ({ message }: MessageDeletedEvent) => {
             if (!selectedChannel || message.channel_id !== selectedChannel.id)
                 return;
-            removeMessage(message);
+            markMessageDeleted(message);
         },
-        [selectedChannel, removeMessage],
+        [selectedChannel, markMessageDeleted],
+    );
+
+    const handleMessagesCleared = useCallback(
+        ({ channel_id }: MessagesClearedEvent) => {
+            if (!selectedChannel || channel_id !== selectedChannel.id) return;
+            clearMessages();
+        },
+        [clearMessages, selectedChannel],
     );
 
     const handleReply = useCallback((message: ChatMessage) => {
@@ -174,12 +183,14 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     useEffect(() => {
         const offCreated = on('message.created', handleMessageCreated);
         const offDeleted = on('message.deleted', handleMessageDeleted);
+        const offCleared = on('messages.cleared', handleMessagesCleared);
 
         return () => {
             offCreated();
             offDeleted();
+            offCleared();
         };
-    }, [on, handleMessageCreated, handleMessageDeleted]);
+    }, [on, handleMessageCreated, handleMessageDeleted, handleMessagesCleared]);
 
     if (!messages) {
         return (
