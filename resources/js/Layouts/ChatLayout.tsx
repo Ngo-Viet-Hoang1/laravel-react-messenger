@@ -1,4 +1,5 @@
 import ChannelItem from '@/Components/App/ChannelItem';
+import UserSearchResults from '@/Components/App/UserSearchResults';
 import TextInput from '@/Components/Breeze/TextInput';
 import {
     ChannelModalProvider,
@@ -8,11 +9,12 @@ import { useEventBus } from '@/EventBus';
 import useChannels from '@/hooks/useChannels';
 import useChannelSockets from '@/hooks/useChannelSockets';
 import useOnlinePresence from '@/hooks/useOnlinePresence';
+import useUserSearch from '@/hooks/useUserSearch';
 import { ChatItem, ChatPageProps } from '@/types';
 import { ChannelReadUpdatedEvent } from '@/types/events';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 
 const EMPTY_CHANNELS: ChatItem[] = [];
 
@@ -25,6 +27,9 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     const { on, emit } = useEventBus();
     const { openModal } = useChannelModal();
     const [search, setSearch] = useState('');
+    const { results: userSearchResults, isLoading: isSearching } =
+        useUserSearch(search);
+    const isSearchActive = search.trim().length > 0;
 
     const {
         sortedChannels,
@@ -32,7 +37,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         updateAfterMessageDeleted,
         markChannelAsRead,
         removeChannel,
-    } = useChannels(channels, search, Number(currentUser.id));
+    } = useChannels(channels, search.toLowerCase(), Number(currentUser.id));
 
     const { isOnline } = useOnlinePresence();
 
@@ -44,6 +49,14 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
             preserveScroll: false,
         });
     };
+
+    const handleUserSelect = useCallback(
+        (userId: number): void => {
+            setSearch('');
+            router.post(route('channels.direct', userId));
+        },
+        [],
+    );
 
     const handleReadUpdated = ({
         channel_id,
@@ -96,13 +109,24 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
                     </div>
                 </div>
 
-                <div className="shrink-0 p-3 dark:border-slate-700">
+                <div className="relative shrink-0 p-3 dark:border-slate-700">
                     <TextInput
-                        onChange={(e) =>
-                            setSearch(e.target.value.toLowerCase())
-                        }
-                        placeholder="Filter users and groups"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                                setSearch('');
+                            }
+                        }}
+                        placeholder="Search users or filter channels"
                         className="w-full"
+                    />
+
+                    <UserSearchResults
+                        results={userSearchResults}
+                        isLoading={isSearching}
+                        query={search}
+                        onSelect={handleUserSelect}
                     />
                 </div>
 
