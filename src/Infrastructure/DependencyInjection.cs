@@ -17,6 +17,7 @@ public static class DependencyInjection
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IClientInfoProvider, ClientInfoProvider>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<AuditableEntityInterceptor>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
