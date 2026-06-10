@@ -1,11 +1,16 @@
 using System.Linq.Expressions;
+using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Domain.Common.Contracts;
+using MessengerApp.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MessengerApp.Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options), IApplicationDbContext
 {
+    public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

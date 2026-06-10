@@ -1,5 +1,8 @@
+using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Infrastructure.Persistence;
 using MessengerApp.Infrastructure.Persistence.Interceptors;
+using MessengerApp.Infrastructure.Security;
+using MessengerApp.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,11 +15,13 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddHttpContextAccessor();
+        services.AddScoped<IClientInfoProvider, ClientInfoProvider>();
         services.AddScoped<AuditableEntityInterceptor>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        services.AddDbContextPool<AppDbContext>((serviceProvider, options) =>
+        services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
             var interceptor = serviceProvider.GetRequiredService<AuditableEntityInterceptor>();
 
@@ -31,6 +36,10 @@ public static class DependencyInjection
 
             options.AddInterceptors(interceptor);
         });
+
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IPasswordHasher, Argon2PasswordHasher>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
 
         return services;
     }
