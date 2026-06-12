@@ -7,13 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MessengerApp.Application.Auth.Commands.RefreshToken;
 
-public record RefreshTokenCommand(string RefreshToken) : IRequest<Result<AuthResponse>>;
+public record RefreshTokenCommand(string? RefreshToken) : IRequest<Result<AuthResponse>>;
 
 public class RefreshTokenCommandValidator : AbstractValidator<RefreshTokenCommand>
 {
     public RefreshTokenCommandValidator()
     {
-        RuleFor(x => x.RefreshToken).NotEmpty().WithMessage("Refresh token is required.");
+        When(x => !string.IsNullOrEmpty(x.RefreshToken), () =>
+        {
+            RuleFor(x => x.RefreshToken).MaximumLength(512);
+        });
     }
 }
 
@@ -24,6 +27,12 @@ public class RefreshTokenCommandHandler(
 {
     public async Task<Result<AuthResponse>> Handle(RefreshTokenCommand cmd, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(cmd.RefreshToken))
+        {
+            return Result.Failure<AuthResponse>(
+                Error.Unauthorized("Auth.MissingRefreshToken", "No refresh token was provided in cookie or request body."));
+        }
+
         var token = await context.RefreshTokens
             .FirstOrDefaultAsync(r => r.Token == cmd.RefreshToken, ct);
 
