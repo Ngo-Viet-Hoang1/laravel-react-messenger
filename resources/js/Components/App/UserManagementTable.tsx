@@ -1,10 +1,7 @@
 import { User } from '@/types';
-import UserOptionsDropdown from './UserOptionsDropdown';
+import UserTableActionsDropdown from './UserTableActionsDropdown';
 import UserAvatar from './UserAvatar';
-import { useState } from 'react';
-import { useTheme } from '@/hooks/useTheme';
-import { ConfigProvider, Table, theme as antdTheme } from 'antd';
-import type { TableColumnsType } from 'antd';
+import Table, { TableColumn } from './Table';
 
 type Props = {
     users: User[];
@@ -59,13 +56,6 @@ const StatusBadge = ({
 };
 
 const UserManagementTable = ({ users, isOnline, selectedIds, setSelectedIds }: Props) => {
-    const { theme } = useTheme();
-
-    const isDark =
-        theme === 'dark' ||
-        (theme === 'system' &&
-            window.matchMedia('(prefers-color-scheme: dark)').matches);
-
     if (users.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500">
@@ -77,11 +67,11 @@ const UserManagementTable = ({ users, isOnline, selectedIds, setSelectedIds }: P
         );
     }
 
-    const columns: TableColumnsType<User> = [
+    const columns: TableColumn<User>[] = [
         {
             title: 'Name',
             key: 'name',
-            render: (_, user) => (
+            render: (user) => (
                 <div className="flex items-center gap-3">
                     <UserAvatar
                         user={user}
@@ -97,23 +87,22 @@ const UserManagementTable = ({ users, isOnline, selectedIds, setSelectedIds }: P
         },
         {
             title: 'Email',
-            dataIndex: 'email',
             key: 'email',
-            render: (email) => (
+            render: (user) => (
                 <span className="text-slate-600 dark:text-slate-300">
-                    {email}
+                    {user.email}
                 </span>
             ),
         },
         {
             title: 'Role',
             key: 'role',
-            render: (_, user) => <RoleBadge isAdmin={user.is_admin} />,
+            render: (user) => <RoleBadge isAdmin={user.is_admin} />,
         },
         {
             title: 'Status',
             key: 'status',
-            render: (_, user) => (
+            render: (user) => (
                 <StatusBadge
                     blockedAt={user.blocked_at}
                     online={isOnline(user.id)}
@@ -124,52 +113,28 @@ const UserManagementTable = ({ users, isOnline, selectedIds, setSelectedIds }: P
             title: 'Actions',
             key: 'actions',
             align: 'right',
-            render: (_, user) => (
-                <UserOptionsDropdown user={user} mode="table" />
+            render: (user) => (
+                <UserTableActionsDropdown user={user} />
             ),
         },
     ];
 
-    const rowSelection = {
-        selectedRowKeys: Array.from(selectedIds),
-        onChange: (selectedRowKeys: React.Key[]) => {
-            setSelectedIds(new Set(selectedRowKeys as number[]));
-        },
+    const handleSelectionChange = (selectedRowKeys: any[]) => {
+        setSelectedIds(new Set(selectedRowKeys as number[]));
     };
 
     return (
-        <ConfigProvider
-            theme={{
-                algorithm: isDark
-                    ? antdTheme.darkAlgorithm
-                    : antdTheme.defaultAlgorithm,
-                token: {
-                    colorBgContainer: 'transparent',
-                },
-                components: {
-                    Table: {
-                        headerBg: 'transparent',
-                        headerColor: isDark ? '#94a3b8' : '#64748b',
-                        headerSplitColor: 'transparent',
-                        rowHoverBg: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc',
-                        rowSelectedBg: isDark ? 'rgba(99, 102, 241, 0.12)' : '#f1f5f9',
-                        rowSelectedHoverBg: isDark ? 'rgba(99, 102, 241, 0.2)' : '#e2e8f0',
-                        borderColor: isDark ? '#334155' : '#f1f5f9',
-                    },
-                },
-            }}
-        >
-            <div className="w-full">
-                <Table
-                    rowSelection={rowSelection}
-                    columns={columns}
-                    dataSource={users}
-                    rowKey="id"
-                    pagination={false}
-                    className="border-none"
-                />
-            </div>
-        </ConfigProvider>
+        <div className="w-full">
+            <Table
+                columns={columns}
+                dataSource={users}
+                rowKey="id"
+                selection={{
+                    selectedRowKeys: Array.from(selectedIds),
+                    onChange: handleSelectionChange,
+                }}
+            />
+        </div>
     );
 };
 

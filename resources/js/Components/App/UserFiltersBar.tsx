@@ -59,7 +59,7 @@ const UserFiltersBar = ({
                 <button
                     type="button"
                     onClick={onNewUser}
-                    className="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 ease-in-out hover:bg-gray-700 active:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white dark:active:bg-gray-300"
+                    className="btn btn-sm h-10 border-none bg-slate-800 hover:bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-800 dark:hover:bg-white text-sm font-semibold rounded-lg px-4 gap-2"
                 >
                     <UserPlusIcon className="h-4 w-4" />
                     New User

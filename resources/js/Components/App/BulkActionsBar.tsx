@@ -80,7 +80,7 @@ export default function BulkActionsBar({
                     <button
                         onClick={() => handleAction(onUnblock)}
                         disabled={isLoading}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50"
+                        className="btn btn-outline btn-sm h-9 gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                     >
                         <LockOpenIcon className="h-3.5 w-3.5" />
                         Unblock
@@ -89,7 +89,7 @@ export default function BulkActionsBar({
                     <button
                         onClick={handleBulkBlock}
                         disabled={isLoading}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-gray-800 px-3 text-xs font-semibold text-white transition-colors hover:bg-gray-700 dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white disabled:opacity-50"
+                        className="btn btn-sm h-9 gap-1.5 rounded-lg border-none bg-gray-800 hover:bg-gray-700 text-white dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white px-3 text-xs font-semibold disabled:opacity-50"
                     >
                         <LockClosedIcon className="h-3.5 w-3.5" />
                         Block
@@ -98,7 +98,7 @@ export default function BulkActionsBar({
                     <button
                         onClick={handleBulkDelete}
                         disabled={isLoading}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-red-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+                        className="btn btn-error btn-sm h-9 gap-1.5 rounded-lg border-none bg-red-600 hover:bg-red-500 text-white px-3 text-xs font-semibold disabled:opacity-50"
                     >
                         <TrashIcon className="h-3.5 w-3.5" />
                         Delete
