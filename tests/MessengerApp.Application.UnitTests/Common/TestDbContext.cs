@@ -1,0 +1,22 @@
+using MessengerApp.Application.Common.Interfaces;
+using MessengerApp.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace MessengerApp.Application.UnitTests.Common;
+
+public class TestDbContext : DbContext, IApplicationDbContext
+{
+    public TestDbContext(DbContextOptions<TestDbContext> options) : base(options) { }
+
+    public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public static TestDbContext Create()
+    {
+        var options = new DbContextOptionsBuilder<TestDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        return new TestDbContext(options);
+    }
+}

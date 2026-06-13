@@ -12,4 +12,7 @@
   <Folder Name="/src/WebAPI/">
     <Project Path="src/WebAPI/MessengerApp.WebAPI.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MessengerApp.Application.UnitTests/MessengerApp.Application.UnitTests.csproj" />
+  </Folder>
 </Solution>
