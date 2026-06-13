@@ -14,7 +14,6 @@ type UseMessagesReturn = {
     firstMessageDate: string | null;
     addMessage: (message: ChatMessage) => boolean;
     markMessageDeleted: (message: ChatMessage) => void;
-    clearMessages: () => void;
     loadOlderMessages: () => Promise<void>;
 };
 
@@ -60,7 +59,7 @@ const useMessages = (
                 current.id === message.id
                     ? {
                           ...current,
-                          content: 'You have deleted a message.',
+                          content: 'Message has been deleted.',
                           deleted_at:
                               message.deleted_at ?? new Date().toISOString(),
                           attachments: [],
@@ -68,11 +67,6 @@ const useMessages = (
                     : current,
             ),
         );
-    }, []);
-
-    const clearMessages = useCallback((): void => {
-        messageIdSetRef.current = new Set();
-        setChatMessages([]);
     }, []);
 
     const loadOlderMessages = useCallback(async (): Promise<void> => {
@@ -129,7 +123,6 @@ const useMessages = (
         firstMessageDate,
         addMessage,
         markMessageDeleted,
-        clearMessages,
         loadOlderMessages,
     };
 };

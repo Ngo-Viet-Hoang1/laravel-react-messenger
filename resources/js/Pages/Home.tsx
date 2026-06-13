@@ -17,7 +17,7 @@ import {
     ChatMessage,
     ChatMessageCollection,
 } from '@/types';
-import { MessageDeletedEvent, MessagesClearedEvent } from '@/types/events';
+import { MessageDeletedEvent } from '@/types/events';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -44,7 +44,6 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         firstMessageDate,
         addMessage,
         markMessageDeleted,
-        clearMessages,
         loadOlderMessages,
     } = useMessages(messages, selectedChannel);
 
@@ -160,14 +159,6 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         [selectedChannel, markMessageDeleted],
     );
 
-    const handleMessagesCleared = useCallback(
-        ({ channel_id }: MessagesClearedEvent) => {
-            if (!selectedChannel || channel_id !== selectedChannel.id) return;
-            clearMessages();
-        },
-        [clearMessages, selectedChannel],
-    );
-
     const handleReply = useCallback((message: ChatMessage) => {
         setReplyTo(message);
     }, []);
@@ -184,14 +175,12 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     useEffect(() => {
         const offCreated = on('message.created', handleMessageCreated);
         const offDeleted = on('message.deleted', handleMessageDeleted);
-        const offCleared = on('messages.cleared', handleMessagesCleared);
 
         return () => {
             offCreated();
             offDeleted();
-            offCleared();
         };
-    }, [on, handleMessageCreated, handleMessageDeleted, handleMessagesCleared]);
+    }, [on, handleMessageCreated, handleMessageDeleted]);
 
     if (!messages) {
         return (

@@ -32,7 +32,6 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         updateAfterMessageDeleted,
         markChannelAsRead,
         removeChannel,
-        clearChannelMessages,
     } = useChannels(channels, search, Number(currentUser.id));
 
     const { isOnline } = useOnlinePresence();
@@ -56,15 +55,11 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const offCreated = on('message.created', updateLastMessage);
         const offDeleted = on('message.deleted', updateAfterMessageDeleted);
-        const offCleared = on('messages.cleared', ({ channel_id }) => {
-            clearChannelMessages(channel_id);
-        });
         const offReadUpdated = on('channel.read.updated', handleReadUpdated);
 
         return () => {
             offCreated();
             offDeleted();
-            offCleared();
             offReadUpdated();
         };
     }, [
@@ -72,7 +67,6 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         updateLastMessage,
         updateAfterMessageDeleted,
         handleReadUpdated,
-        clearChannelMessages,
     ]);
 
     useEffect(() => {

@@ -28,7 +28,6 @@ export type {
     ChannelDeletedEvent,
     MessageCreatedEvent,
     MessageDeletedEvent,
-    MessagesClearedEvent,
 } from './events';
 
 export type { ChatPageProps, PageProps } from './page-props';

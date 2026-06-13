@@ -4,7 +4,6 @@ import {
     ChannelDeletedEvent,
     ChannelReadUpdatedEvent,
     MessageDeletedEvent,
-    MessagesClearedEvent,
 } from '@/types/events';
 import { getChannelName } from '@/utils';
 import { echo } from '@laravel/echo-react';
@@ -36,10 +35,6 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
                     .stopListening('MessageDeleted')
                     .listen('MessageDeleted', (event: MessageDeletedEvent) => {
                         emit('message.deleted', event);
-                    })
-                    .stopListening('MessagesCleared')
-                    .listen('MessagesCleared', (event: MessagesClearedEvent) => {
-                        emit('messages.cleared', event);
                     });
             }
         }

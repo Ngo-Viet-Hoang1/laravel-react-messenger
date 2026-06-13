@@ -28,11 +28,13 @@ const ChannelHeader = ({ channel }: Props) => {
     const { openModal } = useChannelModal();
     const confirmDialog = useConfirm();
 
-    const onDeleteGroup = async () => {
+    const onDeleteChannel = async () => {
         const isConfirmed = await confirmDialog({
-            title: 'Delete Group',
+            title: channel?.type === 'direct' ? 'Delete Chat' : 'Delete Group',
             message:
-                'Are you sure you want to delete this group? This action cannot be undone.',
+                channel?.type === 'direct'
+                    ? 'Are you sure you want to delete this direct chat? This action cannot be undone.'
+                    : 'Are you sure you want to delete this group? This action cannot be undone.',
             isDanger: true,
             confirmText: 'Yes, delete',
         });
@@ -45,36 +47,13 @@ const ChannelHeader = ({ channel }: Props) => {
             );
             emit(
                 'toast.show',
-                data.message || `The group "${channel?.name}" has been deleted`,
+                data.message || `The chat "${channel?.name}" has been deleted`,
             );
         } catch (error) {
             emit(
                 'toast.show',
-                `Failed to delete group "${channel?.name}". Please try again.`,
+                `Failed to delete "${channel?.name}". Please try again.`,
             );
-        }
-    };
-
-    const onClearDirectMessages = async () => {
-        const isConfirmed = await confirmDialog({
-            title: 'Clear Chat',
-            message:
-                'Are you sure you want to delete all messages in this direct chat? This action cannot be undone.',
-            isDanger: true,
-            confirmText: 'Yes, clear',
-        });
-
-        if (!isConfirmed) return;
-
-        try {
-            const { data } = await axios.delete(
-                route('channels.messages.destroy-all', channel?.id),
-            );
-
-            emit('messages.cleared', { channel_id: data.channel_id });
-            emit('toast.show', 'All messages in this direct chat have been deleted');
-        } catch {
-            emit('toast.show', `Failed to clear messages in "${channel?.name}".`);
         }
     };
 
@@ -141,7 +120,7 @@ const ChannelHeader = ({ channel }: Props) => {
                                 >
                                     <button
                                         className="flex h-9 w-9 items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                                        onClick={onDeleteGroup}
+                                        onClick={onDeleteChannel}
                                     >
                                         <TrashIcon className="h-5 w-5" />
                                     </button>
@@ -149,12 +128,12 @@ const ChannelHeader = ({ channel }: Props) => {
                             </>
                         ) : (
                             <div
-                                data-tip="Clear Chat"
+                                data-tip="Delete Chat"
                                 className="tooltip tooltip-left"
                             >
                                 <button
                                     className="flex h-9 w-9 items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                                    onClick={onClearDirectMessages}
+                                    onClick={onDeleteChannel}
                                 >
                                     <TrashIcon className="h-5 w-5" />
                                 </button>

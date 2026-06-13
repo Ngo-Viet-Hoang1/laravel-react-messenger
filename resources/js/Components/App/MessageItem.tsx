@@ -109,7 +109,7 @@ const MessageItem = ({
                     <div className="chat-message-content prose-sm dark:prose-invert prose max-w-none break-words text-current">
                         {isDeleted ? (
                             <span className="italic opacity-75">
-                                You have deleted a message.
+                                Message has been deleted.
                             </span>
                         ) : (
                             <ReactMarkdown

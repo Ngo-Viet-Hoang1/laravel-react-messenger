@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Events\MessageCreated;
 use App\Events\MessageDeleted;
-use App\Events\MessagesCleared;
 use App\Http\Requests\StoreMessageRequest;
 use App\Http\Resources\MessageResource;
 use App\Models\Channel;
@@ -235,31 +234,6 @@ class MessageController extends Controller
         return response()->json([
             'message' => $deletedSnapshot,
             'newLastMessage' => $newLastMessage,
-        ]);
-    }
-
-    public function destroyAll(Channel $channel)
-    {
-        $isUserInChannel = auth()->user()?->channels()->whereKey($channel->id)->exists();
-        abort_unless($isUserInChannel, 403, 'Unauthorized');
-        abort_if($channel->type !== 'direct', 403, 'Only direct chats can be cleared.');
-
-        $messages = Message::where('channel_id', $channel->id)->get();
-        $deletedCount = $messages->count();
-
-        DB::transaction(function () use ($messages): void {
-            foreach ($messages as $message) {
-                $message->delete();
-            }
-        });
-
-        DB::afterCommit(function () use ($channel): void {
-            broadcast(new MessagesCleared($channel->id))->toOthers();
-        });
-
-        return response()->json([
-            'channel_id' => $channel->id,
-            'deleted_count' => $deletedCount,
         ]);
     }
 
