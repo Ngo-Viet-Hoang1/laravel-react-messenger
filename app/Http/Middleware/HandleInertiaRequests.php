@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use App\Http\Resources\UserResource;
-use App\Models\MessageReport;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,9 +36,6 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $user ? new UserResource($user) : null,
-                'pendingReportsCount' => ($user && $user->is_admin)
-                    ? MessageReport::pendingCount()
-                    : 0,
             ],
         ];
     }

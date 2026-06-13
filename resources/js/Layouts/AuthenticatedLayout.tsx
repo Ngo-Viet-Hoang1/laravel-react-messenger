@@ -49,19 +49,10 @@ const AuthenticatedInner = ({
                                         active={route().current(
                                             'admin.reports.index',
                                         )}
-                                        className="relative flex items-center gap-1"
+                                        className="flex items-center gap-1"
                                     >
                                         <FlagIcon className="inline h-4 w-4" />
                                         <span>Reports</span>
-                                        {!!page.props.auth
-                                            .pendingReportsCount && (
-                                            <span className="absolute -right-2.5 top-3.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[12px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-gray-800">
-                                                {
-                                                    page.props.auth
-                                                        .pendingReportsCount
-                                                }
-                                            </span>
-                                        )}
                                     </NavLink>
                                 )}
                             </div>
@@ -184,17 +175,11 @@ const AuthenticatedInner = ({
                             <ResponsiveNavLink
                                 href={route('admin.reports.index')}
                                 active={route().current('admin.reports.index')}
-                                className="flex items-center justify-between"
                             >
                                 <span className="flex items-center">
                                     <FlagIcon className="mr-2 h-4 w-4" />
                                     Reports
                                 </span>
-                                {!!page.props.auth.pendingReportsCount && (
-                                    <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                                        {page.props.auth.pendingReportsCount}
-                                    </span>
-                                )}
                             </ResponsiveNavLink>
                         )}
                     </div>

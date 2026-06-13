@@ -10,7 +10,7 @@ export type ReportReason =
 
 export type ReportStatus = 'pending' | 'reviewed' | 'dismissed';
 
-export type MessageReportMessage = {
+export type ReportedMessage = {
     id: number;
     content: string | null;
     channel_id: number;
@@ -25,7 +25,7 @@ export type MessageReport = {
     reason: ReportReason;
     note: string | null;
     status: ReportStatus;
-    message: MessageReportMessage;
+    message: ReportedMessage;
     reporter: User;
     reviewer: User | null;
     reviewed_at: string | null;
