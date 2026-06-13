@@ -1,6 +1,21 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/forms';
+@plugin 'daisyui' {
+    themes: light --default, dark --prefersdark;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source "../views/**/*.blade.php";
+@source "../js/**/*.tsx";
+
+@theme {
+    --font-sans:
+        'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --breakpoint-xs: 475px;
+}
 
 /* ─── Typing Indicator Animation ────────────────────────────────────────────── */
 
@@ -89,11 +104,11 @@
 
 @layer components {
     .cb-tool-btn {
-        @apply inline-flex cursor-pointer select-none items-center gap-1 rounded px-2 py-1 text-[0.7rem] font-medium leading-none text-slate-400 transition-colors duration-150 hover:bg-black/[.06] hover:text-slate-600 dark:text-slate-500 dark:hover:bg-white/[.06] dark:hover:text-slate-300;
+        @apply inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-[0.7rem] leading-none font-medium text-slate-400 transition-colors duration-150 select-none hover:bg-black/[.06] hover:text-slate-600 dark:text-slate-500 dark:hover:bg-white/[.06] dark:hover:text-slate-300;
     }
 
     .cb-expand-btn {
-        @apply flex w-full cursor-pointer select-none items-center justify-center gap-1 border-t border-slate-200 bg-transparent px-4 py-1.5 text-[0.72rem] font-medium text-slate-400 transition-colors duration-150 hover:bg-black/[.04] hover:text-slate-600 dark:border-slate-700 dark:text-slate-500 dark:hover:bg-white/[.04] dark:hover:text-slate-400;
+        @apply flex w-full cursor-pointer items-center justify-center gap-1 border-t border-slate-200 bg-transparent px-4 py-1.5 text-[0.72rem] font-medium text-slate-400 transition-colors duration-150 select-none hover:bg-black/[.04] hover:text-slate-600 dark:border-slate-700 dark:text-slate-500 dark:hover:bg-white/[.04] dark:hover:text-slate-400;
     }
 
     .cb-pre {

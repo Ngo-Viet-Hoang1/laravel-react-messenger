@@ -1,5 +1,4 @@
 import { echo } from '@laravel/echo-react';
-import type { Channel } from 'laravel-echo';
 import { useEffect, useRef, useState } from 'react';
 
 export interface TypingUser {
@@ -11,54 +10,49 @@ export interface TypingUser {
 export interface UseTypingIndicatorOptions {
     debounceMs?: number;
     expireMs?: number;
-    channelType?: 'public' | 'private';
 }
+
+type EchoInstance = NonNullable<ReturnType<typeof echo>>;
+type PrivateEchoChannel = ReturnType<EchoInstance['private']>;
 
 export const useTypingIndicator = (
     user: TypingUser,
     options: UseTypingIndicatorOptions = {},
     channelName?: string,
 ) => {
-    const {
-        debounceMs = 800,
-        expireMs = 2500,
-        channelType = 'private',
-    } = options;
+    const { debounceMs = 800, expireMs = 2500 } = options;
 
     const [typingUsers, setTypingUsers] = useState<Map<string, TypingUser>>(
         new Map(),
     );
+
     const lastEmitRef = useRef<number>(0);
     const expiresRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
         new Map(),
     );
-    const channelRef = useRef<Channel | null>(null);
 
-    // Send typing whisper (throttled)
+    const channelRef = useRef<PrivateEchoChannel | null>(null);
+
     const sendTyping = () => {
         const now = Date.now();
+
         if (now - lastEmitRef.current < debounceMs) {
             return;
         }
 
         lastEmitRef.current = now;
 
-        if (channelRef.current) {
-            channelRef.current.whisper('typing', { user });
-        }
+        channelRef.current?.whisper('typing', { user });
     };
 
-    // Subscribe to channel
     useEffect(() => {
         if (!channelName) return;
 
         const e = echo();
         if (!e) return;
 
-        const channel =
-            channelType === 'private'
-                ? e.private(channelName)
-                : e.channel(channelName);
+        const channel = e.private(channelName);
+        const expires = expiresRef.current;
 
         channel.listenForWhisper('typing', ({ user }: { user: TypingUser }) => {
             setTypingUsers((prev) => {
@@ -78,6 +72,7 @@ export const useTypingIndicator = (
                     updated.delete(user.id);
                     return updated;
                 });
+
                 expiresRef.current.delete(user.id);
             }, expireMs);
 
@@ -88,10 +83,11 @@ export const useTypingIndicator = (
 
         return () => {
             channel.stopListeningForWhisper('typing');
-            expiresRef.current.forEach((timer) => clearTimeout(timer));
-            expiresRef.current.clear();
+
+            expires.forEach((timer) => clearTimeout(timer));
+            expires.clear();
         };
-    }, [channelName, channelType, expireMs]);
+    }, [channelName, expireMs]);
 
     return {
         typingUsers,

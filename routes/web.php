@@ -26,6 +26,8 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
 
+    Route::post('/messages/upload-chunk', [MessageController::class, 'uploadChunk'])->name('messages.upload-chunk');
+
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::middleware('admin')->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');

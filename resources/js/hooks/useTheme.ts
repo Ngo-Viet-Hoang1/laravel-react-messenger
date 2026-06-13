@@ -15,6 +15,7 @@ export function useTheme() {
                 window.matchMedia('(prefers-color-scheme: dark)').matches);
 
         root.classList.toggle('dark', isDark);
+        root.setAttribute('data-theme', isDark ? 'dark' : 'light');
 
         localStorage.setItem('theme', theme);
     }, [theme]);
@@ -25,6 +26,10 @@ export function useTheme() {
         const media = window.matchMedia('(prefers-color-scheme: dark)');
         const handler = () => {
             document.documentElement.classList.toggle('dark', media.matches);
+            document.documentElement.setAttribute(
+                'data-theme',
+                media.matches ? 'dark' : 'light',
+            );
         };
 
         media.addEventListener('change', handler);

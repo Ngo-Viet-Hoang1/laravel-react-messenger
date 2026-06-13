@@ -1,5 +1,6 @@
 {
     "singleQuote": true,
+    "tailwindStylesheet": "./resources/css/app.css",
     "plugins": [
         "prettier-plugin-organize-imports",
         "prettier-plugin-tailwindcss"
