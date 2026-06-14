@@ -1,3 +1,5 @@
+export type { paths, components } from './schema';
+
 export const HttpStatus = {
   OK: 200,
   CREATED: 201,
@@ -40,11 +42,11 @@ export const getHttpStatusPhrase = (status: number) =>
   HTTP_STATUS_PHRASES[status] || `HTTP Error ${status}`;
 
 export interface ProblemDetails {
-  type?: string;
-  title?: string;
-  status?: number;
-  detail?: string;
-  instance?: string;
+  type?: string | null;
+  title?: string | null;
+  status?: number | string | null;
+  detail?: string | null;
+  instance?: string | null;
   traceId?: string;
   timestamp?: string;
   errors?: Record<string, string[]>;
@@ -71,11 +73,15 @@ export class ApiError extends Error {
   constructor(problem: ProblemDetails) {
     super(problem.detail || problem.title || 'An unexpected API error occurred.');
     this.name = 'ApiError';
-    this.status = problem.status ?? 500;
+    this.status = typeof problem.status === 'number' ? problem.status : 500;
     this.title = problem.title || getHttpStatusPhrase(this.status);
-    this.detail = problem.detail;
+    this.detail = problem.detail || undefined;
     this.traceId = problem.traceId;
     this.errors = problem.errors;
+  }
+
+  public get isNetworkError(): boolean {
+    return this.status === 0 || this.status === 408 || this.status === 504;
   }
 }
 
@@ -93,9 +99,7 @@ export const getFieldError = (err: unknown, fieldName: string): string | undefin
   const errors = getValidationErrors(err);
   if (!errors) return undefined;
 
-  // Case-insensitive lookup (e.g. 'email' matches 'Email' or 'email')
   const key = Object.keys(errors).find((k) => k.toLowerCase() === fieldName.toLowerCase());
-
   return key && errors[key]?.length > 0 ? errors[key][0] : undefined;
 };
 
@@ -104,7 +108,6 @@ export const getErrorMessage = (
   fallback = 'Failed to connect to the server.'
 ): string => {
   if (err instanceof ApiError) {
-    // If backend returned specific field validation errors, aggregate them nicely
     if (err.errors && Object.keys(err.errors).length > 0) {
       const messages = Object.values(err.errors).flat();
       if (messages.length > 0) {

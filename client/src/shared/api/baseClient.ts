@@ -1,4 +1,4 @@
-﻿import axios, {
+import axios, {
   AxiosError,
   type AxiosInstance,
   type AxiosRequestConfig,
@@ -30,9 +30,47 @@ export const baseClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
+type TokenGetter = () => string | null;
+type RefreshHandler = () => Promise<string | null>;
+type SessionExpiredHandler = () => void;
+
+let onGetToken: TokenGetter | null = null;
+let onTokenRefresh: RefreshHandler | null = null;
+let onSessionExpired: SessionExpiredHandler | null = null;
+
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}> = [];
+
+/**
+ * Clean Architecture Callback Registration:
+ * Decouples the shared API layer from upper layers (Redux store, entities, app).
+ * Shared modules never import directly from `app/` or `entities/`.
+ */
+export const registerTokenGetter = (getter: TokenGetter) => {
+  onGetToken = getter;
+};
+
+export const registerTokenRefreshHandler = (handler: RefreshHandler) => {
+  onTokenRefresh = handler;
+};
+
+export const registerSessionExpiredHandler = (handler: SessionExpiredHandler) => {
+  onSessionExpired = handler;
+};
+
+export const createSessionExpiredError = () =>
+  new ApiError({
+    status: HttpStatus.UNAUTHORIZED,
+    title: 'Session Expired',
+    detail: 'Your session has expired or is invalid. Please log in again.',
+  });
+
 baseClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('access_token') || localStorage.getItem('accessToken');
+    const token = onGetToken ? onGetToken() : null;
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -49,25 +87,6 @@ baseClient.interceptors.request.use(
   },
   (error: unknown) => Promise.reject(error)
 );
-
-type RefreshHandler = () => Promise<string | null>;
-type SessionExpiredHandler = () => void;
-
-let onTokenRefresh: RefreshHandler | null = null;
-let onSessionExpired: SessionExpiredHandler | null = null;
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (err: unknown) => void;
-}> = [];
-
-export const registerTokenRefreshHandler = (handler: RefreshHandler) => {
-  onTokenRefresh = handler;
-};
-
-export const registerSessionExpiredHandler = (handler: SessionExpiredHandler) => {
-  onSessionExpired = handler;
-};
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((promise) => {
@@ -99,13 +118,6 @@ const isProblemDetailsPayload = (data: unknown): data is ProblemDetails => {
 const isHtmlPayload = (data: unknown): boolean =>
   typeof data === 'string' && /<\s*(!doctype|[a-z]+)(\s|>)/i.test(data.trim());
 
-const createSessionExpiredError = () =>
-  new ApiError({
-    status: HttpStatus.UNAUTHORIZED,
-    title: 'Session Expired',
-    detail: 'Your session has expired. Please log in again.',
-  });
-
 baseClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -114,8 +126,10 @@ baseClient.interceptors.response.use(
     const isAuthRequest =
       originalRequest?._skipAuthRefresh ||
       originalRequest?.url?.includes('/auth/refresh') ||
-      originalRequest?.url?.includes('/auth/login');
+      originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/register');
 
+    // Handle 401 Unauthorized via Decoupled Refresh Handler
     if (
       error.response?.status === HttpStatus.UNAUTHORIZED &&
       originalRequest &&
@@ -141,7 +155,7 @@ baseClient.interceptors.response.use(
       try {
         const newToken = await onTokenRefresh();
         if (!newToken) {
-          throw new Error('Missing token');
+          throw createSessionExpiredError();
         }
 
         if (originalRequest.headers) {
@@ -149,7 +163,7 @@ baseClient.interceptors.response.use(
         }
         processQueue(null, newToken);
         return baseClient(originalRequest);
-      } catch {
+      } catch (refreshErr) {
         const sessionError = createSessionExpiredError();
         processQueue(sessionError, null);
         notifySessionExpired();
