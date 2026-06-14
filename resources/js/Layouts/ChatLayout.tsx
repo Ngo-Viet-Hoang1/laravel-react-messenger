@@ -29,7 +29,6 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     const [search, setSearch] = useState('');
     const { results: userSearchResults, isLoading: isSearching } =
         useUserSearch(search);
-    const isSearchActive = search.trim().length > 0;
 
     const {
         sortedChannels,
@@ -50,13 +49,10 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         });
     };
 
-    const handleUserSelect = useCallback(
-        (userId: number): void => {
-            setSearch('');
-            router.post(route('channels.direct', userId));
-        },
-        [],
-    );
+    const handleSelectUser = useCallback((userId: number): void => {
+        setSearch('');
+        router.post(route('channels.direct', userId));
+    }, []);
 
     const handleReadUpdated = ({
         channel_id,
@@ -126,7 +122,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
                         results={userSearchResults}
                         isLoading={isSearching}
                         query={search}
-                        onSelect={handleUserSelect}
+                        onSelect={handleSelectUser}
                     />
                 </div>
 

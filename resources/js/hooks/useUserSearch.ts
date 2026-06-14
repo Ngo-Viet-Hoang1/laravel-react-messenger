@@ -1,6 +1,7 @@
 import { User } from '@/types';
 import axios, { CancelTokenSource } from 'axios';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import useDebounce from './useDebounce';
 
 type UseUserSearchReturn = {
     results: User[];
@@ -13,64 +14,51 @@ const useUserSearch = (query: string): UseUserSearchReturn => {
     const [results, setResults] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const cancelTokenRef = useRef<CancelTokenSource | null>(null);
-    const timerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(
-        null,
-    );
 
-    const search = useCallback((q: string) => {
-        cancelTokenRef.current?.cancel();
-        const source = axios.CancelToken.source();
-        cancelTokenRef.current = source;
-
-        setIsLoading(true);
-
-        axios
-            .get<User[]>(route('users.index'), {
-                params: { q },
-                cancelToken: source.token,
-            })
-            .then(({ data }) => {
-                setResults(data);
-                setIsLoading(false);
-            })
-            .catch((error) => {
-                if (!axios.isCancel(error)) {
-                    setIsLoading(false);
-                }
-            });
-    }, []);
+    const debouncedQuery = useDebounce(query.trim(), DEBOUNCE_MS);
 
     useEffect(() => {
-        if (timerRef.current) {
-            globalThis.clearTimeout(timerRef.current);
-        }
-
-        const trimmed = query.trim();
-
-        if (!trimmed) {
+        if (!debouncedQuery) {
             cancelTokenRef.current?.cancel();
             setResults([]);
             setIsLoading(false);
             return;
         }
 
-        setIsLoading(true);
-        timerRef.current = globalThis.setTimeout(() => {
-            search(trimmed);
-        }, DEBOUNCE_MS);
+        const search = async (): Promise<void> => {
+            cancelTokenRef.current?.cancel();
+            const source = axios.CancelToken.source();
+            cancelTokenRef.current = source;
 
-        return () => {
-            if (timerRef.current) {
-                globalThis.clearTimeout(timerRef.current);
+            setIsLoading(true);
+
+            try {
+                const { data } = await axios.get<User[]>(route('users.index'), {
+                    params: { q: debouncedQuery },
+                    cancelToken: source.token,
+                });
+                setResults(data);
+                setIsLoading(false);
+            } catch (error) {
+                if (!axios.isCancel(error)) {
+                    setIsLoading(false);
+                }
             }
         };
-    }, [query, search]);
 
-    useEffect(() => {
+        void search();
+
         return () => {
             cancelTokenRef.current?.cancel();
         };
-    }, []);
+    }, [debouncedQuery]);
+
+    // Show loading state immediately when user starts typing
+    useEffect(() => {
+        if (query.trim()) {
+            setIsLoading(true);
+        }
+    }, [query]);
 
     return { results, isLoading };
 };
