@@ -1,4 +1,5 @@
 import { User } from '@/types';
+import LoadingSpinner from './LoadingSpinner';
 import UserAvatar from './UserAvatar';
 
 type Props = {
@@ -8,19 +9,14 @@ type Props = {
     onSelect: (userId: number) => void;
 };
 
-const UserSearchResults = ({
-    results,
-    isLoading,
-    query,
-    onSelect,
-}: Props) => {
+const UserSearchResults = ({ results, isLoading, query, onSelect }: Props) => {
     if (!query.trim()) return null;
 
     return (
         <div className="absolute inset-x-0 top-full z-20 max-h-[calc(100vh-200px)] overflow-y-auto border-t border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800">
             {isLoading && results.length === 0 && (
                 <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-slate-400">
-                    <span className="loading loading-spinner loading-sm" />
+                    <LoadingSpinner size="sm" />
                     Searching…
                 </div>
             )}
