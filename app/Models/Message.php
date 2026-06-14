@@ -19,6 +19,9 @@ class Message extends Model
         'sender_id',
         'parent_id',
         'content',
+        'is_encrypted',
+        'iv',
+        'ciphertext',
     ];
 
     public function channel(): BelongsTo

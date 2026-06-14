@@ -14,6 +14,7 @@ class Channel extends Model
 
     protected $fillable = [
         'type',
+        'is_e2ee_enabled',
         'direct_key',
         'name',
         'description',
@@ -25,6 +26,7 @@ class Channel extends Model
     {
         return [
             'last_message_id' => 'integer',
+            'is_e2ee_enabled' => 'boolean',
         ];
     }
 
