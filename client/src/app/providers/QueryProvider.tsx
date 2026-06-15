@@ -1,14 +1,22 @@
 import * as React from 'react';
-import { QueryClient, QueryClientProvider, type DefaultOptions } from '@tanstack/react-query';
-import { ApiError } from '@/shared/api';
+import {
+  QueryClient,
+  QueryClientProvider,
+  MutationCache,
+  type DefaultOptions,
+} from '@tanstack/react-query';
+import { ApiError, getErrorMessage } from '@/shared/api';
 import { toast } from 'sonner';
 
-/**
- * Enterprise-Grade TanStack Query Configuration:
- * - Retry strategy: 4xx errors are client mistakes (never retry); retry 5xx/network errors at most once.
- * - Cache freshness: Data stays fresh for 5 mins, inactive cache collected after 10 mins.
- * - Mutation error handling: Emits global toast unless detailed inline field validation errors exist.
- */
+declare module '@tanstack/react-query' {
+  interface Register {
+    mutationMeta: {
+      suppressToast?: boolean;
+      errorMessage?: string;
+    };
+  }
+}
+
 const queryConfig: DefaultOptions = {
   queries: {
     retry: (failureCount, error) => {
@@ -37,22 +45,18 @@ const queryConfig: DefaultOptions = {
     },
     throwOnError: false,
     networkMode: 'online',
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        // Intelligently suppress global toast if inline form validation errors are present
-        const hasFieldErrors = !!error.errors && Object.keys(error.errors).length > 0;
-        if (!hasFieldErrors) {
-          toast.error(error.message);
-        }
-      } else if (error instanceof Error) {
-        toast.error(error.message);
-      }
-    },
   },
 };
 
 export const queryClient = new QueryClient({
   defaultOptions: queryConfig,
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      if (mutation.meta?.suppressToast) return;
+      const customMessage = mutation.meta?.errorMessage;
+      toast.error(customMessage || getErrorMessage(error));
+    },
+  }),
 });
 
 export const QueryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
