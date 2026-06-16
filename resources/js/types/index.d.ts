@@ -27,6 +27,7 @@ export type {
     AppEventMap,
     ChannelDeletedEvent,
     MessageCreatedEvent,
+    MessageDeletedEvent,
 } from './events';
 
 export type { ChatPageProps, PageProps } from './page-props';

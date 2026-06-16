@@ -54,6 +54,7 @@ const MessageItem = ({
     const sender = message.sender ?? DELETED_USER;
     const senderName = sender.name;
     const formattedTime = formatChatTime(message.created_at);
+    const isDeleted = message.deleted_at != null;
 
     return (
         <div
@@ -106,15 +107,21 @@ const MessageItem = ({
                     ) : null}
 
                     <div className="chat-message-content prose-sm dark:prose-invert prose max-w-none break-words text-current">
-                        <ReactMarkdown
-                            rehypePlugins={REHYPE_PLUGINS}
-                            components={markdownComponents}
-                        >
-                            {message.content ?? ''}
-                        </ReactMarkdown>
+                        {isDeleted ? (
+                            <span className="italic opacity-75">
+                                Message has been deleted.
+                            </span>
+                        ) : (
+                            <ReactMarkdown
+                                rehypePlugins={REHYPE_PLUGINS}
+                                components={markdownComponents}
+                            >
+                                {message.content ?? ''}
+                            </ReactMarkdown>
+                        )}
                     </div>
                     <MessageAttachments
-                        attachments={message.attachments}
+                        attachments={isDeleted ? [] : message.attachments}
                         onAttachmentClick={onAttachmentClick}
                     />
                 </div>

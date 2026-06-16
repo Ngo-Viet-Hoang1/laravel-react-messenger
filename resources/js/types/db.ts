@@ -36,6 +36,7 @@ export type Message = {
     sender_id: number;
     parent_id: number | null;
     content: string | null;
+    deleted_at?: string | null;
     created_at: string;
     updated_at: string;
 };

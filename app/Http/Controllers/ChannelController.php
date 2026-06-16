@@ -112,15 +112,41 @@ class ChannelController extends Controller
 
     public function destroy(Channel $channel): JsonResponse
     {
-        abort_if($channel->type === 'direct', 403, 'Cannot delete a direct message channel.');
+        $user = auth()->user();
+        abort_unless($user, 403);
 
-        $isOwner = $channel->owner_id === (int) auth()->id();
-        abort_unless(auth()->user()?->is_admin || $isOwner, 403, 'Only the channel owner can delete it.');
+        if (! $user->is_admin) {
+            $isMember = $user->channels()->whereKey($channel->id)->exists();
+            abort_unless($isMember, 403, 'Unauthorized');
+        }
+
+        if ($channel->type === 'group' && ! $user->is_admin) {
+            $isOwner = $channel->owner_id === (int) $user->id;
+            abort_unless($isOwner, 403, 'Only the channel owner can delete it.');
+        }
+
+        $channel->loadMissing('members:id,name');
+        $channelLabel = $this->getChannelDeletionLabel($channel, (int) $user->id);
 
         $this->channelService->deleteChannel($channel);
 
         return response()->json([
-            'message' => "Channel \"{$channel->name}\" was scheduled and will be deleted soon.",
+            'message' => "{$channelLabel} was scheduled and will be deleted soon.",
         ]);
+    }
+
+    private function getChannelDeletionLabel(Channel $channel, int $currentUserId): string
+    {
+        if ($channel->type === 'direct') {
+            $peerName = $channel->members
+                ->firstWhere('id', '!=', $currentUserId)
+                ?->name;
+
+            return $peerName !== null
+                ? "Chat with \"{$peerName}\""
+                : 'Direct chat';
+        }
+
+        return "Channel \"{$channel->name}\"";
     }
 }
