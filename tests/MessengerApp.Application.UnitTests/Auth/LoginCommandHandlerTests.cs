@@ -40,7 +40,7 @@ public class LoginCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Email.Should().Be("john@example.com");
+        result.Value.User.Email.Should().Be("john@example.com");
         result.Value.AccessToken.Should().Be("mock_access_token");
         result.Value.RefreshToken.Should().Be("mock_refresh_token");
 

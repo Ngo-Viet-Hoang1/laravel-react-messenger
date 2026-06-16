@@ -43,8 +43,8 @@ public class GoogleLoginCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Email.Should().Be("hoang.ngo@example.com");
-        result.Value.Username.Should().Be("hoang.ngo");
+        result.Value.User.Email.Should().Be("hoang.ngo@example.com");
+        result.Value.User.Username.Should().Be("hoang.ngo");
 
         var userInDb = _context.Users.FirstOrDefault(u => u.Email == "hoang.ngo@example.com");
         userInDb.Should().NotBeNull();
@@ -72,7 +72,7 @@ public class GoogleLoginCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Username.Should().Be("hoang.ngo");
+        result.Value.User.Username.Should().Be("hoang.ngo");
 
         var userInDb = _context.Users.First(u => u.Id == existingUser.Id);
         userInDb.Username.Should().Be("hoang.ngo");

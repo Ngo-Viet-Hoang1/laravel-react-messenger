@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi, type LoginDto, type RegisterDto } from '../api/authApi';
 import { authKeys, currentUserQueryOptions } from '../api/authQueries';
 import { useAppDispatch } from '@/app/store';
-import { setAuth, clearAuth, type User } from '@/entities/user';
+import { setAuth, clearAuth } from '@/entities/user';
 import { sessionHint } from '@/shared/lib/sessionHint';
 import { toast } from 'sonner';
 
@@ -27,15 +27,9 @@ export const useLoginMutation = (options?: {
     },
     onSuccess: (data) => {
       sessionHint.setSession();
-      const user: User = {
-        id: data.userId,
-        email: data.email,
-        username: data.username,
-        avatarUrl: data.avatarUrl,
-      };
-      dispatch(setAuth({ user, accessToken: data.accessToken }));
-      queryClient.setQueryData(authKeys.currentUser(), user);
-      toast.success(`Welcome back, ${data.username}!`);
+      dispatch(setAuth({ user: data.user, accessToken: data.accessToken }));
+      queryClient.setQueryData(authKeys.currentUser(), data.user);
+      toast.success(`Welcome back, ${data.user.username}!`);
       options?.onSuccess?.();
     },
     onError: (err) => {
@@ -58,15 +52,9 @@ export const useGoogleLoginMutation = (options?: {
     },
     onSuccess: (data) => {
       sessionHint.setSession();
-      const user: User = {
-        id: data.userId,
-        email: data.email,
-        username: data.username,
-        avatarUrl: data.avatarUrl,
-      };
-      dispatch(setAuth({ user, accessToken: data.accessToken }));
-      queryClient.setQueryData(authKeys.currentUser(), user);
-      toast.success(`Welcome, ${data.username}!`);
+      dispatch(setAuth({ user: data.user, accessToken: data.accessToken }));
+      queryClient.setQueryData(authKeys.currentUser(), data.user);
+      toast.success(`Welcome, ${data.user.username}!`);
       options?.onSuccess?.();
     },
     onError: (err) => {
@@ -89,15 +77,9 @@ export const useRegisterMutation = (options?: {
     },
     onSuccess: (data) => {
       sessionHint.setSession();
-      const user: User = {
-        id: data.userId,
-        email: data.email,
-        username: data.username,
-        avatarUrl: data.avatarUrl,
-      };
-      dispatch(setAuth({ user, accessToken: data.accessToken }));
-      queryClient.setQueryData(authKeys.currentUser(), user);
-      toast.success(`Account created successfully! Welcome, ${data.username}!`);
+      dispatch(setAuth({ user: data.user, accessToken: data.accessToken }));
+      queryClient.setQueryData(authKeys.currentUser(), data.user);
+      toast.success(`Account created successfully! Welcome, ${data.user.username}!`);
       options?.onSuccess?.();
     },
     onError: (err) => {

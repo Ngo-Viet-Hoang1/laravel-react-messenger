@@ -20,12 +20,7 @@ export const useAuthBootstrap = () => {
         sessionHint.setSession();
         dispatch(
           setAuth({
-            user: {
-              id: res.userId,
-              email: res.email,
-              username: res.username,
-              avatarUrl: res.avatarUrl,
-            },
+            user: res.user,
             accessToken: res.accessToken,
           })
         );

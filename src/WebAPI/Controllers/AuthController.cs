@@ -23,11 +23,7 @@ public class AuthController(ISender sender) : ApiController
     public async Task<IActionResult> Register([FromBody] RegisterCommand command, CancellationToken ct)
     {
         var result = await sender.Send(command, ct);
-        if (result.IsSuccess)
-        {
-            AuthCookieHelper.SetRefreshToken(Response, Request, result.Value.RefreshToken, result.Value.ExpiresAt);
-        }
-        return HandleCreatedResult(result);
+        return HandleAuthResult(result, StatusCodes.Status201Created);
     }
 
     [HttpPost("login")]
@@ -36,11 +32,7 @@ public class AuthController(ISender sender) : ApiController
     public async Task<IActionResult> Login([FromBody] LoginCommand command, CancellationToken ct)
     {
         var result = await sender.Send(command, ct);
-        if (result.IsSuccess)
-        {
-            AuthCookieHelper.SetRefreshToken(Response, Request, result.Value.RefreshToken, result.Value.ExpiresAt);
-        }
-        return HandleResult(result);
+        return HandleAuthResult(result);
     }
 
     [HttpPost("google")]
@@ -50,11 +42,7 @@ public class AuthController(ISender sender) : ApiController
     public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginCommand command, CancellationToken ct)
     {
         var result = await sender.Send(command, ct);
-        if (result.IsSuccess)
-        {
-            AuthCookieHelper.SetRefreshToken(Response, Request, result.Value.RefreshToken, result.Value.ExpiresAt);
-        }
-        return HandleResult(result);
+        return HandleAuthResult(result);
     }
 
     [HttpPost("refresh")]
@@ -65,13 +53,19 @@ public class AuthController(ISender sender) : ApiController
         CancellationToken ct)
     {
         var token = command?.RefreshToken ?? AuthCookieHelper.GetRefreshToken(Request);
-
         var result = await sender.Send(new RefreshTokenCommand(token), ct);
-        if (result.IsSuccess)
+        return HandleAuthResult(result);
+    }
+
+    private IActionResult HandleAuthResult(MessengerApp.Domain.Common.Result<AuthResult> result, int successStatusCode = StatusCodes.Status200OK)
+    {
+        if (result.IsFailure)
         {
-            AuthCookieHelper.SetRefreshToken(Response, Request, result.Value.RefreshToken, result.Value.ExpiresAt);
+            return HandleResult(result);
         }
-        return HandleResult(result);
+
+        AuthCookieHelper.SetRefreshToken(Response, Request, result.Value.RefreshToken, result.Value.ExpiresAt);
+        return StatusCode(successStatusCode, new AuthResponse(result.Value.User, result.Value.AccessToken));
     }
 
     [HttpPost("logout")]

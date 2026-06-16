@@ -11,7 +11,7 @@ namespace MessengerApp.Application.Auth.Commands.GoogleLogin;
 
 using RefreshToken = MessengerApp.Domain.Entities.RefreshToken;
 
-public record GoogleLoginCommand(string IdToken) : IRequest<Result<AuthResponse>>;
+public record GoogleLoginCommand(string IdToken) : IRequest<Result<AuthResult>>;
 
 public class GoogleLoginCommandValidator : AbstractValidator<GoogleLoginCommand>
 {
@@ -26,14 +26,14 @@ public class GoogleLoginCommandHandler(
     IApplicationDbContext context,
     IGoogleAuthService googleAuthService,
     IJwtTokenService jwtTokenService,
-    IClientInfoProvider clientInfoProvider) : IRequestHandler<GoogleLoginCommand, Result<AuthResponse>>
+    IClientInfoProvider clientInfoProvider) : IRequestHandler<GoogleLoginCommand, Result<AuthResult>>
 {
-    public async Task<Result<AuthResponse>> Handle(GoogleLoginCommand cmd, CancellationToken ct)
+    public async Task<Result<AuthResult>> Handle(GoogleLoginCommand cmd, CancellationToken ct)
     {
         Result<GoogleUserPayload> validationResult = await googleAuthService.ValidateIdTokenAsync(cmd.IdToken, ct);
         if (validationResult.IsFailure)
         {
-            return Result.Failure<AuthResponse>(validationResult.Error);
+            return Result.Failure<AuthResult>(validationResult.Error);
         }
 
         GoogleUserPayload googlePayload = validationResult.Value;
@@ -86,11 +86,9 @@ public class GoogleLoginCommandHandler(
         context.RefreshTokens.Add(refreshToken);
         await context.SaveChangesAsync(ct);
 
-        return Result.Success(new AuthResponse(
-            user.Id,
-            user.Email,
-            user.Username,
-            user.AvatarUrl,
+        UserDto userDto = new(user.Id, user.Email, user.Username, user.AvatarUrl);
+        return Result.Success(new AuthResult(
+            userDto,
             accessToken,
             refreshToken.Token,
             refreshToken.ExpiresAt));

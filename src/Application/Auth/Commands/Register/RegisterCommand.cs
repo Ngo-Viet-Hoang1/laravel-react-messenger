@@ -12,52 +12,50 @@ public record RegisterCommand(
     string Username,
     string Password,
     string? AvatarUrl = null
-) : IRequest<Result<AuthResponse>>;
+) : IRequest<Result<AuthResult>>;
 
 public class RegisterCommandHandler(
     IApplicationDbContext context,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService,
-    IClientInfoProvider clientInfoProvider) : IRequestHandler<RegisterCommand, Result<AuthResponse>>
+    IClientInfoProvider clientInfoProvider) : IRequestHandler<RegisterCommand, Result<AuthResult>>
 {
-    public async Task<Result<AuthResponse>> Handle(RegisterCommand command, CancellationToken cancellationToken)
+    public async Task<Result<AuthResult>> Handle(RegisterCommand command, CancellationToken cancellationToken)
     {
-        var normalizedEmail = command.Email.Trim().ToLowerInvariant();
-        var normalizedUsername = command.Username.Trim().ToLowerInvariant();
+        string normalizedEmail = command.Email.Trim().ToLowerInvariant();
+        string normalizedUsername = command.Username.Trim().ToLowerInvariant();
 
-        var emailExists = await context.Users
+        bool emailExists = await context.Users
             .AnyAsync(u => u.Email.ToLower() == normalizedEmail, cancellationToken);
 
         if (emailExists)
         {
-            return Result.Failure<AuthResponse>(
+            return Result.Failure<AuthResult>(
                 Error.Conflict("User.EmailConflict", "An account with this email address already exists."));
         }
 
-        var usernameExists = await context.Users
+        bool usernameExists = await context.Users
             .AnyAsync(u => u.Username.ToLower() == normalizedUsername, cancellationToken);
 
         if (usernameExists)
         {
-            return Result.Failure<AuthResponse>(
+            return Result.Failure<AuthResult>(
                 Error.Conflict("User.UsernameConflict", "This username is already taken."));
         }
 
-        var passwordHash = passwordHasher.HashPassword(command.Password);
-        var user = User.Create(command.Email, command.Username, passwordHash, command.AvatarUrl);
+        string passwordHash = passwordHasher.HashPassword(command.Password);
+        User user = User.Create(command.Email, command.Username, passwordHash, command.AvatarUrl);
 
-        var accessToken = jwtTokenService.GenerateAccessToken(user);
+        string accessToken = jwtTokenService.GenerateAccessToken(user);
         var refreshToken = jwtTokenService.GenerateRefreshToken(user.Id, clientInfoProvider.ClientIpAddress);
 
         context.Users.Add(user);
         context.RefreshTokens.Add(refreshToken);
         await context.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(new AuthResponse(
-            user.Id,
-            user.Email,
-            user.Username,
-            user.AvatarUrl,
+        UserDto userDto = new(user.Id, user.Email, user.Username, user.AvatarUrl);
+        return Result.Success(new AuthResult(
+            userDto,
             accessToken,
             refreshToken.Token,
             refreshToken.ExpiresAt));

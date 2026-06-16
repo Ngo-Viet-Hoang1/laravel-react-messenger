@@ -1,13 +1,22 @@
 namespace MessengerApp.Application.Auth.Common;
 
-public record AuthResponse(
-    Guid UserId,
+public record UserDto(
+    Guid Id,
     string Email,
     string Username,
-    string? AvatarUrl,
+    string? AvatarUrl
+);
+
+public record AuthResult(
+    UserDto User,
     string AccessToken,
     string RefreshToken,
     DateTimeOffset ExpiresAt
+);
+
+public record AuthResponse(
+    UserDto User,
+    string AccessToken
 );
 
 public record CurrentUserResponse(

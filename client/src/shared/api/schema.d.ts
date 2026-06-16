@@ -155,6 +155,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Auth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GoogleLoginCommand"];
+                    "text/json": components["schemas"]["GoogleLoginCommand"];
+                    "application/*+json": components["schemas"]["GoogleLoginCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AuthResponse"];
+                        "application/json": components["schemas"]["AuthResponse"];
+                        "text/json": components["schemas"]["AuthResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Auth/refresh": {
         parameters: {
             query?: never;
@@ -240,17 +305,6 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProblemDetails"];
-                        "application/json": components["schemas"]["ProblemDetails"];
-                        "text/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
             };
         };
         delete?: never;
@@ -312,15 +366,8 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AuthResponse: {
-            /** Format: uuid */
-            userId: string;
-            email: string;
-            username: string;
-            avatarUrl: null | string;
+            user: components["schemas"]["UserDto"];
             accessToken: string;
-            refreshToken: string;
-            /** Format: date-time */
-            expiresAt: string;
         };
         CurrentUserResponse: {
             /** Format: uuid */
@@ -332,6 +379,9 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             lastSeenAt: null | string;
+        };
+        GoogleLoginCommand: {
+            idToken: string;
         };
         LoginCommand: {
             emailOrUsername: string;
@@ -349,13 +399,20 @@ export interface components {
             instance?: null | string;
         };
         RefreshTokenCommand: {
-            refreshToken: string;
+            refreshToken: null | string;
         };
         RegisterCommand: {
             email: string;
             username: string;
             password: string;
             avatarUrl?: null | string;
+        };
+        UserDto: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            username: string;
+            avatarUrl: null | string;
         };
     };
     responses: never;

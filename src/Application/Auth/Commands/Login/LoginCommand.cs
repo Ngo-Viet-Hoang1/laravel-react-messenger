@@ -3,13 +3,14 @@ using MediatR;
 using MessengerApp.Application.Auth.Common;
 using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Domain.Common;
+using MessengerApp.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MessengerApp.Application.Auth.Commands.Login;
 
 public record LoginCommand(
     string EmailOrUsername,
-    string Password) : IRequest<Result<AuthResponse>>;
+    string Password) : IRequest<Result<AuthResult>>;
 
 public class LoginCommandValidator : AbstractValidator<LoginCommand>
 {
@@ -27,35 +28,33 @@ public class LoginCommandHandler(
     IApplicationDbContext context,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService,
-    IClientInfoProvider clientInfoProvider) : IRequestHandler<LoginCommand, Result<AuthResponse>>
+    IClientInfoProvider clientInfoProvider) : IRequestHandler<LoginCommand, Result<AuthResult>>
 {
-    public async Task<Result<AuthResponse>> Handle(LoginCommand cmd, CancellationToken ct)
+    public async Task<Result<AuthResult>> Handle(LoginCommand cmd, CancellationToken ct)
     {
-        var identifier = cmd.EmailOrUsername.Trim().ToLowerInvariant();
+        string identifier = cmd.EmailOrUsername.Trim().ToLowerInvariant();
 
-        var user = await context.Users
+        User? user = await context.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == identifier || u.Username.ToLower() == identifier, ct);
 
         if (user == null || !passwordHasher.VerifyPassword(cmd.Password, user.PasswordHash))
         {
-            return Result.Failure<AuthResponse>(
+            return Result.Failure<AuthResult>(
                 Error.Unauthorized("Auth.InvalidCredentials", "Invalid email/username or password."));
         }
 
         user.UpdateLastSeen();
 
-        var clientIp = clientInfoProvider.ClientIpAddress;
-        var accessToken = jwtTokenService.GenerateAccessToken(user);
+        string? clientIp = clientInfoProvider.ClientIpAddress;
+        string accessToken = jwtTokenService.GenerateAccessToken(user);
         var refreshToken = jwtTokenService.GenerateRefreshToken(user.Id, clientIp);
 
         context.RefreshTokens.Add(refreshToken);
         await context.SaveChangesAsync(ct);
 
-        return Result.Success(new AuthResponse(
-            user.Id,
-            user.Email,
-            user.Username,
-            user.AvatarUrl,
+        UserDto userDto = new(user.Id, user.Email, user.Username, user.AvatarUrl);
+        return Result.Success(new AuthResult(
+            userDto,
             accessToken,
             refreshToken.Token,
             refreshToken.ExpiresAt));
