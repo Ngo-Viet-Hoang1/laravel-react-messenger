@@ -86,7 +86,7 @@ public class GoogleLoginCommandHandler(
         context.RefreshTokens.Add(refreshToken);
         await context.SaveChangesAsync(ct);
 
-        UserDto userDto = new(user.Id, user.Email, user.Username, user.AvatarUrl);
+        UserDto userDto = user.ToDto();
         return Result.Success(new AuthResult(
             userDto,
             accessToken,

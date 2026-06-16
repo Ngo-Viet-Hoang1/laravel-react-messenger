@@ -82,7 +82,7 @@ public class RefreshTokenCommandHandler(
         context.RefreshTokens.Add(newRefreshToken);
         await context.SaveChangesAsync(ct);
 
-        UserDto userDto = new(user.Id, user.Email, user.Username, user.AvatarUrl);
+        UserDto userDto = user.ToDto();
         return Result.Success(new AuthResult(
             userDto,
             newAccessToken,

@@ -53,7 +53,7 @@ public class RegisterCommandHandler(
         context.RefreshTokens.Add(refreshToken);
         await context.SaveChangesAsync(cancellationToken);
 
-        UserDto userDto = new(user.Id, user.Email, user.Username, user.AvatarUrl);
+        UserDto userDto = user.ToDto();
         return Result.Success(new AuthResult(
             userDto,
             accessToken,
