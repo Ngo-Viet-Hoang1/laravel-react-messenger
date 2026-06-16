@@ -6,3 +6,4 @@ export * from './model/loginSchema';
 export * from './model/registerSchema';
 export * from './ui/LoginForm';
 export * from './ui/RegisterForm';
+export * from './ui/GoogleAuthButton';

@@ -2,20 +2,14 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/shared/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/shared/ui/form';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { PasswordInput } from '@/shared/ui/password-input';
 import { Card, CardContent, CardFooter } from '@/shared/ui/card';
 import { useLoginMutation } from '../model/useAuthMutations';
 import { loginSchema, type LoginFormData } from '../model/loginSchema';
+import { GoogleAuthButton } from './GoogleAuthButton';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
@@ -54,7 +48,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, className }) =>
   };
 
   return (
-    <Card className={cn('w-full max-w-md border-border shadow-xs rounded-xl bg-card p-2', className)}>
+    <Card
+      className={cn('w-full max-w-md rounded-xl border-border bg-card p-2 shadow-xs', className)}
+    >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <CardContent className="space-y-4 pt-4">
@@ -63,12 +59,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, className }) =>
               name="emailOrUsername"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <FormLabel className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                     Email or Username
                   </FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                      <Mail className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
                       <Input
                         {...field}
                         type="text"
@@ -90,7 +86,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, className }) =>
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <FormLabel className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                     Password
                   </FormLabel>
                   <FormControl>
@@ -113,7 +109,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, className }) =>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-11 gap-2 font-bold rounded-lg shadow-xs transition-colors"
+              className="h-11 w-full gap-2 rounded-lg font-bold shadow-xs transition-colors"
             >
               {isSubmitting ? (
                 <>
@@ -128,7 +124,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, className }) =>
               )}
             </Button>
 
-            <p className="text-center text-xs text-muted-foreground">
+            <div className="relative my-1 w-full">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 font-semibold text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <GoogleAuthButton onSuccess={onSuccess} className="w-full" />
+
+            <p className="pt-1 text-center text-xs text-muted-foreground">
               New to MessengerApp?{' '}
               <Link
                 to="/register"

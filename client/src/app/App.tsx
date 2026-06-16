@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Provider } from 'react-redux';
 import { RouterProvider } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { store } from '@/app/store';
 import { QueryProvider } from '@/app/providers/QueryProvider';
 import { initAuthInterceptors } from '@/app/providers/initAuthInterceptors';
@@ -9,8 +10,9 @@ import { router } from '@/app/routes/router';
 import { useAuthBootstrap } from '@/features/auth';
 import { Toaster } from '@/shared/ui/sonner';
 
-// Initialize HTTP interceptors with Redux store callbacks
 initAuthInterceptors();
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const AppContent: React.FC = () => {
   useAuthBootstrap();
@@ -28,7 +30,9 @@ export const App: React.FC = () => {
     <ThemeProvider defaultTheme="light" storageKey="messenger-theme">
       <Provider store={store}>
         <QueryProvider>
-          <AppContent />
+          <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+            <AppContent />
+          </GoogleOAuthProvider>
         </QueryProvider>
       </Provider>
     </ThemeProvider>

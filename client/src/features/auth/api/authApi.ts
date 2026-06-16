@@ -14,6 +14,10 @@ export const authApi = {
     return api.post<AuthResponse>('/auth/register', dto);
   },
 
+  googleLogin: async (idToken: string): Promise<AuthResponse> => {
+    return api.post<AuthResponse>('/auth/google', { idToken });
+  },
+
   refresh: async (): Promise<AuthResponse> => {
     return api.post<AuthResponse>('/auth/refresh', {}, { _skipAuthRefresh: true, silent: true });
   },

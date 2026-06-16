@@ -34,8 +34,39 @@ export const useLoginMutation = (options?: {
         avatarUrl: data.avatarUrl,
       };
       dispatch(setAuth({ user, accessToken: data.accessToken }));
-      queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
+      queryClient.setQueryData(authKeys.currentUser(), user);
       toast.success(`Welcome back, ${data.username}!`);
+      options?.onSuccess?.();
+    },
+    onError: (err) => {
+      options?.onError?.(err);
+    },
+  });
+};
+
+export const useGoogleLoginMutation = (options?: {
+  onSuccess?: () => void;
+  onError?: (err: unknown) => void;
+}) => {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (token: string) => authApi.googleLogin(token),
+    meta: {
+      errorMessage: 'Google authentication failed. Please try again.',
+    },
+    onSuccess: (data) => {
+      sessionHint.setSession();
+      const user: User = {
+        id: data.userId,
+        email: data.email,
+        username: data.username,
+        avatarUrl: data.avatarUrl,
+      };
+      dispatch(setAuth({ user, accessToken: data.accessToken }));
+      queryClient.setQueryData(authKeys.currentUser(), user);
+      toast.success(`Welcome, ${data.username}!`);
       options?.onSuccess?.();
     },
     onError: (err) => {
@@ -65,7 +96,7 @@ export const useRegisterMutation = (options?: {
         avatarUrl: data.avatarUrl,
       };
       dispatch(setAuth({ user, accessToken: data.accessToken }));
-      queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
+      queryClient.setQueryData(authKeys.currentUser(), user);
       toast.success(`Account created successfully! Welcome, ${data.username}!`);
       options?.onSuccess?.();
     },

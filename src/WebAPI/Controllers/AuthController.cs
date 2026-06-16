@@ -1,4 +1,5 @@
 using MediatR;
+using MessengerApp.Application.Auth.Commands.GoogleLogin;
 using MessengerApp.Application.Auth.Commands.Login;
 using MessengerApp.Application.Auth.Commands.Logout;
 using MessengerApp.Application.Auth.Commands.RefreshToken;
@@ -33,6 +34,20 @@ public class AuthController(ISender sender) : ApiController
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginCommand command, CancellationToken ct)
+    {
+        var result = await sender.Send(command, ct);
+        if (result.IsSuccess)
+        {
+            AuthCookieHelper.SetRefreshToken(Response, Request, result.Value.RefreshToken, result.Value.ExpiresAt);
+        }
+        return HandleResult(result);
+    }
+
+    [HttpPost("google")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginCommand command, CancellationToken ct)
     {
         var result = await sender.Send(command, ct);
         if (result.IsSuccess)
