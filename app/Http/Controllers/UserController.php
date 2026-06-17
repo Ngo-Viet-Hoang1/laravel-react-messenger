@@ -10,6 +10,7 @@ use App\Http\Requests\UnblockUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Jobs\SendUserCreatedJob;
+use App\Models\MessageReport;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -141,6 +142,14 @@ class UserController extends Controller
 
         if (! $user->blocked_at) {
             $user->update(['blocked_at' => now()]);
+
+            MessageReport::whereHas('message', function ($query) use ($user) {
+                $query->where('sender_id', $user->id);
+            })->where('status', 'pending')->update([
+                'status' => 'reviewed',
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+            ]);
         }
 
         return redirect()->back();

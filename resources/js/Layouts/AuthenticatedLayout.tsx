@@ -7,6 +7,7 @@ import NavLink from '@/Components/Breeze/NavLink';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
 import { UserModalProvider } from '@/Contexts/UserModalContext';
 import { PageProps } from '@/types';
+import { FlagIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
@@ -41,6 +42,19 @@ const AuthenticatedInner = ({
                                 >
                                     Dashboard
                                 </NavLink>
+
+                                {user.is_admin && (
+                                    <NavLink
+                                        href={route('admin.reports.index')}
+                                        active={route().current(
+                                            'admin.reports.index',
+                                        )}
+                                        className="flex items-center gap-1"
+                                    >
+                                        <FlagIcon className="inline h-4 w-4" />
+                                        <span>Reports</span>
+                                    </NavLink>
+                                )}
                             </div>
                         </div>
 
@@ -157,6 +171,18 @@ const AuthenticatedInner = ({
                         >
                             Dashboard
                         </ResponsiveNavLink>
+
+                        {user.is_admin && (
+                            <ResponsiveNavLink
+                                href={route('admin.reports.index')}
+                                active={route().current('admin.reports.index')}
+                            >
+                                <span className="flex items-center">
+                                    <FlagIcon className="mr-2 h-4 w-4" />
+                                    Reports
+                                </span>
+                            </ResponsiveNavLink>
+                        )}
                     </div>
 
                     <div className="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
