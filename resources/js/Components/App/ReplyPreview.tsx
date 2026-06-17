@@ -1,5 +1,6 @@
 import { type ParentMessage } from '@/types';
 import { isAudio, isImage, isPDF, isVideo } from '@/utils';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 type Props = {
     message: ParentMessage;
@@ -31,21 +32,22 @@ const ReplyPreview = ({ message, onCancel }: Props) => {
     const summary = getReplySummary(message);
 
     return (
-        <div className="flex items-start justify-between gap-3 rounded-2xl border border-slate-300/70 bg-white/50 px-3 py-2 text-sm text-slate-600 dark:border-slate-600/70 dark:bg-slate-800/50 dark:text-slate-300">
-            <div className="min-w-0">
-                <div className="mb-0.5 text-xs font-semibold uppercase tracking-wide opacity-70">
+        <div className="flex items-start justify-between gap-3 rounded-2xl bg-black/5 px-3 py-2 text-sm dark:bg-white/10">
+            <div className="min-w-0 opacity-90">
+                <div className="mb-0.5 text-[0.7rem] font-bold tracking-wider uppercase opacity-70">
                     Replying to {message.sender.name}
                 </div>
-                <div className="line-clamp-2 break-words">{summary}</div>
+                <div className="line-clamp-2 wrap-break-word">{summary}</div>
             </div>
 
             {onCancel ? (
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="rounded-full px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+                    className="rounded-full p-1 opacity-60 transition-opacity hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/10"
+                    title="Cancel reply"
                 >
-                    Cancel
+                    <XMarkIcon className="h-4 w-4" />
                 </button>
             ) : null}
         </div>

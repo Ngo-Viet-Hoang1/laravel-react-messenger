@@ -62,7 +62,12 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
             offDeleted();
             offReadUpdated();
         };
-    }, [on, updateLastMessage, updateAfterMessageDeleted, handleReadUpdated]);
+    }, [
+        on,
+        updateLastMessage,
+        updateAfterMessageDeleted,
+        handleReadUpdated,
+    ]);
 
     useEffect(() => {
         const offDeleted = on('channel.deleted', ({ id, name }) => {

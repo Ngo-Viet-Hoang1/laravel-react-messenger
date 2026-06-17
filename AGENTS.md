@@ -27,7 +27,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel-echo (ECHO) - v2
 - prettier (PRETTIER) - v3
 - react (REACT) - v18
-- tailwindcss (TAILWINDCSS) - v3
+- tailwindcss (TAILWINDCSS) - v4
 
 ## Skills Activation
 
@@ -44,6 +44,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 - `web-design-guidelines` — Use to review UI code against Web Interface Guidelines compliance, accessibility, and UX best practices.
 
 **Agent Skill Configuration (`boost.json`)**:
+
 - The `boost.json` file in the project root configures which domain-specific skills are enabled for AI engines (e.g. `laravel-best-practices`, `inertia-react-development`, etc.). Ensure any new or custom skills are listed in `boost.json` to allow correct loading by agents.
 
 ## Conventions
@@ -96,7 +97,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 
 ## Frontend UI Libraries
 
-- **daisyui** (v4.12+) provides pre-built Tailwind components; use classes like `btn`, `card`, `input` instead of creating primitives.
+- **daisyui** (v5+) provides pre-built Tailwind components; use classes like `btn`, `card`, `input` instead of creating primitives.
 - **@headlessui/react** (v2.2+) for unstyled, accessible components (dropdowns, dialogs, menus, transition-wrapped elements). Used widely in `Dropdown`, `Modal`, etc.
 - **@heroicons/react** (v2.2+) for SVG icons. Use it instead of custom SVGs when possible.
 - **emoji-picker-react** for emoji selection in message composer.

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\MessageCreated;
+use App\Events\MessageDeleted;
 use App\Http\Requests\StoreMessageRequest;
 use App\Http\Resources\MessageResource;
 use App\Models\Channel;
@@ -205,6 +206,7 @@ class MessageController extends Controller
         abort_unless($message->sender_id === auth()->id(), 403);
 
         $newLastMessage = null;
+        $deletedSnapshot = $this->buildMessageSnapshot($message);
 
         DB::transaction(function () use ($message, &$newLastMessage) {
             $channelId = $message->channel_id;
@@ -219,8 +221,40 @@ class MessageController extends Controller
             }
         });
 
+        $deletedSnapshot['deleted_at'] = now()->toISOString();
+
+        if ($newLastMessage) {
+            $newLastMessage = $this->buildMessageSnapshot($newLastMessage);
+        }
+
+        DB::afterCommit(function () use ($deletedSnapshot, $newLastMessage): void {
+            broadcast(new MessageDeleted($deletedSnapshot, $newLastMessage))->toOthers();
+        });
+
         return response()->json([
-            'newLastMessage' => $newLastMessage ? new MessageResource($newLastMessage) : null,
+            'message' => $deletedSnapshot,
+            'newLastMessage' => $newLastMessage,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildMessageSnapshot(Message $message): array
+    {
+        $message->loadMissing(['sender', 'attachments', 'parent.sender', 'parent.attachments']);
+
+        return [
+            'id' => $message->id,
+            'content' => $message->content,
+            'channel_id' => $message->channel_id,
+            'sender_id' => $message->sender_id,
+            'parent_id' => $message->parent_id,
+            'sender' => $message->sender?->toArray(),
+            'parent' => $message->parent?->toArray(),
+            'attachments' => $message->attachments->toArray(),
+            'created_at' => $message->created_at?->toISOString(),
+            'updated_at' => $message->updated_at?->toISOString(),
+        ];
     }
 }

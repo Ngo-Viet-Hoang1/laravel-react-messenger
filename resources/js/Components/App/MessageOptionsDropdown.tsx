@@ -27,9 +27,10 @@ const MessageOptionsDropdown = ({ message, onReply, isOwnMessage }: Props) => {
                 route('messages.destroy', message.id),
             );
 
-            const newLastMessage = data?.newLastMessage ?? null;
-
-            emit('message.deleted', { message, newLastMessage });
+            emit('message.deleted', {
+                message: data?.message ?? message,
+                newLastMessage: data?.newLastMessage ?? null,
+            });
         } catch (error) {
             emit('toast.show', 'Failed to delete message');
         }

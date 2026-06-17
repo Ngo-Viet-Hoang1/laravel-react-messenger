@@ -43,7 +43,7 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         hasLoadedAllMessages,
         firstMessageDate,
         addMessage,
-        removeMessage,
+        markMessageDeleted,
         loadOlderMessages,
     } = useMessages(messages, selectedChannel);
 
@@ -154,9 +154,9 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         ({ message }: MessageDeletedEvent) => {
             if (!selectedChannel || message.channel_id !== selectedChannel.id)
                 return;
-            removeMessage(message);
+            markMessageDeleted(message);
         },
-        [selectedChannel, removeMessage],
+        [selectedChannel, markMessageDeleted],
     );
 
     const handleReply = useCallback((message: ChatMessage) => {

@@ -54,14 +54,17 @@ const MessageItem = ({
     const sender = message.sender ?? DELETED_USER;
     const senderName = sender.name;
     const formattedTime = formatChatTime(message.created_at);
+    const isDeleted = message.deleted_at != null;
 
     return (
         <div
             className={`group chat ${isOwnMessage ? 'chat-end' : 'chat-start'}`}
         >
-            <div className="avatar chat-image">
-                {isOwnMessage ? null : <UserAvatar user={sender} />}
-            </div>
+            {!isOwnMessage && (
+                <div className="chat-image">
+                    <UserAvatar user={sender} />
+                </div>
+            )}
 
             <div className="chat-header mb-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span className="font-semibold text-slate-700 dark:text-slate-200">
@@ -80,7 +83,7 @@ const MessageItem = ({
             </div>
 
             <div
-                className={`chat-bubble relative rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[70%] ${
+                className={`chat-bubble relative px-3.5 py-2.5 shadow-sm sm:max-w-[70%] ${
                     isOwnMessage
                         ? 'chat-bubble-success text-white'
                         : 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100'
@@ -104,15 +107,21 @@ const MessageItem = ({
                     ) : null}
 
                     <div className="chat-message-content prose-sm dark:prose-invert prose max-w-none break-words text-current">
-                        <ReactMarkdown
-                            rehypePlugins={REHYPE_PLUGINS}
-                            components={markdownComponents}
-                        >
-                            {message.content ?? ''}
-                        </ReactMarkdown>
+                        {isDeleted ? (
+                            <span className="italic opacity-75">
+                                Message has been deleted.
+                            </span>
+                        ) : (
+                            <ReactMarkdown
+                                rehypePlugins={REHYPE_PLUGINS}
+                                components={markdownComponents}
+                            >
+                                {message.content ?? ''}
+                            </ReactMarkdown>
+                        )}
                     </div>
                     <MessageAttachments
-                        attachments={message.attachments}
+                        attachments={isDeleted ? [] : message.attachments}
                         onAttachmentClick={onAttachmentClick}
                     />
                 </div>
