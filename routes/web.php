@@ -34,6 +34,10 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('/users/{user}/demote', [UserController::class, 'demote'])->name('users.demote');
         Route::patch('/users/{user}/block', [UserController::class, 'block'])->name('users.block');
         Route::patch('/users/{user}/unblock', [UserController::class, 'unblock'])->name('users.unblock');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+
+        Route::get('/admin/users', [UserController::class, 'adminIndex'])->name('admin.users.index');
     });
 });
 
