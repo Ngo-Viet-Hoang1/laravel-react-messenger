@@ -45,4 +45,9 @@ class Message extends Model
     {
         return $this->hasMany(Message::class, 'parent_id');
     }
+
+    public function reports(): HasMany
+    {
+        return $this->hasMany(MessageReport::class);
+    }
 }

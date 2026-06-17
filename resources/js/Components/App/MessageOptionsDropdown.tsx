@@ -4,9 +4,12 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import {
     ArrowUturnLeftIcon,
     EllipsisHorizontalIcon,
+    FlagIcon,
     TrashIcon,
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { useState } from 'react';
+import ReportMessageModal from './ReportMessageModal';
 
 type Props = {
     message: ChatMessage;
@@ -16,6 +19,7 @@ type Props = {
 
 const MessageOptionsDropdown = ({ message, onReply, isOwnMessage }: Props) => {
     const { emit } = useEventBus();
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
     const handleDeleteMessage = async () => {
         try {
@@ -23,54 +27,80 @@ const MessageOptionsDropdown = ({ message, onReply, isOwnMessage }: Props) => {
                 route('messages.destroy', message.id),
             );
 
-            const newLastMessage = data?.newLastMessage ?? null;
-
-            emit('message.deleted', { message, newLastMessage });
+            emit('message.deleted', {
+                message: data?.message ?? message,
+                newLastMessage: data?.newLastMessage ?? null,
+            });
         } catch (error) {
             emit('toast.show', 'Failed to delete message');
         }
     };
 
     return (
-        <Menu as="div" className="relative z-20 flex items-center">
-            <MenuButton
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 opacity-0 transition-all hover:bg-slate-200 hover:text-slate-700 group-hover:opacity-100 data-[open]:opacity-100 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                aria-label="Message options"
-                title="Message options"
-            >
-                <EllipsisHorizontalIcon className="h-5 w-5" />
-            </MenuButton>
+        <>
+            <Menu as="div" className="relative z-20 flex items-center">
+                <MenuButton
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 opacity-0 transition-all hover:bg-slate-200 hover:text-slate-700 group-hover:opacity-100 data-[open]:opacity-100 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                    aria-label="Message options"
+                    title="Message options"
+                >
+                    <EllipsisHorizontalIcon className="h-5 w-5" />
+                </MenuButton>
 
-            <MenuItems
-                transition
-                anchor="bottom end"
-                className="z-50 w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg transition duration-200 ease-out focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 dark:border-slate-700 dark:bg-slate-800"
-            >
-                <MenuItem>
-                    <button
-                        type="button"
-                        onClick={() => onReply?.(message)}
-                        className="group flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors data-[focus]:bg-slate-100 data-[focus]:text-slate-900 dark:text-slate-200 dark:data-[focus]:bg-slate-700 dark:data-[focus]:text-white"
-                    >
-                        <ArrowUturnLeftIcon className="mr-2.5 h-4 w-4" />
-                        Reply
-                    </button>
-                </MenuItem>
-
-                {isOwnMessage ? (
+                <MenuItems
+                    transition
+                    anchor="bottom end"
+                    className="z-50 w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg transition duration-200 ease-out focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 dark:border-slate-700 dark:bg-slate-800"
+                >
                     <MenuItem>
                         <button
                             type="button"
-                            onClick={handleDeleteMessage}
-                            className="group flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors data-[focus]:bg-red-50 data-[focus]:text-red-600 dark:text-slate-200 dark:data-[focus]:bg-red-500/10 dark:data-[focus]:text-red-400"
+                            onClick={() => onReply?.(message)}
+                            className="group flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors data-[focus]:bg-slate-100 data-[focus]:text-slate-900 dark:text-slate-200 dark:data-[focus]:bg-slate-700 dark:data-[focus]:text-white"
                         >
-                            <TrashIcon className="mr-2.5 h-4 w-4" />
-                            Delete Message
+                            <ArrowUturnLeftIcon className="mr-2.5 h-4 w-4" />
+                            Reply
                         </button>
                     </MenuItem>
-                ) : null}
-            </MenuItems>
-        </Menu>
+
+                    {!isOwnMessage &&
+                    !message.attachments?.some((att) => {
+                        // Check if the mime type starts with audio/
+                        return att.mime?.startsWith('audio/');
+                    }) ? (
+                        <MenuItem>
+                            <button
+                                type="button"
+                                onClick={() => setIsReportModalOpen(true)}
+                                className="group flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors data-[focus]:bg-orange-50 data-[focus]:text-orange-600 dark:text-slate-200 dark:data-[focus]:bg-orange-500/10 dark:data-[focus]:text-orange-400"
+                            >
+                                <FlagIcon className="mr-2.5 h-4 w-4" />
+                                Report
+                            </button>
+                        </MenuItem>
+                    ) : null}
+
+                    {isOwnMessage ? (
+                        <MenuItem>
+                            <button
+                                type="button"
+                                onClick={handleDeleteMessage}
+                                className="group flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors data-[focus]:bg-red-50 data-[focus]:text-red-600 dark:text-slate-200 dark:data-[focus]:bg-red-500/10 dark:data-[focus]:text-red-400"
+                            >
+                                <TrashIcon className="mr-2.5 h-4 w-4" />
+                                Delete Message
+                            </button>
+                        </MenuItem>
+                    ) : null}
+                </MenuItems>
+            </Menu>
+
+            <ReportMessageModal
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                messageId={message.id}
+            />
+        </>
     );
 };
 
