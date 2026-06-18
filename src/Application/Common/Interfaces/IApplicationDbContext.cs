@@ -7,5 +7,7 @@ public interface IApplicationDbContext
 {
     DbSet<User> Users { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
+    DbSet<Channel> Channels { get; }
+    DbSet<ChannelMember> ChannelMembers { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
