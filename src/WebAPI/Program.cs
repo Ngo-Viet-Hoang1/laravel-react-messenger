@@ -1,6 +1,8 @@
 using System.Text;
 using MessengerApp.Application;
+using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Infrastructure;
+using MessengerApp.Infrastructure.Persistence;
 using MessengerApp.WebAPI.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -88,6 +90,24 @@ if (app.Environment.IsDevelopment())
         throw new InvalidOperationException("Test exception to verify RFC 7807/9457 ProblemDetails pipeline.");
     })
     .WithName("TestErrorEndpoint");
+
+    // Dev-only manual re-seed endpoint
+    app.MapPost("/api/test/seed", async (AppDbContext db, IPasswordHasher hasher, ILoggerFactory loggerFactory) =>
+    {
+        var logger = loggerFactory.CreateLogger("DbInitializer");
+        await DbInitializer.SeedAsync(db, hasher, logger);
+        return Results.Ok(new { message = "Database successfully seeded with realistic sample data." });
+    })
+    .WithName("SeedDatabase");
+
+    // Automatic seed check on startup
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+        var logger = scope.ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger("DbInitializer");
+        await DbInitializer.SeedAsync(db, hasher, logger);
+    }
 }
 
 if (!app.Environment.IsDevelopment())
