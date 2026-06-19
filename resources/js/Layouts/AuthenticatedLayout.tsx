@@ -4,6 +4,7 @@ import Toast from '@/Components/App/Toast';
 import UserAvatar from '@/Components/App/UserAvatar';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
+import NavLink from '@/Components/Breeze/NavLink';
 import PrimaryButton from '@/Components/Breeze/PrimaryButton';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
 import { UserModalProvider } from '@/Contexts/UserModalContext';
