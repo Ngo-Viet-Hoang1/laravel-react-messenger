@@ -1,9 +1,11 @@
+import HeaderUserSearch from '@/Components/App/HeaderUserSearch';
 import ThemeToggle from '@/Components/App/ThemeToggle';
 import Toast from '@/Components/App/Toast';
 import UserAvatar from '@/Components/App/UserAvatar';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
+import PrimaryButton from '@/Components/Breeze/PrimaryButton';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
 import { UserModalProvider } from '@/Contexts/UserModalContext';
 import { PageProps } from '@/types';
@@ -36,13 +38,6 @@ const AuthenticatedInner = ({
                             </div>
 
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-
                                 {user.is_admin && (
                                     <NavLink
                                         href={route('admin.reports.index')}
@@ -55,6 +50,9 @@ const AuthenticatedInner = ({
                                         <span>Reports</span>
                                     </NavLink>
                                 )}
+                            </div>
+                            <div className="hidden sm:ms-6 sm:flex sm:items-center">
+                                <HeaderUserSearch />
                             </div>
                         </div>
 
@@ -165,13 +163,6 @@ const AuthenticatedInner = ({
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-
                         {user.is_admin && (
                             <ResponsiveNavLink
                                 href={route('admin.reports.index')}
