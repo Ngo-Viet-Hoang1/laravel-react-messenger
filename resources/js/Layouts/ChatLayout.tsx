@@ -27,8 +27,8 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     const { on, emit } = useEventBus();
     const { openModal } = useChannelModal();
     const [search, setSearch] = useState('');
-    const { results: userSearchResults, isLoading: isSearching } =
-        useUserSearch(search);
+
+    const isSearching = search.trim().length > 0;
 
     const {
         sortedChannels,
@@ -38,11 +38,15 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         removeChannel,
     } = useChannels(channels, search.toLowerCase(), Number(currentUser.id));
 
+    const { results: userSearchResults, isLoading: isSearchLoadingUsers } =
+        useUserSearch(search, channels);
+
     const { isOnline } = useOnlinePresence();
 
     useChannelSockets(channels, Number(currentUser.id));
 
     const handleChannelSelect = (channelId: number): void => {
+        setSearch('');
         router.visit(route('channels.show', channelId), {
             only: ['selectedChannel', 'messages'],
             preserveScroll: false,
@@ -110,7 +114,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
                     </div>
                 </div>
 
-                <div className="relative shrink-0 p-3 dark:border-slate-700">
+                <div className="shrink-0 p-3 dark:border-slate-700">
                     <TextInput
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -122,31 +126,37 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
                         placeholder="Search users or filter channels"
                         className="w-full"
                     />
+                </div>
 
+                {/* Search mode: show inline results */}
+                {isSearching ? (
                     <UserSearchResults
-                        results={userSearchResults}
-                        isLoading={isSearching}
-                        query={search}
-                        onSelect={handleSelectUser}
+                        channels={sortedChannels}
+                        users={userSearchResults}
+                        isLoading={isSearchLoadingUsers}
+                        onSelectChannel={handleChannelSelect}
+                        onSelectUser={handleSelectUser}
                     />
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                    {sortedChannels.map((c) => (
-                        <ChannelItem
-                            key={c.id}
-                            channel={c}
-                            online={
-                                c.type === 'direct' && c.peer_user_id != null
-                                    ? isOnline(c.peer_user_id)
-                                    : false
-                            }
-                            isSelected={selectedChannel?.id === c.id}
-                            canManage={currentUser.is_admin}
-                            onSelect={handleChannelSelect}
-                        />
-                    ))}
-                </div>
+                ) : (
+                    /* Normal mode: show full channel list */
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                        {sortedChannels.map((c) => (
+                            <ChannelItem
+                                key={c.id}
+                                channel={c}
+                                online={
+                                    c.type === 'direct' &&
+                                    c.peer_user_id != null
+                                        ? isOnline(c.peer_user_id)
+                                        : false
+                                }
+                                isSelected={selectedChannel?.id === c.id}
+                                canManage={currentUser.is_admin}
+                                onSelect={handleChannelSelect}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Content area */}
