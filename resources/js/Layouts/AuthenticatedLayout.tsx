@@ -1,9 +1,9 @@
+import HeaderUserSearch from '@/Components/App/HeaderUserSearch';
 import ThemeToggle from '@/Components/App/ThemeToggle';
 import Toast from '@/Components/App/Toast';
 import UserAvatar from '@/Components/App/UserAvatar';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
-import NavLink from '@/Components/Breeze/NavLink';
 import PrimaryButton from '@/Components/Breeze/PrimaryButton';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
 import { UserModalProvider, useUserModal } from '@/Contexts/UserModalContext';
@@ -35,13 +35,8 @@ const AuthenticatedInner = ({
                                 </Link>
                             </div>
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
+                            <div className="hidden sm:ms-6 sm:flex sm:items-center">
+                                <HeaderUserSearch />
                             </div>
                         </div>
 
@@ -150,14 +145,7 @@ const AuthenticatedInner = ({
                         ' sm:hidden'
                     }
                 >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                    </div>
+                    <div className="space-y-1 pb-3 pt-2" />
 
                     <div className="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
                         <div className="px-4">
