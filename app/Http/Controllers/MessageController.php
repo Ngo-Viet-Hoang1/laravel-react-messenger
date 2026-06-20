@@ -9,13 +9,37 @@ use App\Http\Resources\MessageResource;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageAttachment;
+use App\Services\MessageService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
+    public function __construct(
+        private MessageService $messageService
+    ) {}
+
+    public function search(Request $request, Channel $channel): AnonymousResourceCollection
+    {
+        $isUserInChannel = auth()->user()?->channels()->whereKey($channel->id)->exists();
+        abort_unless($isUserInChannel, 403, 'Unauthorized');
+
+        $request->validate([
+            'query' => ['required', 'string', 'min:1'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
+        $results = $this->messageService->searchMessages(
+            $channel,
+            $request->string('query')->toString(),
+        );
+
+        return MessageResource::collection($results);
+    }
+
     public function index(Channel $channel)
     {
         $isUserInChannel = auth()->user()?->channels()->whereKey($channel->id)->exists();

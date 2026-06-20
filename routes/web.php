@@ -22,6 +22,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::post('/channels/direct/{user}', [ChannelController::class, 'findOrCreateDirect'])->name('channels.direct');
 
     Route::get('/channels/{channel}/messages', [MessageController::class, 'index'])->name('channels.messages');
+    Route::get('/channels/{channel}/messages/search', [MessageController::class, 'search'])->name('channels.messages.search');
     Route::post('/channels/{channel}/messages', [MessageController::class, 'store'])->name('channels.messages.store');
 
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
@@ -39,7 +40,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('/users/{user}/unblock', [UserController::class, 'unblock'])->name('users.unblock');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
-      
+
         Route::get('/admin/users', [UserController::class, 'adminIndex'])->name('admin.users.index');
         Route::get('/admin/reports', [MessageReportController::class, 'index'])->name('admin.reports.index');
         Route::patch('/admin/reports/{messageReport}', [MessageReportController::class, 'review'])->name('admin.reports.review');
