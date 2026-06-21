@@ -29,12 +29,12 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const online = isOnline || !!user?.isOnline;
 
   return (
-    <div className="relative inline-flex shrink-0">
-      <Avatar className={cn(SIZES[size], className)}>
+    <div className={cn('relative inline-flex shrink-0 aspect-square rounded-full', SIZES[size], className)}>
+      <Avatar className="h-full w-full aspect-square rounded-full">
         {user?.avatarUrl ? (
-          <AvatarImage src={user.avatarUrl} alt={username} className="object-cover" />
+          <AvatarImage src={user.avatarUrl} alt={username} className="aspect-square h-full w-full object-cover rounded-full" />
         ) : null}
-        <AvatarFallback className="bg-primary/10 text-primary font-semibold select-none">
+        <AvatarFallback className="flex aspect-square h-full w-full items-center justify-center rounded-full bg-primary/10 text-primary font-semibold select-none">
           {initials}
         </AvatarFallback>
       </Avatar>
@@ -42,7 +42,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       {showPresence && (
         <span
           className={cn(
-            'absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-background',
+            'absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-background shrink-0',
             online ? 'bg-emerald-500' : 'bg-muted-foreground/40'
           )}
         />
