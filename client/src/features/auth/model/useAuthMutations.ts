@@ -1,17 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, type LoginDto, type RegisterDto } from '../api/authApi';
-import { authKeys, currentUserQueryOptions } from '../api/authQueries';
+import { authKeys } from '../api/authQueries';
 import { useAppDispatch } from '@/app/store';
 import { setAuth, clearAuth } from '@/entities/user';
 import { sessionHint } from '@/shared/lib/sessionHint';
 import { toast } from 'sonner';
-
-export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
-  return useQuery({
-    ...currentUserQueryOptions(),
-    enabled: options?.enabled,
-  });
-};
 
 export const useLoginMutation = (options?: {
   onSuccess?: () => void;

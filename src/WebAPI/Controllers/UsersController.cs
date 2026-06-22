@@ -18,11 +18,13 @@ public class UsersController(ISender sender) : ApiController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SearchUsers(
         [FromQuery] string? search,
-        [FromQuery] PaginationParams? pagination,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        SearchUsersQuery query = new(CurrentUserId, search, pagination);
+        SearchUsersQuery query = new(CurrentUserId, search, new PaginationParams(pageNumber, pageSize));
         Result<PaginatedList<UserDto>> result = await sender.Send(query, ct);
         return HandleResult(result);
     }
 }
+

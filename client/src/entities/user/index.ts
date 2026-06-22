@@ -1,3 +1,7 @@
 export * from './model/types';
 export * from './model/authSlice';
+export * from './model/useUserSearch';
+export * from './api/userApi';
+export * from './api/userQueries';
 export * from './ui/UserAvatar';
+export * from './ui/UserListItem';

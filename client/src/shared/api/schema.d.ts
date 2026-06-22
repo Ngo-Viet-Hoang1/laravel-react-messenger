@@ -640,8 +640,8 @@ export interface paths {
             parameters: {
                 query?: {
                     search?: string;
-                    PageNumber?: number | string;
-                    PageSize?: number | string;
+                    pageNumber?: number | string;
+                    pageSize?: number | string;
                 };
                 header?: never;
                 path?: never;

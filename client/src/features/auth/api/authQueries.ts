@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 import { authApi } from './authApi';
 
 export const authKeys = {
@@ -12,3 +12,10 @@ export const currentUserQueryOptions = () =>
     queryFn: () => authApi.getCurrentUser(),
     staleTime: 5 * 60 * 1000,
   });
+
+export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
+  return useQuery({
+    ...currentUserQueryOptions(),
+    enabled: options?.enabled,
+  });
+};
