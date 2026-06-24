@@ -3,6 +3,8 @@ using MessengerApp.Application;
 using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Infrastructure;
 using MessengerApp.Infrastructure.Persistence;
+using MessengerApp.WebAPI.Extensions;
+using MessengerApp.WebAPI.Hubs;
 using MessengerApp.WebAPI.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -24,6 +26,10 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
@@ -51,6 +57,7 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
+    options.ConfigureSignalRAuthentication();
 });
 
 builder.Services.AddAuthorization();
@@ -121,6 +128,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.MapGet("/api/health", () => Results.Ok(new
 {
