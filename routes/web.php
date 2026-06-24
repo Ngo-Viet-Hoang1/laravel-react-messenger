@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiMessageSuggestionController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MessageController;
@@ -23,6 +24,9 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
     Route::get('/channels/{channel}/messages', [MessageController::class, 'index'])->name('channels.messages');
     Route::post('/channels/{channel}/messages', [MessageController::class, 'store'])->name('channels.messages.store');
+    Route::post('/channels/{channel}/message-suggestions', [AiMessageSuggestionController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('channels.message-suggestions.store');
 
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
 
@@ -39,7 +43,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('/users/{user}/unblock', [UserController::class, 'unblock'])->name('users.unblock');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
-      
+
         Route::get('/admin/users', [UserController::class, 'adminIndex'])->name('admin.users.index');
         Route::get('/admin/reports', [MessageReportController::class, 'index'])->name('admin.reports.index');
         Route::patch('/admin/reports/{messageReport}', [MessageReportController::class, 'review'])->name('admin.reports.review');
