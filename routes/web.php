@@ -6,6 +6,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserKeyController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
@@ -18,9 +19,6 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::delete('/channels/{channel}', [ChannelController::class, 'destroy'])->name('channels.destroy');
     Route::post('/channels/{channel}/read', [ChannelController::class, 'markAsRead'])->name('channels.read');
 
-    Route::get('/channels/{channel}/members', [ChannelController::class, 'getMembers'])->name('channels.members');
-    Route::post('/channels/direct/{user}', [ChannelController::class, 'findOrCreateDirect'])->name('channels.direct');
-
     Route::get('/channels/{channel}/messages', [MessageController::class, 'index'])->name('channels.messages');
     Route::post('/channels/{channel}/messages', [MessageController::class, 'store'])->name('channels.messages.store');
 
@@ -31,6 +29,9 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::post('/messages/upload-chunk', [MessageController::class, 'uploadChunk'])->name('messages.upload-chunk');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::put('/users/public-key', [UserKeyController::class, 'update'])->name('users.key.update');
+    Route::get('/users/{user}/public-key', [UserKeyController::class, 'show'])->name('users.public-key');
+
     Route::middleware('admin')->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}/promote', [UserController::class, 'promote'])->name('users.promote');
@@ -39,7 +40,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('/users/{user}/unblock', [UserController::class, 'unblock'])->name('users.unblock');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
-      
+
         Route::get('/admin/users', [UserController::class, 'adminIndex'])->name('admin.users.index');
         Route::get('/admin/reports', [MessageReportController::class, 'index'])->name('admin.reports.index');
         Route::patch('/admin/reports/{messageReport}', [MessageReportController::class, 'review'])->name('admin.reports.review');
@@ -52,4 +53,4 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
