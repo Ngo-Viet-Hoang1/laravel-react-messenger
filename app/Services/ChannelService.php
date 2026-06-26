@@ -12,7 +12,8 @@ class ChannelService
 {
     public function __construct(
         private IChannelRepo $channelRepo
-    ) {}
+    ) {
+    }
 
     public function getChannelsForUser(User $user): Collection
     {
@@ -40,6 +41,12 @@ class ChannelService
     {
         return $this->channelRepo->findOrCreateDirect($authUserId, $targetUserId);
     }
+
+    public function findOrCreateSecretDirect(int $authUserId, int $targetUserId): Channel
+    {
+        return $this->channelRepo->findOrCreateE2EEDirect($authUserId, $targetUserId);
+    }
+
 
     public function updateChannel(Channel $channel, array $data): Channel
     {

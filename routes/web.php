@@ -14,6 +14,11 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
     Route::get('/channels', [ChannelController::class, 'index'])->name('channels.index');
     Route::post('/channels', [ChannelController::class, 'store'])->name('channels.store');
+
+    Route::get('/channels/{channel}/members', [ChannelController::class, 'getMembers'])->name('channels.members');
+    Route::post('/channels/direct/{user}', [ChannelController::class, 'findOrCreateDirect'])->name('channels.direct');
+    Route::post('/channels/secret-direct/{user}', [ChannelController::class, 'findOrCreateE2EEDirect'])->name('channels.secret-direct');
+
     Route::get('/channels/{channel}', [ChannelController::class, 'show'])->name('channels.show');
     Route::put('/channels/{channel}', [ChannelController::class, 'update'])->name('channels.update');
     Route::delete('/channels/{channel}', [ChannelController::class, 'destroy'])->name('channels.destroy');
