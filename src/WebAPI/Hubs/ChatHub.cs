@@ -9,6 +9,7 @@ namespace MessengerApp.WebAPI.Hubs;
 [Authorize]
 public class ChatHub(
     IApplicationDbContext dbContext,
+    IPresenceTracker presenceTracker,
     ILogger<ChatHub> logger) : Hub<IChatClient>
 {
     protected Guid CurrentUserId
@@ -24,25 +25,57 @@ public class ChatHub(
 
     public static string GetChannelGroupName(Guid channelId) => $"channel:{channelId}";
 
-    public override Task OnConnectedAsync()
+    public override async Task OnConnectedAsync()
     {
-        if (CurrentUserId == Guid.Empty)
+        Guid userId = CurrentUserId;
+        if (userId == Guid.Empty)
         {
             logger.LogWarning("Unauthorized connection attempt rejected on ChatHub: {ConnectionId}", Context.ConnectionId);
             Context.Abort();
+            return;
         }
 
-        return base.OnConnectedAsync();
+        bool isFirstConnection = await presenceTracker.ConnectionOpenedAsync(userId, Context.ConnectionId);
+        if (isFirstConnection)
+        {
+            await Clients.Others.UserConnected(userId);
+        }
+
+        IReadOnlyCollection<Guid> onlineUsers = await presenceTracker.GetOnlineUsersAsync();
+        await Clients.Caller.OnlineUsers(onlineUsers);
+
+        await base.OnConnectedAsync();
     }
 
-    public override Task OnDisconnectedAsync(Exception? exception)
+    public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (exception != null)
+        Guid userId = CurrentUserId;
+        if (userId != Guid.Empty)
         {
-            logger.LogWarning(exception, "Client {UserId} disconnected abnormally: {ConnectionId}", CurrentUserId, Context.ConnectionId);
+            bool isLastConnection = await presenceTracker.ConnectionClosedAsync(userId, Context.ConnectionId);
+            if (isLastConnection)
+            {
+                await Clients.Others.UserDisconnected(userId);
+
+                try
+                {
+                    await dbContext.Users
+                        .Where(u => u.Id == userId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastSeenAt, DateTimeOffset.UtcNow));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to update LastSeenAt for user {UserId}", userId);
+                }
+            }
         }
 
-        return base.OnDisconnectedAsync(exception);
+        if (exception != null)
+        {
+            logger.LogWarning(exception, "Client {UserId} disconnected abnormally: {ConnectionId}", userId, Context.ConnectionId);
+        }
+
+        await base.OnDisconnectedAsync(exception);
     }
 
     public async Task JoinChannel(Guid channelId)

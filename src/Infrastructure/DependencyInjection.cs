@@ -1,6 +1,7 @@
 using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Infrastructure.Persistence;
 using MessengerApp.Infrastructure.Persistence.Interceptors;
+using MessengerApp.Infrastructure.Presence;
 using MessengerApp.Infrastructure.Security;
 using MessengerApp.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -43,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, Argon2PasswordHasher>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+        services.AddSingleton<IPresenceTracker, PresenceTracker>();
 
         return services;
     }

@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Application\MessengerApp.Application.csproj" />
     <ProjectReference Include="..\..\src\Domain\MessengerApp.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\MessengerApp.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
