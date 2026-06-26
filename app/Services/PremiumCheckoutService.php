@@ -8,6 +8,7 @@ use App\Services\Payments\PaymentGatewayFactory;
 use DomainException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PremiumCheckoutService
 {
@@ -22,34 +23,55 @@ class PremiumCheckoutService
     {
         return $this->paymentGatewayFactory
             ->make($provider)
-            ->createPremiumOrder($user, $months);
+            ->createPremiumOrder($user, $months, (string) Str::uuid());
     }
 
     public function captureOrder(User $user, string $providerOrderId, string $provider = 'paypal'): PremiumPayment
     {
-        $payment = PremiumPayment::query()
-            ->where('user_id', $user->id)
-            ->where('provider', $provider)
-            ->where('provider_order_id', $providerOrderId)
-            ->firstOrFail();
+        $expiredCheckout = false;
 
-        if ($payment->isExpiredPendingCheckout()) {
-            $this->paymentGatewayFactory
-                ->make($provider)
-                ->cancelPremiumOrder($payment);
+        $payment = DB::transaction(function () use ($user, $providerOrderId, $provider, &$expiredCheckout): PremiumPayment {
+            $payment = PremiumPayment::query()
+                ->where('user_id', $user->id)
+                ->where('provider', $provider)
+                ->where('provider_order_id', $providerOrderId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            throw new DomainException('This PayPal checkout expired after 60 minutes. Please start a new payment.');
-        }
+            if ($payment->status === PremiumPayment::StatusCompleted) {
+                return $payment;
+            }
 
-        return DB::transaction(function () use ($payment, $user, $provider): PremiumPayment {
+            if ($payment->status === PremiumPayment::StatusCancelled) {
+                throw new DomainException('This PayPal checkout has already been cancelled. Please start a new payment.');
+            }
+
+            if ($payment->isExpiredPendingCheckout()) {
+                $this->paymentGatewayFactory
+                    ->make($provider)
+                    ->cancelPremiumOrder($payment);
+
+                $expiredCheckout = true;
+
+                return $payment->refresh();
+            }
+
+            $requestId = $payment->capture_request_id ?? (string) Str::uuid();
+
             $capturedPayment = $this->paymentGatewayFactory
                 ->make($provider)
-                ->capturePremiumOrder($payment);
+                ->capturePremiumOrder($payment, $requestId);
 
             $this->activatePremiumIfCompleted($user, $capturedPayment);
 
             return $capturedPayment->refresh();
         });
+
+        if ($expiredCheckout) {
+            throw new DomainException('This PayPal checkout expired after 60 minutes. Please start a new payment.');
+        }
+
+        return $payment;
     }
 
     public function cancelExpiredPendingOrders(?Carbon $now = null): int
@@ -65,19 +87,30 @@ class PremiumCheckoutService
         $cancelledCount = 0;
 
         foreach ($payments as $payment) {
-            $cancelledPayment = $this->paymentGatewayFactory
-                ->make($payment->provider)
-                ->cancelPremiumOrder($payment);
+            DB::transaction(function () use ($payment, &$cancelledCount): void {
+                $lockedPayment = PremiumPayment::query()
+                    ->whereKey($payment->id)
+                    ->lockForUpdate()
+                    ->first();
 
-            if ($cancelledPayment->status === PremiumPayment::StatusCompleted && $payment->user) {
-                $this->activatePremiumIfCompleted($payment->user, $cancelledPayment);
+                if (! $lockedPayment || ! $lockedPayment->isExpiredPendingCheckout()) {
+                    return;
+                }
 
-                continue;
-            }
+                $cancelledPayment = $this->paymentGatewayFactory
+                    ->make($lockedPayment->provider)
+                    ->cancelPremiumOrder($lockedPayment);
 
-            if ($cancelledPayment->status === PremiumPayment::StatusCancelled) {
-                $cancelledCount++;
-            }
+                if ($cancelledPayment->status === PremiumPayment::StatusCompleted && $lockedPayment->user) {
+                    $this->activatePremiumIfCompleted($lockedPayment->user, $cancelledPayment);
+
+                    return;
+                }
+
+                if ($cancelledPayment->status === PremiumPayment::StatusCancelled) {
+                    $cancelledCount++;
+                }
+            });
         }
 
         return $cancelledCount;

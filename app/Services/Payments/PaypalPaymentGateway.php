@@ -14,12 +14,13 @@ class PaypalPaymentGateway implements PaymentGateway
     /**
      * @return array{payment: PremiumPayment, approval_url: string|null}
      */
-    public function createPremiumOrder(User $user, int $months): array
+    public function createPremiumOrder(User $user, int $months, string $requestId): array
     {
         $amountCents = (int) config('services.paypal.premium_price_cents') * $months;
         $currency = (string) config('services.paypal.premium_currency');
 
         $payload = $this->clientWithToken()
+            ->withHeaders(['PayPal-Request-Id' => $requestId])
             ->post('/v2/checkout/orders', [
                 'intent' => 'CAPTURE',
                 'application_context' => [
@@ -42,6 +43,7 @@ class PaypalPaymentGateway implements PaymentGateway
             'user_id' => $user->id,
             'provider' => 'paypal',
             'provider_order_id' => $payload['id'],
+            'create_request_id' => $requestId,
             'status' => $payload['status'] ?? PremiumPayment::StatusCreated,
             'months' => $months,
             'amount_cents' => $amountCents,
@@ -57,9 +59,10 @@ class PaypalPaymentGateway implements PaymentGateway
         ];
     }
 
-    public function capturePremiumOrder(PremiumPayment $payment): PremiumPayment
+    public function capturePremiumOrder(PremiumPayment $payment, string $requestId): PremiumPayment
     {
         $payload = $this->clientWithToken()
+            ->withHeaders(['PayPal-Request-Id' => $requestId])
             ->withBody('{}', 'application/json')
             ->post("/v2/checkout/orders/{$payment->provider_order_id}/capture")
             ->throw()
@@ -67,6 +70,7 @@ class PaypalPaymentGateway implements PaymentGateway
 
         $payment->forceFill([
             'status' => $payload['status'],
+            'capture_request_id' => $requestId,
             'payload' => $payload,
             'captured_at' => $payload['status'] === PremiumPayment::StatusCompleted ? now() : null,
         ])->save();
@@ -106,6 +110,7 @@ class PaypalPaymentGateway implements PaymentGateway
     private function clientWithToken(): PendingRequest
     {
         return Http::withToken($this->accessToken())
+            ->retry(3, 200, throw: false)
             ->baseUrl((string) config('services.paypal.base_url'))
             ->acceptJson()
             ->asJson();
@@ -132,6 +137,7 @@ class PaypalPaymentGateway implements PaymentGateway
             (string) config('services.paypal.client_id'),
             (string) config('services.paypal.client_secret'),
         )
+            ->retry(3, 200, throw: false)
             ->baseUrl((string) config('services.paypal.base_url'))
             ->acceptJson();
     }

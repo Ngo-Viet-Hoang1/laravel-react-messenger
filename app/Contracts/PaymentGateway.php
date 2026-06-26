@@ -10,9 +10,9 @@ interface PaymentGateway
     /**
      * @return array{payment: PremiumPayment, approval_url: string|null}
      */
-    public function createPremiumOrder(User $user, int $months): array;
+    public function createPremiumOrder(User $user, int $months, string $requestId): array;
 
-    public function capturePremiumOrder(PremiumPayment $payment): PremiumPayment;
+    public function capturePremiumOrder(PremiumPayment $payment, string $requestId): PremiumPayment;
 
     public function cancelPremiumOrder(PremiumPayment $payment): PremiumPayment;
 }

@@ -2,14 +2,23 @@
 
 namespace Tests\Feature;
 
+use App\Models\PremiumPayment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class PremiumPaymentTest extends TestCase
 {
     use LazilyRefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Cache::forget('paypal.access_token');
+    }
 
     public function test_user_can_create_and_capture_paypal_premium_order(): void
     {
@@ -76,6 +85,18 @@ class PremiumPaymentTest extends TestCase
             'provider_order_id' => 'ORDER-123',
             'status' => 'COMPLETED',
         ]);
+
+        $this->assertDatabaseMissing('premium_payments', [
+            'provider_order_id' => 'ORDER-123',
+            'capture_request_id' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('premium.paypal.capture', ['orderId' => 'ORDER-123']))
+            ->assertOk()
+            ->assertJsonPath('status', PremiumPayment::StatusCompleted);
+
+        Http::assertSentCount(3);
     }
 
     public function test_user_cannot_capture_another_users_paypal_order(): void

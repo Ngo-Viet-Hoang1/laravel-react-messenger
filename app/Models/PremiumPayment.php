@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'provider', 'provider_order_id', 'status', 'months', 'amount_cents', 'currency', 'payload', 'captured_at'])]
+#[Fillable(['user_id', 'provider', 'provider_order_id', 'create_request_id', 'capture_request_id', 'status', 'months', 'amount_cents', 'currency', 'payload', 'captured_at'])]
 class PremiumPayment extends Model
 {
     public const StatusCreated = 'CREATED';
