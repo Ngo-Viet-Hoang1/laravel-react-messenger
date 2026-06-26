@@ -20,7 +20,7 @@ class CancelExpiredPremiumPaymentsTest extends TestCase
         Cache::forget('paypal.access_token');
     }
 
-    public function test_command_cancels_pending_premium_payments_after_60_minutes(): void
+    public function test_command_cancels_pending_premium_payments_after_5_days(): void
     {
         config([
             'services.paypal.base_url' => 'https://paypal.test',
@@ -52,8 +52,8 @@ class CancelExpiredPremiumPaymentsTest extends TestCase
             'currency' => 'USD',
         ]);
         $expiredPayment->forceFill([
-            'created_at' => now()->subMinutes(61),
-            'updated_at' => now()->subMinutes(61),
+            'created_at' => now()->subDays(6),
+            'updated_at' => now()->subDays(6),
         ])->save();
 
         $freshPayment = PremiumPayment::create([
@@ -66,8 +66,8 @@ class CancelExpiredPremiumPaymentsTest extends TestCase
             'currency' => 'USD',
         ]);
         $freshPayment->forceFill([
-            'created_at' => now()->subMinutes(59),
-            'updated_at' => now()->subMinutes(59),
+            'created_at' => now()->subDays(4),
+            'updated_at' => now()->subDays(4),
         ])->save();
 
         $this->artisan('premium:cancel-expired-payments')
@@ -117,8 +117,8 @@ class CancelExpiredPremiumPaymentsTest extends TestCase
             'currency' => 'USD',
         ]);
         $payment->forceFill([
-            'created_at' => now()->subMinutes(61),
-            'updated_at' => now()->subMinutes(61),
+            'created_at' => now()->subDays(6),
+            'updated_at' => now()->subDays(6),
         ])->save();
 
         $this->artisan('premium:cancel-expired-payments')
@@ -165,14 +165,14 @@ class CancelExpiredPremiumPaymentsTest extends TestCase
             'currency' => 'USD',
         ]);
         $payment->forceFill([
-            'created_at' => now()->subMinutes(61),
-            'updated_at' => now()->subMinutes(61),
+            'created_at' => now()->subDays(6),
+            'updated_at' => now()->subDays(6),
         ])->save();
 
         $this->actingAs($user)
             ->postJson(route('premium.paypal.capture', ['orderId' => 'ORDER-LATE']))
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'This PayPal checkout expired after 60 minutes. Please start a new payment.');
+            ->assertJsonPath('message', 'This PayPal checkout expired after 5 days. Please start a new payment.');
 
         $this->assertDatabaseHas('premium_payments', [
             'provider_order_id' => 'ORDER-LATE',

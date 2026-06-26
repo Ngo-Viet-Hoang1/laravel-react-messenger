@@ -97,7 +97,7 @@ class PaypalPaymentGateway implements PaymentGateway
                 'local_cancelled_at' => $remoteStatus === PremiumPayment::StatusCompleted ? null : now()->toISOString(),
                 'local_cancel_reason' => $remoteStatus === PremiumPayment::StatusCompleted
                     ? null
-                    : 'Checkout was not completed within 60 minutes.',
+                    : 'Checkout was not completed within 5 days.',
             ],
             'captured_at' => $remoteStatus === PremiumPayment::StatusCompleted
                 ? ($payment->captured_at ?? now())

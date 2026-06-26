@@ -68,7 +68,7 @@ class PremiumCheckoutService
         });
 
         if ($expiredCheckout) {
-            throw new DomainException('This PayPal checkout expired after 60 minutes. Please start a new payment.');
+            throw new DomainException('This PayPal checkout expired after 5 days. Please start a new payment.');
         }
 
         return $payment;
@@ -76,7 +76,7 @@ class PremiumCheckoutService
 
     public function cancelExpiredPendingOrders(?Carbon $now = null): int
     {
-        $expiresBefore = ($now ?? now())->copy()->subMinutes(PremiumPayment::CheckoutTimeoutMinutes);
+        $expiresBefore = ($now ?? now())->copy()->subDays(PremiumPayment::CheckoutTimeoutDays);
 
         $payments = PremiumPayment::query()
             ->whereIn('status', PremiumPayment::pendingStatuses())

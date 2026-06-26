@@ -15,7 +15,7 @@ class PremiumPayment extends Model
 
     public const StatusCancelled = 'CANCELLED';
 
-    public const CheckoutTimeoutMinutes = 60;
+    public const CheckoutTimeoutDays = 5;
 
     /**
      * @return list<string>
@@ -46,6 +46,6 @@ class PremiumPayment extends Model
     {
         return in_array($this->status, self::pendingStatuses(), true)
             && $this->created_at !== null
-            && $this->created_at->lte(now()->subMinutes(self::CheckoutTimeoutMinutes));
+            && $this->created_at->lte(now()->subDays(self::CheckoutTimeoutDays));
     }
 }
