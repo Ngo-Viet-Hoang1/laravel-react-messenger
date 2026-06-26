@@ -7,6 +7,7 @@ use App\Http\Requests\StoreChannelRequest;
 use App\Http\Requests\UpdateChannelRequest;
 use App\Http\Resources\ChannelDetailResource;
 use App\Http\Resources\ChannelResource;
+use App\Http\Resources\MessageAttachmentResource;
 use App\Http\Resources\MessageResource;
 use App\Http\Resources\UserResource;
 use App\Models\Channel;
@@ -15,6 +16,7 @@ use App\Services\ChannelService;
 use App\Services\MessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Response;
 
 class ChannelController extends Controller
@@ -148,5 +150,20 @@ class ChannelController extends Controller
         }
 
         return "Channel \"{$channel->name}\"";
+    }
+
+    /**
+     * Get shared attachments (excluding audio) for the channel.
+     */
+    public function attachments(Channel $channel): AnonymousResourceCollection
+    {
+        abort_unless(
+            auth()->user()?->channels()->whereKey($channel->id)->exists(),
+            403,
+        );
+
+        $attachments = $this->channelService->getChannelAttachments($channel);
+
+        return MessageAttachmentResource::collection($attachments);
     }
 }

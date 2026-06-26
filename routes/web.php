@@ -20,6 +20,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::post('/channels/{channel}/read', [ChannelController::class, 'markAsRead'])->name('channels.read');
 
     Route::get('/channels/{channel}/members', [ChannelController::class, 'getMembers'])->name('channels.members');
+    Route::get('/channels/{channel}/attachments', [ChannelController::class, 'attachments'])->name('channels.attachments');
     Route::post('/channels/direct/{user}', [ChannelController::class, 'findOrCreateDirect'])->name('channels.direct');
 
     Route::get('/channels/{channel}/messages', [MessageController::class, 'index'])->name('channels.messages');
