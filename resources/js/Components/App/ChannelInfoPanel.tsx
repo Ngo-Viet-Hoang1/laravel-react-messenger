@@ -1,7 +1,6 @@
 import { useChannelModal } from '@/Contexts/ChannelModalContext';
 import { ChatItem } from '@/types';
 import {
-    FolderIcon,
     MagnifyingGlassIcon,
     PencilIcon,
     TrashIcon,
@@ -9,13 +8,20 @@ import {
 } from '@heroicons/react/24/outline';
 import React from 'react';
 import GroupAvatar from './GroupAvatar';
+import SharedMediaAndFiles from './SharedMediaAndFiles';
 import UserAvatar from './UserAvatar';
+
+import { MessageAttachment } from '@/types';
 
 type Props = {
     channel: ChatItem;
     onClose: () => void;
     onSearchClick: () => void;
     onDeleteClick: () => void;
+    onAttachmentClick?: (
+        attachments: MessageAttachment[],
+        index: number,
+    ) => void;
 };
 
 const ChannelInfoPanel = ({
@@ -23,6 +29,7 @@ const ChannelInfoPanel = ({
     onClose,
     onSearchClick,
     onDeleteClick,
+    onAttachmentClick,
 }: Props) => {
     const { openModal } = useChannelModal();
     const isGroup = channel.type === 'group';
@@ -138,10 +145,10 @@ const ChannelInfoPanel = ({
                             Media & Files
                         </div>
                         <div className="collapse-content px-0 pt-1 pb-3 text-xs text-slate-500 dark:text-slate-400">
-                            <div className="flex flex-col items-center py-4 text-center text-slate-400 dark:text-slate-500">
-                                <FolderIcon className="mb-1 h-8 w-8 opacity-40" />
-                                <span>No shared media</span>
-                            </div>
+                            <SharedMediaAndFiles
+                                channelId={channel.id}
+                                onAttachmentClick={onAttachmentClick}
+                            />
                         </div>
                     </div>
                 </div>

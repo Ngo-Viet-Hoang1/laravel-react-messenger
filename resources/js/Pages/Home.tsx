@@ -381,6 +381,7 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                             setShowSearch(true);
                         }}
                         onDeleteClick={handleDeleteChannel}
+                        onAttachmentClick={open}
                     />
                 </>
             )}
