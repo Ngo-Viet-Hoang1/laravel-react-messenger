@@ -2,6 +2,7 @@ import {
     type ChatItem,
     type ChatMessage,
     type ChatMessageCollection,
+    type MessageReactionGroup,
 } from '@/types';
 import axios from 'axios';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -14,6 +15,7 @@ type UseMessagesReturn = {
     firstMessageDate: string | null;
     addMessage: (message: ChatMessage) => boolean;
     markMessageDeleted: (message: ChatMessage) => void;
+    updateMessageReactions: (messageId: number, reactions: MessageReactionGroup[]) => void;
     loadOlderMessages: () => Promise<void>;
 };
 
@@ -63,11 +65,25 @@ const useMessages = (
                           deleted_at:
                               message.deleted_at ?? new Date().toISOString(),
                           attachments: [],
+                          reactions: [],
                       }
                     : current,
             ),
         );
     }, []);
+
+    const updateMessageReactions = useCallback(
+        (messageId: number, reactions: MessageReactionGroup[]): void => {
+            setChatMessages((prev) =>
+                prev.map((msg) =>
+                    msg.id === messageId
+                        ? { ...msg, reactions }
+                        : msg,
+                ),
+            );
+        },
+        [],
+    );
 
     const loadOlderMessages = useCallback(async (): Promise<void> => {
         if (hasLoadedAllMessages || isFetchingRef.current || !selectedChannel)
@@ -123,6 +139,7 @@ const useMessages = (
         firstMessageDate,
         addMessage,
         markMessageDeleted,
+        updateMessageReactions,
         loadOlderMessages,
     };
 };

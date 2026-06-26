@@ -21,10 +21,17 @@ export type ParentMessage = {
     attachments: MessageAttachment[];
 };
 
+export type MessageReactionGroup = {
+    emoji: string;
+    count: number;
+    user_ids: number[];
+};
+
 export type ChatMessage = DbMessage & {
     sender: User;
     parent: ParentMessage | null;
     attachments: MessageAttachment[];
+    reactions: MessageReactionGroup[];
 };
 
 export type ChatMessageCollection = PaginatedResponse<ChatMessage>;
