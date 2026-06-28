@@ -31,3 +31,5 @@ export type {
 } from './events';
 
 export type { ChatPageProps, PageProps } from './page-props';
+
+export type { PremiumPaymentHistoryItem, PremiumPaymentStatus } from './premium';
