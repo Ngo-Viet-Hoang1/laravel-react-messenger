@@ -20,33 +20,35 @@ const SharedMediaAndFiles = ({ channelId, onAttachmentClick }: Props) => {
     const [activeTab, setActiveTab] = useState<'media' | 'files'>('media');
 
     useEffect(() => {
-        let isMounted = true;
-        setLoading(true);
-        setError(false);
+        const controller = new AbortController();
 
-        axios
-            .get<{ data: MessageAttachment[] }>(
-                `/channels/${channelId}/attachments`,
-            )
-            .then((res) => {
-                if (isMounted) {
-                    setAttachments(res.data.data || []);
+        const fetchAttachments = async () => {
+            setLoading(true);
+            setError(false);
+
+            try {
+                const res = await axios.get<{ data: MessageAttachment[] }>(
+                    `/channels/${channelId}/attachments`,
+                    { signal: controller.signal },
+                );
+                setAttachments(res.data.data || []);
+            } catch (err) {
+                if (axios.isCancel(err)) {
+                    return;
                 }
-            })
-            .catch((err) => {
                 console.error('Error fetching channel attachments:', err);
-                if (isMounted) {
-                    setError(true);
-                }
-            })
-            .finally(() => {
-                if (isMounted) {
+                setError(true);
+            } finally {
+                if (!controller.signal.aborted) {
                     setLoading(false);
                 }
-            });
+            }
+        };
+
+        fetchAttachments();
 
         return () => {
-            isMounted = false;
+            controller.abort();
         };
     }, [channelId]);
 
