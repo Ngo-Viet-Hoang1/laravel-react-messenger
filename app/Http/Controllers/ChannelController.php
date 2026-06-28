@@ -101,6 +101,32 @@ class ChannelController extends Controller
         return response()->json(UserResource::collection($members));
     }
 
+    public function addMember(Channel $channel, User $user): JsonResponse
+    {
+        $authUser = auth()->user();
+
+        abort_if($channel->type === 'direct', 403, 'Cannot add members to a direct channel.');
+        abort_unless($authUser?->is_admin || $channel->owner_id === (int) $authUser?->id, 403, 'Unauthorized.');
+        abort_if($channel->members()->whereKey($user->id)->exists(), 422, 'User is already a member.');
+
+        $this->channelService->addMember($channel, $user);
+
+        return response()->json(['message' => 'Member added successfully.']);
+    }
+
+    public function removeMember(Channel $channel, User $user): JsonResponse
+    {
+        $authUser = auth()->user();
+
+        abort_if($channel->type === 'direct', 403, 'Cannot remove members from a direct channel.');
+        abort_unless($authUser?->is_admin || $channel->owner_id === (int) $authUser?->id, 403, 'Unauthorized.');
+        abort_if($channel->owner_id === $user->id, 422, 'Cannot remove the channel owner.');
+
+        $this->channelService->removeMember($channel, $user);
+
+        return response()->json(['message' => 'Member removed successfully.']);
+    }
+
     public function update(UpdateChannelRequest $request, Channel $channel): RedirectResponse
     {
         abort_if($channel->type === 'direct', 403, 'Cannot edit a direct message channel.');

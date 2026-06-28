@@ -56,6 +56,16 @@ class ChannelService
         return $channel;
     }
 
+    public function addMember(Channel $channel, User $user): void
+    {
+        $channel->members()->syncWithoutDetaching([$user->id]);
+    }
+
+    public function removeMember(Channel $channel, User $user): void
+    {
+        $channel->members()->detach($user->id);
+    }
+
     public function deleteChannel(Channel $channel): void
     {
         DeleteChannelJob::dispatch($channel->id)->delay(now()->addSeconds(1));
