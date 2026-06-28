@@ -68,6 +68,8 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
                                     url={attachment.url}
                                     mime={attachment.mime}
                                     name={attachment.name}
+                                    streamUrl={attachment.stream_url}
+                                    thumbnailUrl={attachment.thumbnail_url}
                                     onMediaClick={(e) => e.stopPropagation()}
                                     classNames={{
                                         image: 'h-auto w-auto max-h-[350px] max-w-full object-contain',
@@ -99,7 +101,7 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
                                     <audio
                                         src={attachment.url}
                                         controls
-                                        className="h-10 w-full [color-scheme:light] dark:[color-scheme:dark]"
+                                        className="color:scheme-light h-10 w-full dark:scheme-dark"
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                 </div>

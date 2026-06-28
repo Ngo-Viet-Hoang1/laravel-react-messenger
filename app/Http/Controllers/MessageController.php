@@ -14,6 +14,7 @@ use App\Services\MessageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use App\Services\ChunkUploadService;
+use App\Services\VideoThumbnailService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,7 +23,8 @@ class MessageController extends Controller
 {
     public function __construct(
         private MessageService $messageService,
-        private ChunkUploadService $chunkUploadService
+        protected ChunkUploadService $chunkUploadService,
+        protected VideoThumbnailService $videoThumbnailService
     ) {}
 
     public function search(Request $request, Channel $channel): AnonymousResourceCollection
@@ -89,14 +91,22 @@ class MessageController extends Controller
                     $directory = 'attachments/'.Str::random(40);
                     Storage::disk('public')->makeDirectory($directory);
 
+                    $path = $file->store($directory, 'public');
+                    $mime = $file->getMimeType();
+                    $thumbnailPath = null;
+
+                    if (str_starts_with($mime, 'video/')) {
+                        $thumbnailPath = $this->videoThumbnailService->generate($path, 'public');
+                    }
+
                     MessageAttachment::create([
                         'message_id' => $message->id,
-                        'path' => $file->store($directory, 'public'),
+                        'path' => $path,
                         'name' => $file->getClientOriginalName(),
                         'size' => $file->getSize(),
-                        'mime' => $file->getMimeType(),
+                        'mime' => $mime,
                         'storage_disk' => 'public',
-                        'thumbnail_path' => null,
+                        'thumbnail_path' => $thumbnailPath,
                     ]);
                 }
             }
@@ -122,14 +132,21 @@ class MessageController extends Controller
                             @rmdir($tempDir);
                         }
 
+                        $mime = $att['mime'];
+                        $thumbnailPath = null;
+
+                        if (str_starts_with($mime, 'video/')) {
+                            $thumbnailPath = $this->videoThumbnailService->generate($finalRelativePath, 'public');
+                        }
+
                         MessageAttachment::create([
                             'message_id' => $message->id,
                             'path' => $finalRelativePath,
                             'name' => $att['name'],
                             'size' => (int) $att['size'],
-                            'mime' => $att['mime'],
+                            'mime' => $mime,
                             'storage_disk' => 'public',
-                            'thumbnail_path' => null,
+                            'thumbnail_path' => $thumbnailPath,
                         ]);
                     }
                 }
@@ -214,6 +231,30 @@ class MessageController extends Controller
     {
         $message->loadMissing(['sender', 'attachments', 'parent.sender', 'parent.attachments']);
 
+        $formatAttachment = function (MessageAttachment $attachment) {
+            $arr = $attachment->toArray();
+            $arr['url'] = Storage::disk($attachment->storage_disk)->url($attachment->path);
+            $arr['thumbnail_url'] = $attachment->thumbnail_path ? Storage::disk($attachment->storage_disk)->url($attachment->thumbnail_path) : null;
+            $arr['stream_url'] = route('attachments.stream', $attachment->id);
+
+            return $arr;
+        };
+
+        $attachmentsArray = [];
+        foreach ($message->attachments as $attachment) {
+            $attachmentsArray[] = $formatAttachment($attachment);
+        }
+
+        $parent = null;
+        if ($message->parent) {
+            $parentAttachments = [];
+            foreach ($message->parent->attachments as $attachment) {
+                $parentAttachments[] = $formatAttachment($attachment);
+            }
+            $parent = $message->parent->toArray();
+            $parent['attachments'] = $parentAttachments;
+        }
+
         return [
             'id' => $message->id,
             'content' => $message->content,
@@ -221,8 +262,8 @@ class MessageController extends Controller
             'sender_id' => $message->sender_id,
             'parent_id' => $message->parent_id,
             'sender' => $message->sender?->toArray(),
-            'parent' => $message->parent?->toArray(),
-            'attachments' => $message->attachments->toArray(),
+            'parent' => $parent,
+            'attachments' => $attachmentsArray,
             'created_at' => $message->created_at?->toISOString(),
             'updated_at' => $message->updated_at?->toISOString(),
         ];
