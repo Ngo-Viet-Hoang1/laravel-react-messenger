@@ -5,6 +5,7 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageReportController;
+use App\Http\Controllers\PremiumController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,10 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::post('/messages/{message}/report', [MessageReportController::class, 'store'])->name('messages.report');
 
     Route::post('/messages/upload-chunk', [MessageController::class, 'uploadChunk'])->name('messages.upload-chunk');
+
+    Route::get('/premium', [PremiumController::class, 'index'])->name('premium.index');
+    Route::post('/premium/paypal/checkout', [PremiumController::class, 'checkout'])->name('premium.paypal.checkout');
+    Route::post('/premium/paypal/capture/{orderId}', [PremiumController::class, 'capture'])->name('premium.paypal.capture');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::middleware('admin')->group(function () {
