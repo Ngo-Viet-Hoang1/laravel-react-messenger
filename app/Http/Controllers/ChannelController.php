@@ -127,7 +127,6 @@ class ChannelController extends Controller
 
         $channel->loadMissing('members:id,name');
         $channelLabel = $this->getChannelDeletionLabel($channel, (int) $user->id);
-
         $this->channelService->deleteChannel($channel);
 
         return response()->json([
