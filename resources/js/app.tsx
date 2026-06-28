@@ -5,7 +5,9 @@ import { createInertiaApp } from '@inertiajs/react';
 import { configureEcho } from '@laravel/echo-react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
+import { ConfirmProvider } from './Contexts/ConfirmContext';
 import { EventBusProvider } from './EventBus';
+import { UploadProvider } from './Contexts/UploadContext';
 
 configureEcho({
     broadcaster: 'reverb',
@@ -25,7 +27,11 @@ createInertiaApp({
 
         root.render(
             <EventBusProvider>
-                <App {...props} />
+                <ConfirmProvider>
+                    <UploadProvider>
+                        <App {...props} />
+                    </UploadProvider>
+                </ConfirmProvider>
             </EventBusProvider>,
         );
     },

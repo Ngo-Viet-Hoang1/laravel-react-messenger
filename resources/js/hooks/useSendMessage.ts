@@ -4,8 +4,9 @@ import axios from 'axios';
 import { useCallback, useState } from 'react';
 
 type SendArgs = {
-    conversation: ChatItem | null;
+    channel: ChatItem | null;
     content: string;
+    parentId?: number | null;
     attachments: AttachedItem[];
     onSuccess?: () => void;
 };
@@ -16,21 +17,25 @@ export const useSendMessage = (onError: (msg: string) => void) => {
     const [progress, setProgress] = useState(0);
 
     const send = useCallback(
-        async ({ conversation, content, attachments, onSuccess }: SendArgs) => {
-            if (!conversation) {
-                onError('Please select a conversation first');
+        async ({
+            channel,
+            content,
+            parentId,
+            attachments,
+            onSuccess,
+        }: SendArgs) => {
+            if (!channel) {
+                onError('Please select a channel first');
                 return;
             }
 
             if (content.trim() === '' && attachments.length === 0) return;
 
             const formData = new FormData();
-            formData.append('message', content);
+            formData.append('content', content);
 
-            if (conversation.is_user) {
-                formData.append('receiver_id', conversation.id.toString());
-            } else if (conversation.is_group) {
-                formData.append('group_id', conversation.id.toString());
+            if (parentId) {
+                formData.append('parent_id', String(parentId));
             }
 
             attachments.forEach((item) => {
@@ -41,7 +46,7 @@ export const useSendMessage = (onError: (msg: string) => void) => {
 
             try {
                 const { data: newMessage } = await axios.post<ChatMessage>(
-                    route('message.store'),
+                    route('channels.messages.store', channel.id),
                     formData,
                     {
                         onUploadProgress: (progressEvent) => {

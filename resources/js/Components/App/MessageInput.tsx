@@ -1,47 +1,106 @@
 import EmojiPickerPopover from '@/Components/App/EmojiPickerPopover';
+import { useUploads } from '@/Contexts/UploadContext';
+import { useAiMessageSuggestion } from '@/hooks/useAiMessageSuggestion';
 import { useAttachments } from '@/hooks/useAttachments';
+import useDraftMessage from '@/hooks/useDraftMessages';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useSendMessage } from '@/hooks/useSendMessage';
-import { type ChatItem } from '@/types';
+import useTypingIndicator from '@/hooks/useTypingIndicator';
+import { type ChatItem, type ChatMessage, PageProps } from '@/types';
+import { getChannelName } from '@/utils';
 import {
     HandThumbUpIcon,
     PaperAirplaneIcon,
     PaperClipIcon,
     PhotoIcon,
+    SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { type ChangeEvent, useRef, useState } from 'react';
+import { usePage } from '@inertiajs/react';
+import React, { type ChangeEvent, Suspense, useCallback, useRef } from 'react';
 import AttachedItemList from './AttachedItemList';
-import AudioRecorder from './AudioRecorder';
 import NewMessageInput from './NewMessageInput';
+import ReplyPreview from './ReplyPreview';
+
+const AudioRecorder = React.lazy(() => import('./AudioRecorder'));
 
 type Props = {
-    conversation: ChatItem | null;
+    channel: ChatItem | null;
+    replyTo?: ChatMessage | null;
+    onCancelReply?: () => void;
 };
 
-const MessageInput = ({ conversation = null }: Props) => {
-    const [message, setMessage] = useState('');
+const MessageInput = ({
+    channel = null,
+    replyTo = null,
+    onCancelReply,
+}: Props) => {
+    const {
+        value: message,
+        setValue: setMessage,
+        clearDraft,
+    } = useDraftMessage(channel?.id ?? null);
+
+    const page = usePage<PageProps>();
+    const currentUser = page.props.auth.user;
+
+    const channelName = channel ? getChannelName(channel) : undefined;
+    const { sendTyping } = useTypingIndicator(
+        {
+            id: String(currentUser.id),
+            name: currentUser.name,
+            avatarUrl: currentUser.avatar_url ?? '',
+        },
+        {},
+        channelName,
+    );
 
     const { error, showError } = useErrorMessage();
-    const { items, addFiles, remove, clear } = useAttachments(showError);
+    const { attachments, addFiles, remove, clear } = useAttachments(showError);
     const { send, sending, progress } = useSendMessage(showError);
+    const { generateSuggestion, generating } =
+        useAiMessageSuggestion(showError);
+    const { uploadFile } = useUploads();
 
     const fileRef = useRef<HTMLInputElement>(null);
     const imageRef = useRef<HTMLInputElement>(null);
 
     const hasMessage = message.trim().length > 0;
-    const hasAttachment = items.length > 0;
+    const hasAttachment = attachments.length > 0;
     const canSend = hasMessage || hasAttachment;
 
     const handleSend = () => {
         if (sending || !canSend) return;
 
+        const hasLargeFile = attachments.some(
+            (item) => item.file.size > 5 * 1024 * 1024,
+        );
+
+        if (hasLargeFile && channel) {
+            attachments.forEach((item, index) => {
+                uploadFile(
+                    item.file,
+                    channel.id,
+                    index === 0 ? message.trim() : '',
+                    replyTo?.id ?? null,
+                );
+            });
+            clearDraft();
+            clear();
+            onCancelReply?.();
+            if (fileRef.current) fileRef.current.value = '';
+            if (imageRef.current) imageRef.current.value = '';
+            return;
+        }
+
         send({
-            conversation,
+            channel,
             content: message.trim(),
-            attachments: items,
+            parentId: replyTo?.id ?? null,
+            attachments,
             onSuccess: () => {
-                setMessage('');
+                clearDraft();
                 clear();
+                onCancelReply?.();
                 if (fileRef.current) fileRef.current.value = '';
                 if (imageRef.current) imageRef.current.value = '';
             },
@@ -51,8 +110,9 @@ const MessageInput = ({ conversation = null }: Props) => {
     const handleLike = () => {
         if (sending) return;
         send({
-            conversation,
+            channel,
             content: '👍',
+            parentId: replyTo?.id ?? null,
             attachments: [],
         });
     };
@@ -65,18 +125,49 @@ const MessageInput = ({ conversation = null }: Props) => {
 
     const handleAudioFileReady = (file: File) => addFiles([file]);
 
+    const handleEmojiSelect = useCallback(
+        (emoji: string) => {
+            const newMessage = message + emoji;
+            setMessage(newMessage);
+        },
+        [message, setMessage],
+    );
+
+    const handleSuggestMessage = async (): Promise<void> => {
+        const currentMessage = message.trim();
+
+        if (!currentMessage) {
+            showError('Please type a message before using AI.');
+
+            return;
+        }
+
+        const suggestion = await generateSuggestion({
+            channel,
+            currentMessage,
+        });
+
+        if (suggestion) {
+            setMessage(suggestion);
+        }
+    };
+
     return (
         <div className="flex w-full flex-col gap-2 px-1 py-2 sm:px-2">
-            {progress > 0 && items.length > 0 ? (
+            {progress > 0 && attachments.length > 0 ? (
                 <progress
                     value={progress}
                     max={100}
-                    className="progress progress-success w-full"
+                    className="progress w-full progress-success"
                 />
             ) : null}
 
-            {items.length > 0 ? (
-                <AttachedItemList items={items} onRemove={remove} />
+            {attachments.length > 0 ? (
+                <AttachedItemList items={attachments} onRemove={remove} />
+            ) : null}
+
+            {replyTo ? (
+                <ReplyPreview message={replyTo} onCancel={onCancelReply} />
             ) : null}
 
             <div className="flex w-full items-end gap-1.5 sm:gap-2">
@@ -84,8 +175,8 @@ const MessageInput = ({ conversation = null }: Props) => {
                     <button
                         type="button"
                         aria-label="Attach generic file"
-                        disabled={!conversation || sending}
-                        className="btn btn-circle btn-ghost relative inline-flex h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
+                        disabled={!channel || sending}
+                        className="btn relative inline-flex btn-circle h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 btn-ghost transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
                     >
                         <PaperClipIcon className="h-5 w-5" aria-hidden="true" />
                         <input
@@ -94,7 +185,7 @@ const MessageInput = ({ conversation = null }: Props) => {
                             multiple
                             accept="*"
                             aria-label="Select files to attach"
-                            disabled={!conversation || sending}
+                            disabled={!channel || sending}
                             className="absolute inset-0 z-20 cursor-pointer opacity-0"
                             onChange={handleFiles}
                         />
@@ -103,8 +194,8 @@ const MessageInput = ({ conversation = null }: Props) => {
                     <button
                         type="button"
                         aria-label="Attach images or videos"
-                        disabled={!conversation || sending}
-                        className="btn btn-circle btn-ghost relative inline-flex h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
+                        disabled={!channel || sending}
+                        className="btn relative inline-flex btn-circle h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 btn-ghost transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
                     >
                         <PhotoIcon className="h-5 w-5" aria-hidden="true" />
                         <input
@@ -113,16 +204,39 @@ const MessageInput = ({ conversation = null }: Props) => {
                             multiple
                             accept="image/*,video/*"
                             aria-label="Select media to attach"
-                            disabled={!conversation || sending}
+                            disabled={!channel || sending}
                             className="absolute inset-0 z-20 cursor-pointer opacity-0"
                             onChange={handleFiles}
                         />
                     </button>
 
-                    <AudioRecorder
-                        onFileReady={handleAudioFileReady}
-                        onError={showError}
-                    />
+                    <Suspense fallback={null}>
+                        <AudioRecorder
+                            onFileReady={handleAudioFileReady}
+                            onError={showError}
+                        />
+                    </Suspense>
+
+                    <button
+                        type="button"
+                        aria-label="Suggest message with AI"
+                        title="Suggest message with AI"
+                        disabled={!channel || sending || generating}
+                        onClick={handleSuggestMessage}
+                        className="btn relative inline-flex btn-circle h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 btn-ghost transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
+                    >
+                        {generating ? (
+                            <span
+                                className="loading loading-xs loading-spinner"
+                                aria-hidden="true"
+                            ></span>
+                        ) : (
+                            <SparklesIcon
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                            />
+                        )}
+                    </button>
                 </div>
 
                 <div className="relative min-w-0 flex-1">
@@ -131,17 +245,16 @@ const MessageInput = ({ conversation = null }: Props) => {
                         onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
                             setMessage(e.target.value)
                         }
+                        onTyping={sendTyping}
                         onSend={handleSend}
                         placeholder="Write a message..."
-                        disabled={!conversation || sending}
+                        disabled={!channel || sending}
                     />
 
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <div className="absolute top-1/2 right-2 -translate-y-1/2">
                         <EmojiPickerPopover
-                            disabled={!conversation || sending}
-                            onSelect={(emoji: string) => {
-                                setMessage((prev) => prev + emoji);
-                            }}
+                            disabled={!channel || sending}
+                            onSelect={handleEmojiSelect}
                         />
                     </div>
                 </div>
@@ -151,12 +264,12 @@ const MessageInput = ({ conversation = null }: Props) => {
                         type="button"
                         aria-label={canSend ? 'Send message' : 'Send like'}
                         onClick={canSend ? handleSend : handleLike}
-                        disabled={!conversation || sending}
-                        className="inline-flex aspect-square min-h-[42px] shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-600"
+                        disabled={!channel || sending}
+                        className="inline-flex aspect-square min-h-[42px] shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-600"
                     >
                         {sending ? (
                             <span
-                                className="loading loading-spinner loading-xs"
+                                className="loading loading-xs loading-spinner"
                                 aria-hidden="true"
                             ></span>
                         ) : canSend ? (

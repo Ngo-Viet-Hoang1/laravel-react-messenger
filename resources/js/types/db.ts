@@ -10,22 +10,33 @@ export type User = {
     updated_at: string;
 };
 
-export type Conversation = {
+export type Channel = {
     id: number;
-    user_id1: number;
-    user_id2: number;
-    last_message_id?: number | null;
+    type: 'direct' | 'group';
+    direct_key: string | null;
+    name: string | null;
+    description: string | null;
+    owner_id: number | null;
+    last_message_id: number | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ChannelMember = {
+    id: number;
+    channel_id: number;
+    user_id: number;
     created_at: string;
     updated_at: string;
 };
 
 export type Message = {
     id: number;
-    message?: string | null;
+    channel_id: number;
     sender_id: number;
-    receiver_id?: number | null;
-    group_id?: number | null;
-    conversation_id?: number | null;
+    parent_id: number | null;
+    content: string | null;
+    deleted_at?: string | null;
     created_at: string;
     updated_at: string;
 };
@@ -37,24 +48,8 @@ export type MessageAttachment = {
     path: string;
     mime: string;
     size: number;
-    created_at: string;
-    updated_at: string;
-};
-
-export type Group = {
-    id: number;
-    name: string;
-    description?: string | null;
-    owner_id: number;
-    last_message_id?: number | null;
-    created_at: string;
-    updated_at: string;
-};
-
-export type GroupUser = {
-    id: number;
-    group_id: number;
-    user_id: number;
+    storage_disk: string;
+    thumbnail_path: string | null;
     created_at: string;
     updated_at: string;
 };

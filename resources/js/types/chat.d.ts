@@ -14,15 +14,16 @@ export type MessageAttachment = DbMessageAttachment & {
     url: string;
 };
 
-export type ChatMessage = Omit<
-    DbMessage,
-    'receiver_id' | 'group_id' | 'conversation_id'
-> & {
-    receiver_id: number | null;
-    group_id: number | null;
-    conversation_id: number | null;
+export type ParentMessage = {
+    id: number;
+    content: string | null;
     sender: User;
-    receiver: User | null;
+    attachments: MessageAttachment[];
+};
+
+export type ChatMessage = DbMessage & {
+    sender: User;
+    parent: ParentMessage | null;
     attachments: MessageAttachment[];
 };
 
@@ -30,16 +31,15 @@ export type ChatMessageCollection = PaginatedResponse<ChatMessage>;
 
 export type ChatItem = {
     id: number;
-    name: string;
+    name: string | null;
     description?: string | null;
+    type: 'direct' | 'group';
 
-    is_group: boolean;
-    is_user: boolean;
-    is_admin?: boolean;
+    peer_user_id?: number | null;
+    peer_is_admin?: boolean | null;
+
     avatar_url?: string | null;
-
-    owner_id?: number;
-
+    owner_id?: number | null;
     users?: ChatMember[];
     user_ids?: number[];
 
@@ -47,6 +47,8 @@ export type ChatItem = {
 
     last_message?: string | null;
     last_message_date?: string | null;
+    last_read_message_id?: number | null;
+    unread_count?: number;
 
     created_at?: string;
     updated_at?: string;

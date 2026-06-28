@@ -2,17 +2,23 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Channel;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreMessageRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true;
+        $channel = $this->route('channel');
+
+        if (!$channel || !$this->user()) {
+            return false;
+        }
+
+        $channelId = $channel instanceof Channel ? $channel->id : (int) $channel;
+
+        return $this->user()->channels()->whereKey($channelId)->exists();
     }
 
     /**
@@ -22,28 +28,23 @@ class StoreMessageRequest extends FormRequest
      */
     public function rules(): array
     {
-        $userId = $this->user()?->id;
+        $channel = $this->route('channel');
+        $channelId = $channel instanceof Channel ? $channel->id : (int) $channel;
 
         return [
-            'message' => ['nullable', 'required_without:attachments', 'string', 'max:1000'],
-            'group_id' => [
+            'content' => ['nullable', 'required_without_all:attachments,uploaded_attachments', 'string', 'max:10000'],
+            'parent_id' => [
                 'nullable',
                 'integer',
-                'required_without:receiver_id',
-                'prohibits:receiver_id',
-                Rule::exists('groups', 'id'),
-                Rule::exists('group_users', 'group_id')->where(fn($query) => $query->where('user_id', $userId)),
+                Rule::exists('messages', 'id')->where('channel_id', $channelId),
             ],
-            'receiver_id' => [
-                'nullable',
-                'integer',
-                'required_without:group_id',
-                'prohibits:group_id',
-                Rule::exists('users', 'id'),
-                Rule::notIn([$userId]),
-            ],
-            'attachments' => ['nullable', 'array', 'required_without:message', 'max:10'],
+            'attachments' => ['nullable', 'array', 'required_without_all:content,uploaded_attachments', 'max:10'],
             'attachments.*' => ['file', 'max:1024000'],
+            'uploaded_attachments' => ['nullable', 'array', 'required_without_all:content,attachments'],
+            'uploaded_attachments.*.path' => ['required', 'string'],
+            'uploaded_attachments.*.name' => ['required', 'string'],
+            'uploaded_attachments.*.mime' => ['required', 'string'],
+            'uploaded_attachments.*.size' => ['required', 'integer'],
         ];
     }
 }

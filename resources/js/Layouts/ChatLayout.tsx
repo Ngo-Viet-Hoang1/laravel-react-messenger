@@ -1,160 +1,109 @@
-import ConversationItem from '@/Components/App/ConversationItem';
+import ChannelItem from '@/Components/App/ChannelItem';
+import UserSearchResults from '@/Components/App/UserSearchResults';
 import TextInput from '@/Components/Breeze/TextInput';
+import {
+    ChannelModalProvider,
+    useChannelModal,
+} from '@/Contexts/ChannelModalContext';
 import { useEventBus } from '@/EventBus';
-import { AppEventMap, ChatItem, ChatMessage, PageProps, User } from '@/types';
-import { isMessageForConversation } from '@/utils';
+import useChannels from '@/hooks/useChannels';
+import useChannelSockets from '@/hooks/useChannelSockets';
+import useOnlinePresence from '@/hooks/useOnlinePresence';
+import useUserSearch from '@/hooks/useUserSearch';
+import { ChatItem, ChatPageProps } from '@/types';
+import { ChannelReadUpdatedEvent } from '@/types/events';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
-import { usePage } from '@inertiajs/react';
-import { echo } from '@laravel/echo-react';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { router, usePage } from '@inertiajs/react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 
-const EMPTY_CONVERSATIONS: ChatItem[] = [];
-const getTime = (date?: string | null) => (date ? new Date(date).getTime() : 0);
+const EMPTY_CHANNELS: ChatItem[] = [];
 
-const ChatLayout = ({ children }: { children: ReactNode }) => {
-    const pageProps = usePage<PageProps>().props;
+const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
+    const { props: pageProps } = usePage<ChatPageProps>();
     const currentUser = pageProps.auth.user;
-    const conversations = pageProps.conversations ?? EMPTY_CONVERSATIONS;
-    const selectedConversation = pageProps.selectedConversation ?? null;
+    const channels = pageProps.channels ?? EMPTY_CHANNELS;
+    const selectedChannel = pageProps.selectedChannel ?? null;
 
-    const { on } = useEventBus();
-    const [onlineUsers, setOnlineUsers] = useState<Record<number, User>>({});
-    const [localConversations, setLocalConversations] = useState<ChatItem[]>(
-        [],
-    );
+    const { on, emit } = useEventBus();
+    const { openModal } = useChannelModal();
+    const [search, setSearch] = useState('');
 
-    const sortedConversations = useMemo(() => {
-        return [...localConversations].sort((a, b) => {
-            const aBlocked = getTime(a.blocked_at);
-            const bBlocked = getTime(b.blocked_at);
+    const isSearching = search.trim().length > 0;
 
-            if (!!aBlocked !== !!bBlocked) return aBlocked ? 1 : -1;
-            if (aBlocked && bBlocked) return bBlocked - aBlocked;
+    const {
+        sortedChannels,
+        updateLastMessage,
+        updateAfterMessageDeleted,
+        markChannelAsRead,
+        removeChannel,
+    } = useChannels(channels, search.toLowerCase(), Number(currentUser.id));
 
-            const aLast = getTime(a.last_message_date);
-            const bLast = getTime(b.last_message_date);
+    const { results: userSearchResults, isLoading: isSearchLoadingUsers } =
+        useUserSearch(search, channels);
 
-            if (aLast && bLast) return bLast - aLast;
-            if (aLast) return -1;
-            if (bLast) return 1;
+    const { isOnline } = useOnlinePresence();
 
-            return 0;
+    useChannelSockets(channels, Number(currentUser.id));
+
+    const handleChannelSelect = (channelId: number): void => {
+        setSearch('');
+        router.visit(route('channels.show', channelId), {
+            only: ['selectedChannel', 'messages'],
+            preserveScroll: false,
         });
-    }, [localConversations]);
-
-    const isUserOnline = (userId: number) => userId in onlineUsers;
-
-    const onSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.currentTarget.value.toLowerCase();
-        if (!value) {
-            setLocalConversations(conversations);
-            return;
-        }
-
-        setLocalConversations(
-            conversations.filter((conversation) =>
-                conversation.name.toLowerCase().includes(value),
-            ),
-        );
     };
 
-    const messageCreated = useCallback(
-        (message: ChatMessage) => {
-            setLocalConversations((prev) => {
-                const index = prev.findIndex((conv) =>
-                    isMessageForConversation(message, conv, currentUser.id),
-                );
+    const handleSelectUser = useCallback((userId: number): void => {
+        setSearch('');
+        router.post(route('channels.direct', userId));
+    }, []);
 
-                if (index === -1) return prev;
-
-                return [
-                    {
-                        ...prev[index],
-                        last_message: message.message,
-                        last_message_date: message.created_at,
-                    },
-                    ...prev.slice(0, index),
-                    ...prev.slice(index + 1),
-                ];
-            });
-        },
-        [currentUser.id],
-    );
-
-    const messageDeleted = useCallback(
-        ({ message, newLastMessage }: AppEventMap['message.deleted']) => {
-            setLocalConversations((prev) => {
-                const index = prev.findIndex((conv) =>
-                    isMessageForConversation(message, conv, currentUser.id),
-                );
-
-                if (index === -1) return prev;
-
-                return [
-                    {
-                        ...prev[index],
-                        last_message: newLastMessage?.message || null,
-                        last_message_date: newLastMessage?.created_at || null,
-                    },
-                    ...prev.slice(0, index),
-                    ...prev.slice(index + 1),
-                ];
-            });
-        },
-        [currentUser.id],
-    );
+    const handleReadUpdated = ({
+        channel_id,
+        last_read_message_id,
+    }: ChannelReadUpdatedEvent): void => {
+        markChannelAsRead(channel_id, last_read_message_id);
+    };
 
     useEffect(() => {
-        const offCreated = on('message.created', messageCreated);
-        const offDeleted = on('message.deleted', messageDeleted);
+        const offCreated = on('message.created', updateLastMessage);
+        const offDeleted = on('message.deleted', updateAfterMessageDeleted);
+        const offReadUpdated = on('channel.read.updated', handleReadUpdated);
 
         return () => {
             offCreated();
             offDeleted();
+            offReadUpdated();
         };
-    }, [on, messageCreated, messageDeleted]);
+    }, [on, updateLastMessage, updateAfterMessageDeleted, handleReadUpdated]);
 
     useEffect(() => {
-        setLocalConversations(conversations);
-    }, [conversations]);
-
-    useEffect(() => {
-        const e = echo();
-        if (!e) return;
-        e.join('online')
-            .here((users: User[]) => {
-                const onlineUsers = Object.fromEntries(
-                    users.map((user) => [user.id, user]),
-                );
-                setOnlineUsers(onlineUsers);
-            })
-            .joining((user: User) => {
-                setOnlineUsers((prev) => ({ ...prev, [user.id]: user }));
-            })
-            .leaving((user: User) => {
-                setOnlineUsers((prev) => {
-                    const newOnlineUsers = { ...prev };
-                    delete newOnlineUsers[user.id];
-                    return newOnlineUsers;
-                });
-            })
-            .error((error: Error) => console.log('error', error));
-
-        return () => e.leave('online');
-    }, []);
+        const offDeleted = on('channel.deleted', ({ id, name }) => {
+            removeChannel(id);
+            emit('toast.show', `The channel "${name}" has been deleted`);
+            if (selectedChannel?.id === id) {
+                router.visit(route('dashboard'));
+            }
+        });
+        return offDeleted;
+    }, [on, emit, selectedChannel?.id, removeChannel]);
 
     return (
         <div className="flex h-full min-h-0 w-full overflow-hidden">
+            {/* Sidebar */}
             <div
-                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-800 sm:flex sm:w-[280px] md:w-[320px] ${selectedConversation ? 'hidden sm:flex' : 'flex'}`}
+                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 sm:flex sm:w-[280px] md:w-[320px] dark:border-slate-700 dark:bg-slate-800 ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
             >
                 <div className="flex items-center justify-between px-3 py-2 text-lg font-semibold text-slate-800 dark:border-slate-700 dark:text-slate-100">
-                    My conversations
+                    My channels
                     <div
                         className="tooltip tooltip-left"
                         data-tip="Create new Group"
                     >
-                        <button className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100">
+                        <button
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+                            onClick={() => openModal()}
+                        >
                             <PencilSquareIcon className="w-5" />
                         </button>
                     </div>
@@ -162,35 +111,63 @@ const ChatLayout = ({ children }: { children: ReactNode }) => {
 
                 <div className="shrink-0 p-3 dark:border-slate-700">
                     <TextInput
-                        onChange={onSearch}
-                        placeholder="Filter users and groups"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                                setSearch('');
+                            }
+                        }}
+                        placeholder="Search users or filter channels"
                         className="w-full"
                     />
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                    {sortedConversations.map((conversation) => (
-                        <ConversationItem
-                            key={`${conversation.is_group ? 'group' : 'user'}_${conversation.id}`}
-                            conversation={conversation}
-                            online={
-                                conversation.is_user
-                                    ? isUserOnline(conversation.id)
-                                    : false
-                            }
-                            selectedConversation={selectedConversation}
-                        />
-                    ))}
-                </div>
+                {/* Search mode: show inline results */}
+                {isSearching ? (
+                    <UserSearchResults
+                        channels={sortedChannels}
+                        users={userSearchResults}
+                        isLoading={isSearchLoadingUsers}
+                        onSelectChannel={handleChannelSelect}
+                        onSelectUser={handleSelectUser}
+                    />
+                ) : (
+                    /* Normal mode: show full channel list */
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                        {sortedChannels.map((c) => (
+                            <ChannelItem
+                                key={c.id}
+                                channel={c}
+                                online={
+                                    c.type === 'direct' &&
+                                    c.peer_user_id != null
+                                        ? isOnline(c.peer_user_id)
+                                        : false
+                                }
+                                isSelected={selectedChannel?.id === c.id}
+                                canManage={currentUser.is_admin}
+                                onSelect={handleChannelSelect}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
+            {/* Content area */}
             <div
-                className={`min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800 xs:m-2 xs:shadow-sm ${selectedConversation ? 'flex' : 'hidden sm:flex'}`}
+                className={`min-h-0 min-w-0 flex-1 flex-col xs:m-2 ${selectedChannel ? 'flex bg-transparent dark:bg-transparent' : 'hidden overflow-hidden rounded-md bg-white xs:shadow-sm sm:flex dark:bg-slate-800'}`}
             >
                 <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
             </div>
         </div>
     );
 };
+
+const ChatLayout = ({ children }: { children: ReactNode }) => (
+    <ChannelModalProvider>
+        <ChatLayoutInner>{children}</ChatLayoutInner>
+    </ChannelModalProvider>
+);
 
 export default ChatLayout;

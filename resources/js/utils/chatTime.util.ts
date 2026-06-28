@@ -73,3 +73,22 @@ export const formatChatTime = (
         }).format(messageDate),
     };
 };
+export const getTime = (date?: string | null) =>
+    date ? new Date(date).getTime() : 0;
+
+export const formatDateTime = (
+    value: string | null | undefined,
+    options: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    },
+): string => {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+        ? ''
+        : new Intl.DateTimeFormat('en-US', options).format(date);
+};

@@ -7,11 +7,11 @@ import {
     Transition,
 } from '@headlessui/react';
 import {
+    CheckIcon,
     ComputerDesktopIcon,
     MoonIcon,
     SunIcon,
 } from '@heroicons/react/24/outline';
-import { CheckIcon } from '@heroicons/react/24/solid';
 import { Fragment } from 'react';
 
 const options = [

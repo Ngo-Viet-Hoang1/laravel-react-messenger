@@ -1,20 +1,20 @@
 import { type AttachedItem } from '@/types';
-import { getAttachmentKind } from '@/utils';
+import { getAttachmentKind, revokeBlobUrl } from '@/utils';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const MAX_FILES = 5;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
+const MAX_FILE_SIZE = 2048 * 1024 * 1024; // 2GB
+const MAX_TOTAL_SIZE = 5096 * 1024 * 1024; // 5GB
 
 export const useAttachments = (onError: (msg: string) => void) => {
-    const [items, setItems] = useState<AttachedItem[]>([]);
+    const [attachments, setAttachments] = useState<AttachedItem[]>([]);
 
-    const itemsRef = useRef(items);
-    itemsRef.current = items;
+    const itemsRef = useRef(attachments);
+    itemsRef.current = attachments;
 
     const addFiles = useCallback(
         (files: File[]) => {
-            setItems((prev) => {
+            setAttachments((prev) => {
                 if (prev.length + files.length > MAX_FILES) {
                     onError(`Max ${MAX_FILES} files allowed`);
                     return prev;
@@ -24,7 +24,7 @@ export const useAttachments = (onError: (msg: string) => void) => {
 
                 for (const file of files) {
                     if (file.size > MAX_FILE_SIZE) {
-                        onError(`${file.name} exceeds 10MB`);
+                        onError(`${file.name} exceeds 2GB`);
                         continue;
                     }
 
@@ -73,18 +73,16 @@ export const useAttachments = (onError: (msg: string) => void) => {
     );
 
     const remove = useCallback((idx: number) => {
-        setItems((prev) => {
-            const item = prev[idx];
-            if (item?.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
+        setAttachments((prev) => {
+            revokeBlobUrl(prev[idx]?.url);
             return prev.filter((_, i) => i !== idx);
         });
     }, []);
 
     const clear = useCallback(() => {
-        setItems((prev) => {
+        setAttachments((prev) => {
             prev.forEach((item) => {
-                if (item?.url.startsWith('blob:'))
-                    URL.revokeObjectURL(item.url);
+                revokeBlobUrl(item.url);
             });
             return [];
         });
@@ -93,10 +91,10 @@ export const useAttachments = (onError: (msg: string) => void) => {
     useEffect(() => {
         return () => {
             itemsRef.current.forEach((item) => {
-                if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
+                revokeBlobUrl(item.url);
             });
         };
     }, []);
 
-    return { items, addFiles, remove, clear };
+    return { attachments, addFiles, remove, clear };
 };
