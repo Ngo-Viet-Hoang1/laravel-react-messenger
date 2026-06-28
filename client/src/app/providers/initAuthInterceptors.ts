@@ -6,10 +6,12 @@ import {
   registerTokenGetter,
   registerTokenRefreshHandler,
 } from '@/shared/api';
+import { registerSignalRTokenGetter } from '@/shared/lib/signalr';
 import { sessionHint } from '@/shared/lib/sessionHint';
 
 export const initAuthInterceptors = () => {
   registerTokenGetter(() => store.getState().auth.accessToken);
+  registerSignalRTokenGetter(() => store.getState().auth.accessToken);
 
   registerTokenRefreshHandler(async () => {
     try {
