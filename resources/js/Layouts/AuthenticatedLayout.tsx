@@ -1,3 +1,4 @@
+import HeaderUserSearch from '@/Components/App/HeaderUserSearch';
 import ThemeToggle from '@/Components/App/ThemeToggle';
 import Toast from '@/Components/App/Toast';
 import UserAvatar from '@/Components/App/UserAvatar';
@@ -34,13 +35,6 @@ const AuthenticatedInner = ({
                             </div>
 
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-
                                 {user.is_admin && (
                                     <NavLink
                                         href={route('admin.reports.index')}
@@ -53,6 +47,9 @@ const AuthenticatedInner = ({
                                         <span>Reports</span>
                                     </NavLink>
                                 )}
+                            </div>
+                            <div className="hidden sm:ms-6 sm:flex sm:items-center">
+                                <HeaderUserSearch />
                             </div>
                         </div>
 
@@ -163,13 +160,6 @@ const AuthenticatedInner = ({
                     }
                 >
                     <div className="space-y-1 pt-2 pb-3">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-
                         {user.is_admin && (
                             <ResponsiveNavLink
                                 href={route('admin.reports.index')}

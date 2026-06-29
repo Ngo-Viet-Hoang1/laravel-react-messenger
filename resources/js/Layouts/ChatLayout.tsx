@@ -1,4 +1,5 @@
 import ChannelItem from '@/Components/App/ChannelItem';
+import UserSearchResults from '@/Components/App/UserSearchResults';
 import TextInput from '@/Components/Breeze/TextInput';
 import {
     ChannelModalProvider,
@@ -8,11 +9,12 @@ import { useEventBus } from '@/EventBus';
 import useChannels from '@/hooks/useChannels';
 import useChannelSockets from '@/hooks/useChannelSockets';
 import useOnlinePresence from '@/hooks/useOnlinePresence';
+import useUserSearch from '@/hooks/useUserSearch';
 import { ChatItem, ChatPageProps } from '@/types';
 import { ChannelReadUpdatedEvent } from '@/types/events';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 
 const EMPTY_CHANNELS: ChatItem[] = [];
 
@@ -26,24 +28,35 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
     const { openModal } = useChannelModal();
     const [search, setSearch] = useState('');
 
+    const isSearching = search.trim().length > 0;
+
     const {
         sortedChannels,
         updateLastMessage,
         updateAfterMessageDeleted,
         markChannelAsRead,
         removeChannel,
-    } = useChannels(channels, search, Number(currentUser.id));
+    } = useChannels(channels, search.toLowerCase(), Number(currentUser.id));
+
+    const { results: userSearchResults, isLoading: isSearchLoadingUsers } =
+        useUserSearch(search, channels);
 
     const { isOnline } = useOnlinePresence();
 
     useChannelSockets(channels, Number(currentUser.id));
 
     const handleChannelSelect = (channelId: number): void => {
+        setSearch('');
         router.visit(route('channels.show', channelId), {
             only: ['selectedChannel', 'messages'],
             preserveScroll: false,
         });
     };
+
+    const handleSelectUser = useCallback((userId: number): void => {
+        setSearch('');
+        router.post(route('channels.direct', userId));
+    }, []);
 
     const handleReadUpdated = ({
         channel_id,
@@ -62,12 +75,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
             offDeleted();
             offReadUpdated();
         };
-    }, [
-        on,
-        updateLastMessage,
-        updateAfterMessageDeleted,
-        handleReadUpdated,
-    ]);
+    }, [on, updateLastMessage, updateAfterMessageDeleted, handleReadUpdated]);
 
     useEffect(() => {
         const offDeleted = on('channel.deleted', ({ id, name }) => {
@@ -84,7 +92,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         <div className="flex h-full min-h-0 w-full overflow-hidden">
             {/* Sidebar */}
             <div
-                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-800 sm:flex sm:w-[280px] md:w-[320px] ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
+                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 sm:flex sm:w-[280px] md:w-[320px] dark:border-slate-700 dark:bg-slate-800 ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
             >
                 <div className="flex items-center justify-between px-3 py-2 text-lg font-semibold text-slate-800 dark:border-slate-700 dark:text-slate-100">
                     My channels
@@ -103,35 +111,52 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
 
                 <div className="shrink-0 p-3 dark:border-slate-700">
                     <TextInput
-                        onChange={(e) =>
-                            setSearch(e.target.value.toLowerCase())
-                        }
-                        placeholder="Filter users and groups"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                                setSearch('');
+                            }
+                        }}
+                        placeholder="Search users or filter channels"
                         className="w-full"
                     />
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                    {sortedChannels.map((c) => (
-                        <ChannelItem
-                            key={c.id}
-                            channel={c}
-                            online={
-                                c.type === 'direct' && c.peer_user_id != null
-                                    ? isOnline(c.peer_user_id)
-                                    : false
-                            }
-                            isSelected={selectedChannel?.id === c.id}
-                            canManage={currentUser.is_admin}
-                            onSelect={handleChannelSelect}
-                        />
-                    ))}
-                </div>
+                {/* Search mode: show inline results */}
+                {isSearching ? (
+                    <UserSearchResults
+                        channels={sortedChannels}
+                        users={userSearchResults}
+                        isLoading={isSearchLoadingUsers}
+                        onSelectChannel={handleChannelSelect}
+                        onSelectUser={handleSelectUser}
+                    />
+                ) : (
+                    /* Normal mode: show full channel list */
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                        {sortedChannels.map((c) => (
+                            <ChannelItem
+                                key={c.id}
+                                channel={c}
+                                online={
+                                    c.type === 'direct' &&
+                                    c.peer_user_id != null
+                                        ? isOnline(c.peer_user_id)
+                                        : false
+                                }
+                                isSelected={selectedChannel?.id === c.id}
+                                canManage={currentUser.is_admin}
+                                onSelect={handleChannelSelect}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Content area */}
             <div
-                className={`min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800 xs:m-2 xs:shadow-sm ${selectedChannel ? 'flex' : 'hidden sm:flex'}`}
+                className={`min-h-0 min-w-0 flex-1 flex-col xs:m-2 ${selectedChannel ? 'flex bg-transparent dark:bg-transparent' : 'hidden overflow-hidden rounded-md bg-white xs:shadow-sm sm:flex dark:bg-slate-800'}`}
             >
                 <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
             </div>

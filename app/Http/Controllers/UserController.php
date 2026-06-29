@@ -84,14 +84,16 @@ class UserController extends Controller
             $query->whereNull('blocked_at');
         }
 
-        if ($q = $request->string('q')->trim()) {
+        $q = $request->string('q')->trim();
+
+        if ($q->isNotEmpty()) {
             $query->where(function ($q2) use ($q) {
                 $q2->where('name', 'like', "%{$q}%")
                     ->orWhere('email', 'like', "%{$q}%");
             });
         }
 
-        return response()->json(UserResource::collection($query->get()));
+        return response()->json(UserResource::collection($query->take(15)->get()));
     }
 
     public function store(StoreUserRequest $request): RedirectResponse
