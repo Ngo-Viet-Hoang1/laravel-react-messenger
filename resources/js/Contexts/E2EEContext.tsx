@@ -52,6 +52,9 @@ export const E2EEProvider = ({ children }: PropsWithChildren) => {
 
     const channelKeyCache = useRef<Map<number, CryptoKey>>(new Map());
     const publicKeyCache = useRef<Map<number, CryptoKey>>(new Map());
+    const publicKeyRequestCache = useRef<
+        Map<number, Promise<CryptoKey | null>>
+    >(new Map());
 
     const isMountedRef = useRef(true);
     const serverHasPublicKeyRef = useRef(!!auth.user.public_key);
@@ -120,19 +123,31 @@ export const E2EEProvider = ({ children }: PropsWithChildren) => {
                 return publicKeyCache.current.get(userId)!;
             }
 
-            try {
-                const { data } = await axios.get<{
-                    public_key: JsonWebKey | null;
-                }>(route('users.public-key', userId));
-
-                if (!data.public_key) return null;
-
-                const key = await importPublicKey(data.public_key);
-                publicKeyCache.current.set(userId, key);
-                return key;
-            } catch {
-                return null;
+            const inflightRequest = publicKeyRequestCache.current.get(userId);
+            if (inflightRequest) {
+                return inflightRequest;
             }
+
+            const request = (async (): Promise<CryptoKey | null> => {
+                try {
+                    const { data } = await axios.get<{
+                        public_key: JsonWebKey | null;
+                    }>(route('users.public-key', userId));
+
+                    if (!data.public_key) return null;
+
+                    const key = await importPublicKey(data.public_key);
+                    publicKeyCache.current.set(userId, key);
+                    return key;
+                } catch {
+                    return null;
+                } finally {
+                    publicKeyRequestCache.current.delete(userId);
+                }
+            })();
+
+            publicKeyRequestCache.current.set(userId, request);
+            return request;
         },
         [],
     );
