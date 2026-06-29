@@ -1,3 +1,4 @@
+import { useE2EE } from '@/Contexts/E2EEContext';
 import { useEventBus } from '@/EventBus';
 import { ChatItem, MessageCreatedEvent } from '@/types';
 import {
@@ -11,7 +12,21 @@ import { useEffect, useMemo, useRef } from 'react';
 
 const useChannelSockets = (channels: ChatItem[], userId: number) => {
     const { emit } = useEventBus();
+    const { decryptForPeer } = useE2EE();
+
     const subscribedRef = useRef<Set<string>>(new Set());
+    const channelMapRef = useRef<Map<number, ChatItem>>(new Map());
+
+    // Latest decryptForPeer from E2EEContext — changes only when privateKey loads (once)
+    const decryptForPeerRef = useRef(decryptForPeer);
+
+    useEffect(() => {
+        channelMapRef.current = new Map(channels.map((c) => [c.id, c]));
+    }, [channels]);
+
+    useEffect(() => {
+        decryptForPeerRef.current = decryptForPeer;
+    }, [decryptForPeer]);
 
     const channelNames = useMemo(
         () => channels.map(getChannelName).sort(),
@@ -29,9 +44,33 @@ const useChannelSockets = (channels: ChatItem[], userId: number) => {
             if (!prev.has(cName)) {
                 e.private(cName)
                     .stopListening('MessageCreated')
-                    .listen('MessageCreated', (event: MessageCreatedEvent) => {
-                        emit('message.created', event.message);
-                    })
+                    .listen(
+                        'MessageCreated',
+                        async ({ message }: MessageCreatedEvent) => {
+                            const channel = channelMapRef.current.get(
+                                message.channel_id,
+                            );
+
+                            const shouldDecrypt =
+                                channel?.is_e2ee_enabled &&
+                                message.is_encrypted &&
+                                channel.peer_user_id != null;
+
+                            if (shouldDecrypt) {
+                                const content = await decryptForPeerRef.current(
+                                    message,
+                                    channel!.peer_user_id!,
+                                );
+
+                                emit('message.created', {
+                                    ...message,
+                                    content: content ?? '[Cannot decrypt]',
+                                });
+                            } else {
+                                emit('message.created', message);
+                            }
+                        },
+                    )
                     .stopListening('MessageDeleted')
                     .listen('MessageDeleted', (event: MessageDeletedEvent) => {
                         emit('message.deleted', event);
