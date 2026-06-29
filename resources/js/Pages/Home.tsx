@@ -12,6 +12,7 @@ import useAttachmentsPreviewModal from '@/hooks/useAttachmentsPreviewModal';
 import useChatScroll from '@/hooks/useChatScroll';
 import useInfiniteScroll from '@/hooks/useInfiniteScroll';
 import useMessages from '@/hooks/useMessages';
+import useOnlinePresence from '@/hooks/useOnlinePresence';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ChatLayout from '@/Layouts/ChatLayout';
 import {
@@ -35,6 +36,7 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     const currentUser = usePage<AppPageProps>().props.auth.user;
     const myId = Number(currentUser.id);
     const { on, emit } = useEventBus();
+    const { isOnline } = useOnlinePresence();
     const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
     const [showSearch, setShowSearch] = useState(false);
     const [showInfo, setShowInfo] = useState(false);
@@ -42,14 +44,12 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         number | null
     >(null);
     const confirmDialog = useConfirm();
-    const markReadTimerRef = useRef<ReturnType<
-        typeof globalThis.setTimeout
-    > | null>(null);
+    const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
     const lastScheduledReadIdRef = useRef<number | null>(null);
-    const highlightTimerRef = useRef<ReturnType<
-        typeof globalThis.setTimeout
-    > | null>(null);
+    const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+        null,
+    );
 
     const {
         chatMessages,
@@ -88,10 +88,10 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     useEffect(() => {
         return () => {
             if (markReadTimerRef.current) {
-                globalThis.clearTimeout(markReadTimerRef.current);
+                clearTimeout(markReadTimerRef.current);
             }
             if (highlightTimerRef.current) {
-                globalThis.clearTimeout(highlightTimerRef.current);
+                clearTimeout(highlightTimerRef.current);
             }
         };
     }, []);
@@ -104,10 +104,10 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
             lastScheduledReadIdRef.current = messageId;
 
             if (markReadTimerRef.current) {
-                globalThis.clearTimeout(markReadTimerRef.current);
+                clearTimeout(markReadTimerRef.current);
             }
 
-            markReadTimerRef.current = globalThis.setTimeout(async () => {
+            markReadTimerRef.current = setTimeout(async () => {
                 try {
                     const { data } = await axios.post(
                         route('channels.read', selectedChannel.id),
@@ -250,9 +250,9 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                 setHighlightedMessageId(messageId);
 
                 if (highlightTimerRef.current) {
-                    globalThis.clearTimeout(highlightTimerRef.current);
+                    clearTimeout(highlightTimerRef.current);
                 }
-                highlightTimerRef.current = globalThis.setTimeout(() => {
+                highlightTimerRef.current = setTimeout(() => {
                     setHighlightedMessageId(null);
                 }, 2000);
             } else {
@@ -276,6 +276,12 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
             <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 dark:border-slate-700 dark:bg-slate-800">
                 <ChannelHeader
                     channel={selectedChannel}
+                    online={
+                        selectedChannel?.type === 'direct' &&
+                        selectedChannel.peer_user_id != null
+                            ? isOnline(selectedChannel.peer_user_id)
+                            : false
+                    }
                     onInfoToggle={handleInfoToggle}
                 />
 
@@ -375,6 +381,12 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                     <div className="w-2 shrink-0 bg-transparent" />
                     <ChannelInfoPanel
                         channel={selectedChannel}
+                        online={
+                            selectedChannel.type === 'direct' &&
+                            selectedChannel.peer_user_id != null
+                                ? isOnline(selectedChannel.peer_user_id)
+                                : false
+                        }
                         onClose={() => setShowInfo(false)}
                         onSearchClick={() => {
                             setShowInfo(false);

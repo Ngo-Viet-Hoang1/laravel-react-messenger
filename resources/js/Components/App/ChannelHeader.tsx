@@ -10,10 +10,11 @@ import UserAvatar from './UserAvatar';
 
 type Props = {
     channel?: ChatItem | null;
+    online?: boolean;
     onInfoToggle?: () => void;
 };
 
-const ChannelHeader = ({ channel, onInfoToggle }: Props) => {
+const ChannelHeader = ({ channel, online = false, onInfoToggle }: Props) => {
     return (
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
             <div className="flex min-w-0 items-center gap-3">
@@ -26,7 +27,7 @@ const ChannelHeader = ({ channel, onInfoToggle }: Props) => {
 
                 <div className="shrink-0">
                     {channel?.type === 'direct' ? (
-                        <UserAvatar user={channel} />
+                        <UserAvatar user={channel} online={online} />
                     ) : (
                         <GroupAvatar />
                     )}

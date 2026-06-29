@@ -13,6 +13,7 @@ import UserAvatar from './UserAvatar';
 
 type Props = {
     channel: ChatItem;
+    online?: boolean;
     onClose: () => void;
     onSearchClick: () => void;
     onDeleteClick: () => void;
@@ -20,6 +21,7 @@ type Props = {
 
 const ChannelInfoPanel = ({
     channel,
+    online = false,
     onClose,
     onSearchClick,
     onDeleteClick,
@@ -28,7 +30,7 @@ const ChannelInfoPanel = ({
     const isGroup = channel.type === 'group';
 
     return (
-        <div className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex h-full w-85 shrink-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-700">
                 <h3 className="font-semibold text-slate-800 dark:text-slate-100">
                     Details
@@ -48,7 +50,7 @@ const ChannelInfoPanel = ({
                         {isGroup ? (
                             <GroupAvatar />
                         ) : (
-                            <UserAvatar user={channel} />
+                            <UserAvatar user={channel} online={online} />
                         )}
                     </div>
 
@@ -108,7 +110,7 @@ const ChannelInfoPanel = ({
                                 Members ({channel.users.length})
                             </div>
                             <div className="collapse-content px-0 pt-1 pb-3 text-xs text-slate-500 dark:text-slate-400">
-                                <div className="max-h-[200px] space-y-2.5 overflow-y-auto pr-1">
+                                <div className="max-h-50 space-y-2.5 overflow-y-auto pr-1">
                                     {channel.users.map((member) => (
                                         <div
                                             key={member.id}
@@ -116,7 +118,7 @@ const ChannelInfoPanel = ({
                                         >
                                             <div className="flex items-center gap-2">
                                                 <UserAvatar user={member} />
-                                                <span className="max-w-[150px] truncate font-medium text-slate-700 dark:text-slate-300">
+                                                <span className="max-w-37.5 truncate font-medium text-slate-700 dark:text-slate-300">
                                                     {member.name}
                                                 </span>
                                             </div>
