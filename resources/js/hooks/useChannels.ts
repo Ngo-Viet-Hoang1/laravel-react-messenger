@@ -8,7 +8,10 @@ type UseChannelsReturn = {
     updateLastMessage: (message: ChatMessage) => void;
     updateAfterMessageDeleted: (event: MessageDeletedEvent) => void;
     removeChannel: (id: number) => void;
-    markChannelAsRead: (channelId: number, lastReadMessageId: number | null) => void;
+    markChannelAsRead: (
+        channelId: number,
+        lastReadMessageId: number | null,
+    ) => void;
 };
 
 const useChannels = (
@@ -22,7 +25,9 @@ const useChannels = (
 
     useEffect(() => {
         setChannelsMap(
-            Object.fromEntries(initialChannels.map((channel) => [channel.id, channel])),
+            Object.fromEntries(
+                initialChannels.map((channel) => [channel.id, channel]),
+            ),
         );
     }, [initialChannels]);
 
@@ -41,7 +46,7 @@ const useChannels = (
                         last_message: message.content,
                         last_message_date: message.created_at,
                         unread_count: isOwnMessage
-                            ? channel.unread_count ?? 0
+                            ? (channel.unread_count ?? 0)
                             : (channel.unread_count ?? 0) + 1,
                     },
                 };

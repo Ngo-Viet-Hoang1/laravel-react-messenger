@@ -38,9 +38,7 @@ export default function useMessageSearch(
     const [state, setState] = useState<SearchState>(INITIAL_STATE);
 
     const cancelRef = useRef<CancelTokenSource | null>(null);
-    const debounceRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(
-        null,
-    );
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const fetchResults = useCallback(
         async (searchQuery: string, page: number, append: boolean) => {
@@ -86,7 +84,7 @@ export default function useMessageSearch(
     // Debounced search on query change
     useEffect(() => {
         if (debounceRef.current) {
-            globalThis.clearTimeout(debounceRef.current);
+            clearTimeout(debounceRef.current);
         }
 
         if (query.trim().length === 0) {
@@ -94,13 +92,13 @@ export default function useMessageSearch(
             return;
         }
 
-        debounceRef.current = globalThis.setTimeout(() => {
+        debounceRef.current = setTimeout(() => {
             fetchResults(query, 1, false);
         }, DEBOUNCE_MS);
 
         return () => {
             if (debounceRef.current) {
-                globalThis.clearTimeout(debounceRef.current);
+                clearTimeout(debounceRef.current);
             }
         };
     }, [query, fetchResults]);

@@ -79,7 +79,7 @@ export const CodeBlock = ({ children, className, inline }: Props) => {
                     }
                     title={wrapMode ? 'Scroll mode' : 'Wrap mode'}
                 >
-                    <span className="flex items-center leading-[0]">
+                    <span className="flex items-center leading-0">
                         {wrapMode ? (
                             <Bars3Icon className="h-3.5 w-3.5" />
                         ) : (
@@ -95,7 +95,7 @@ export const CodeBlock = ({ children, className, inline }: Props) => {
                     aria-label={copied ? 'Copied!' : 'Copy code'}
                     title={copied ? 'Copied!' : 'Copy code'}
                 >
-                    <span className="flex items-center leading-[0]">
+                    <span className="flex items-center leading-0">
                         {copied ? (
                             <CheckIcon className="h-3.5 w-3.5" />
                         ) : (
@@ -111,7 +111,7 @@ export const CodeBlock = ({ children, className, inline }: Props) => {
                 className={cx(
                     'cb-pre',
                     wrapMode
-                        ? 'overflow-x-hidden whitespace-pre-wrap break-all'
+                        ? 'overflow-x-hidden break-all whitespace-pre-wrap'
                         : 'overflow-x-auto whitespace-pre',
                     className,
                 )}
@@ -121,7 +121,7 @@ export const CodeBlock = ({ children, className, inline }: Props) => {
                         {visibleLines.map((line, i) => (
                             <span key={i} className="table-row">
                                 <span
-                                    className="pointer-events-none table-cell min-w-10 select-none pr-5 text-right text-xs text-slate-400/60 dark:text-slate-600"
+                                    className="pointer-events-none table-cell min-w-10 pr-5 text-right text-xs text-slate-400/60 select-none dark:text-slate-600"
                                     aria-hidden="true"
                                 >
                                     {i + 1}
@@ -152,7 +152,7 @@ export const CodeBlock = ({ children, className, inline }: Props) => {
                     onClick={() => setExpanded((e) => !e)}
                     aria-expanded={expanded}
                 >
-                    <span className="flex items-center leading-[0]">
+                    <span className="flex items-center leading-0">
                         {expanded ? (
                             <ChevronUpIcon className="h-3.5 w-3.5" />
                         ) : (

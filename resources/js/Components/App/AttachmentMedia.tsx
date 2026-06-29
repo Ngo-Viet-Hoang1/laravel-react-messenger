@@ -50,7 +50,7 @@ const AttachmentMedia = ({
                 src={url}
                 controls
                 autoPlay={autoPlay}
-                className={`${cls.video} [color-scheme:light] dark:[color-scheme:dark]`}
+                className={`${cls.video} scheme-light dark:scheme-dark`}
                 onClick={onMediaClick}
             />
         );
@@ -62,7 +62,7 @@ const AttachmentMedia = ({
                 src={url}
                 controls
                 autoPlay={autoPlay}
-                className={`${cls.audio} [color-scheme:light] dark:[color-scheme:dark]`}
+                className={`${cls.audio} scheme-light dark:scheme-dark`}
                 onClick={onMediaClick}
             />
         );
