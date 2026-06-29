@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Adapters\GeminiMessageSuggestionAdapter;
+use App\Contracts\MessageSuggestionProvider;
 use App\Repositories\Eloquent\ChannelRepo;
 use App\Repositories\Eloquent\MessageRepo;
 use App\Repositories\Interfaces\IChannelRepo;
@@ -18,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(IChannelRepo::class, ChannelRepo::class);
         $this->app->bind(IMessageRepo::class, MessageRepo::class);
+        $this->app->bind(MessageSuggestionProvider::class, GeminiMessageSuggestionAdapter::class);
     }
 
     /**

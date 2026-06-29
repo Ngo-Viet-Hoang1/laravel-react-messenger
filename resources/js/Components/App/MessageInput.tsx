@@ -1,9 +1,10 @@
 import EmojiPickerPopover from '@/Components/App/EmojiPickerPopover';
+import { useUploads } from '@/Contexts/UploadContext';
+import { useAiMessageSuggestion } from '@/hooks/useAiMessageSuggestion';
 import { useAttachments } from '@/hooks/useAttachments';
 import useDraftMessage from '@/hooks/useDraftMessages';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useSendMessage } from '@/hooks/useSendMessage';
-import { useUploads } from '@/Contexts/UploadContext';
 import useTypingIndicator from '@/hooks/useTypingIndicator';
 import { type ChatItem, type ChatMessage, PageProps } from '@/types';
 import { getChannelName } from '@/utils';
@@ -12,6 +13,7 @@ import {
     PaperAirplaneIcon,
     PaperClipIcon,
     PhotoIcon,
+    SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
 import React, { type ChangeEvent, Suspense, useCallback, useRef } from 'react';
@@ -55,6 +57,8 @@ const MessageInput = ({
     const { error, showError } = useErrorMessage();
     const { attachments, addFiles, remove, clear } = useAttachments(showError);
     const { send, sending, progress } = useSendMessage(showError);
+    const { generateSuggestion, generating } =
+        useAiMessageSuggestion(showError);
     const { uploadFile } = useUploads();
 
     const fileRef = useRef<HTMLInputElement>(null);
@@ -67,7 +71,9 @@ const MessageInput = ({
     const handleSend = () => {
         if (sending || !canSend) return;
 
-        const hasLargeFile = attachments.some((item) => item.file.size > 5 * 1024 * 1024);
+        const hasLargeFile = attachments.some(
+            (item) => item.file.size > 5 * 1024 * 1024,
+        );
 
         if (hasLargeFile && channel) {
             attachments.forEach((item, index) => {
@@ -75,7 +81,7 @@ const MessageInput = ({
                     item.file,
                     channel.id,
                     index === 0 ? message.trim() : '',
-                    replyTo?.id ?? null
+                    replyTo?.id ?? null,
                 );
             });
             clearDraft();
@@ -127,13 +133,32 @@ const MessageInput = ({
         [message, setMessage],
     );
 
+    const handleSuggestMessage = async (): Promise<void> => {
+        const currentMessage = message.trim();
+
+        if (!currentMessage) {
+            showError('Please type a message before using AI.');
+
+            return;
+        }
+
+        const suggestion = await generateSuggestion({
+            channel,
+            currentMessage,
+        });
+
+        if (suggestion) {
+            setMessage(suggestion);
+        }
+    };
+
     return (
         <div className="flex w-full flex-col gap-2 px-1 py-2 sm:px-2">
             {progress > 0 && attachments.length > 0 ? (
                 <progress
                     value={progress}
                     max={100}
-                    className="progress progress-success w-full"
+                    className="progress w-full progress-success"
                 />
             ) : null}
 
@@ -151,7 +176,7 @@ const MessageInput = ({
                         type="button"
                         aria-label="Attach generic file"
                         disabled={!channel || sending}
-                        className="btn btn-circle btn-ghost relative inline-flex h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
+                        className="btn relative inline-flex btn-circle h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 btn-ghost transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
                     >
                         <PaperClipIcon className="h-5 w-5" aria-hidden="true" />
                         <input
@@ -170,7 +195,7 @@ const MessageInput = ({
                         type="button"
                         aria-label="Attach images or videos"
                         disabled={!channel || sending}
-                        className="btn btn-circle btn-ghost relative inline-flex h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
+                        className="btn relative inline-flex btn-circle h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 btn-ghost transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
                     >
                         <PhotoIcon className="h-5 w-5" aria-hidden="true" />
                         <input
@@ -191,6 +216,27 @@ const MessageInput = ({
                             onError={showError}
                         />
                     </Suspense>
+
+                    <button
+                        type="button"
+                        aria-label="Suggest message with AI"
+                        title="Suggest message with AI"
+                        disabled={!channel || sending || generating}
+                        onClick={handleSuggestMessage}
+                        className="btn relative inline-flex btn-circle h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 btn-ghost transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
+                    >
+                        {generating ? (
+                            <span
+                                className="loading loading-xs loading-spinner"
+                                aria-hidden="true"
+                            ></span>
+                        ) : (
+                            <SparklesIcon
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                            />
+                        )}
+                    </button>
                 </div>
 
                 <div className="relative min-w-0 flex-1">
@@ -205,7 +251,7 @@ const MessageInput = ({
                         disabled={!channel || sending}
                     />
 
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <div className="absolute top-1/2 right-2 -translate-y-1/2">
                         <EmojiPickerPopover
                             disabled={!channel || sending}
                             onSelect={handleEmojiSelect}
@@ -219,11 +265,11 @@ const MessageInput = ({
                         aria-label={canSend ? 'Send message' : 'Send like'}
                         onClick={canSend ? handleSend : handleLike}
                         disabled={!channel || sending}
-                        className="inline-flex aspect-square min-h-[42px] shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-600"
+                        className="inline-flex aspect-square min-h-[42px] shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-600"
                     >
                         {sending ? (
                             <span
-                                className="loading loading-spinner loading-xs"
+                                className="loading loading-xs loading-spinner"
                                 aria-hidden="true"
                             ></span>
                         ) : canSend ? (

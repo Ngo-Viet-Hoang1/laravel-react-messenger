@@ -16,4 +16,9 @@ class MessageService
     {
         return $this->messageRepo->getByChannel($channel, 10);
     }
+
+    public function searchMessages(Channel $channel, string $query): LengthAwarePaginator
+    {
+        return $this->messageRepo->searchInChannel($channel, $query, 20);
+    }
 }

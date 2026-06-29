@@ -1,9 +1,12 @@
+import ActiveUploadsList from '@/Components/App/ActiveUploadsList';
 import AttachmentPreviewModal from '@/Components/App/AttachmentPreviewModal';
 import ChannelHeader from '@/Components/App/ChannelHeader';
+import ChannelInfoPanel from '@/Components/App/ChannelInfoPanel';
 import MessageInput from '@/Components/App/MessageInput';
 import MessageItem from '@/Components/App/MessageItem';
-import ActiveUploadsList from '@/Components/App/ActiveUploadsList';
+import MessageSearchPanel from '@/Components/App/MessageSearchPanel';
 import TypingIndicator from '@/Components/App/TypingIndicator';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { useEventBus } from '@/EventBus';
 import useAttachmentsPreviewModal from '@/hooks/useAttachmentsPreviewModal';
 import useChatScroll from '@/hooks/useChatScroll';
@@ -37,9 +40,20 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     const myId = Number(currentUser.id);
     const { on, emit } = useEventBus();
     const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
-    const markReadTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+    const [showSearch, setShowSearch] = useState(false);
+    const [showInfo, setShowInfo] = useState(false);
+    const [highlightedMessageId, setHighlightedMessageId] = useState<
+        number | null
+    >(null);
+    const confirmDialog = useConfirm();
+    const markReadTimerRef = useRef<ReturnType<
+        typeof globalThis.setTimeout
+    > | null>(null);
     const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
     const lastScheduledReadIdRef = useRef<number | null>(null);
+    const highlightTimerRef = useRef<ReturnType<
+        typeof globalThis.setTimeout
+    > | null>(null);
 
     const {
         chatMessages,
@@ -71,6 +85,8 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
 
     useEffect(() => {
         setReplyTo(null);
+        setShowSearch(false);
+        setShowInfo(false);
         lastScheduledReadIdRef.current = null;
     }, [selectedChannel?.id]);
 
@@ -78,6 +94,9 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         return () => {
             if (markReadTimerRef.current) {
                 globalThis.clearTimeout(markReadTimerRef.current);
+            }
+            if (highlightTimerRef.current) {
+                globalThis.clearTimeout(highlightTimerRef.current);
             }
         };
     }, []);
@@ -127,7 +146,8 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
 
             const rect = element.getBoundingClientRect();
             const isVisible =
-                rect.bottom > containerRect.top && rect.top < containerRect.bottom;
+                rect.bottom > containerRect.top &&
+                rect.top < containerRect.bottom;
 
             if (!isVisible) continue;
 
@@ -222,6 +242,69 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         };
     }, [on, handleMessageCreated, handleMessageDeleted, handleReactionUpdated]);
 
+    const handleInfoToggle = useCallback((): void => {
+        setShowInfo((prev) => !prev);
+        setShowSearch(false);
+    }, []);
+
+    const handleDeleteChannel = useCallback(async (): Promise<void> => {
+        if (!selectedChannel) return;
+
+        const isConfirmed = await confirmDialog({
+            title:
+                selectedChannel.type === 'direct'
+                    ? 'Delete Chat'
+                    : 'Delete Group',
+            message:
+                selectedChannel.type === 'direct'
+                    ? 'Are you sure you want to delete this direct chat? This action cannot be undone.'
+                    : 'Are you sure you want to delete this group? This action cannot be undone.',
+            isDanger: true,
+            confirmText: 'Yes, delete',
+        });
+
+        if (!isConfirmed) return;
+
+        try {
+            const { data } = await axios.delete(
+                route('channels.destroy', selectedChannel.id),
+            );
+            emit(
+                'toast.show',
+                data.message ||
+                    `The chat "${selectedChannel.name}" has been deleted`,
+            );
+        } catch {
+            emit(
+                'toast.show',
+                `Failed to delete "${selectedChannel.name}". Please try again.`,
+            );
+        }
+    }, [selectedChannel, confirmDialog, emit]);
+
+    const handleSearchResultClick = useCallback(
+        (messageId: number): void => {
+            const element = messageRefs.current.get(messageId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setHighlightedMessageId(messageId);
+
+                if (highlightTimerRef.current) {
+                    globalThis.clearTimeout(highlightTimerRef.current);
+                }
+                highlightTimerRef.current = globalThis.setTimeout(() => {
+                    setHighlightedMessageId(null);
+                }, 2000);
+            } else {
+                emit(
+                    'toast.show',
+                    'This message is not currently loaded. Scroll up to load older messages.',
+                );
+            }
+        },
+        [emit],
+    );
+
     if (!messages) {
         return (
             <EmptyState message="Please select a channel to start chatting" />
@@ -229,9 +312,12 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     }
 
     return (
-        <>
-            <div className="flex h-full flex-col">
-                <ChannelHeader channel={selectedChannel} />
+        <div className="flex h-full w-full bg-transparent">
+            <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 dark:border-slate-700 dark:bg-slate-800">
+                <ChannelHeader
+                    channel={selectedChannel}
+                    onInfoToggle={handleInfoToggle}
+                />
 
                 <div
                     ref={scrollContainerRef}
@@ -256,7 +342,7 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
 
                                         messageRefs.current.delete(message.id);
                                     }}
-                                    className="transition-all duration-200 ease-out"
+                                    className={`transition-all duration-300 ease-out ${highlightedMessageId === message.id ? 'rounded-lg bg-blue-100/60 ring-2 ring-blue-400/50 dark:bg-blue-500/15 dark:ring-blue-500/30' : ''}`}
                                 >
                                     <MessageItem
                                         message={message}
@@ -293,8 +379,10 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                     )}
                 </div>
 
-                {selectedChannel && <ActiveUploadsList channelId={selectedChannel.id} />}
-              
+                {selectedChannel && (
+                    <ActiveUploadsList channelId={selectedChannel.id} />
+                )}
+
                 {selectedChannel ? (
                     <div className="px-2 pb-1">
                         <TypingIndicator
@@ -314,6 +402,32 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                 />
             </div>
 
+            {showSearch && selectedChannel && (
+                <>
+                    <div className="w-2 shrink-0 bg-transparent" />
+                    <MessageSearchPanel
+                        channelId={selectedChannel.id}
+                        onClose={() => setShowSearch(false)}
+                        onResultClick={handleSearchResultClick}
+                    />
+                </>
+            )}
+
+            {showInfo && selectedChannel && (
+                <>
+                    <div className="w-2 shrink-0 bg-transparent" />
+                    <ChannelInfoPanel
+                        channel={selectedChannel}
+                        onClose={() => setShowInfo(false)}
+                        onSearchClick={() => {
+                            setShowInfo(false);
+                            setShowSearch(true);
+                        }}
+                        onDeleteClick={handleDeleteChannel}
+                    />
+                </>
+            )}
+
             {preview?.attachments && (
                 <AttachmentPreviewModal
                     key={preview.startIndex}
@@ -323,7 +437,7 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                     attachments={preview.attachments}
                 />
             )}
-        </>
+        </div>
     );
 }
 
