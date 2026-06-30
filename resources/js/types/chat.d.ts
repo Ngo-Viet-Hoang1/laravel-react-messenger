@@ -23,10 +23,17 @@ export type ParentMessage = {
     attachments: MessageAttachment[];
 };
 
+export type MessageReactionGroup = {
+    emoji: string;
+    count: number;
+    user_ids: number[];
+};
+
 export type ChatMessage = DbMessage & {
     sender: User;
     parent: ParentMessage | null;
     attachments: MessageAttachment[];
+    reactions: MessageReactionGroup[];
 };
 
 export type ChatMessageCollection = PaginatedResponse<ChatMessage>;
@@ -36,6 +43,7 @@ export type ChatItem = {
     name: string | null;
     description?: string | null;
     type: 'direct' | 'group';
+    is_e2ee_enabled: boolean;
 
     peer_user_id?: number | null;
     peer_is_admin?: boolean | null;

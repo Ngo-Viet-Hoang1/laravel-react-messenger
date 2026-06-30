@@ -11,7 +11,7 @@ import useChannelSockets from '@/hooks/useChannelSockets';
 import useOnlinePresence from '@/hooks/useOnlinePresence';
 import useUserSearch from '@/hooks/useUserSearch';
 import { ChatItem, ChatPageProps } from '@/types';
-import { ChannelReadUpdatedEvent } from '@/types/events';
+import { ChannelReadUpdatedEvent, MessageReactionUpdatedEvent } from '@/types/events';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
@@ -36,6 +36,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         updateAfterMessageDeleted,
         markChannelAsRead,
         removeChannel,
+        bumpChannelToTop,
     } = useChannels(channels, search.toLowerCase(), Number(currentUser.id));
 
     const { results: userSearchResults, isLoading: isSearchLoadingUsers } =
@@ -69,13 +70,23 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         const offCreated = on('message.created', updateLastMessage);
         const offDeleted = on('message.deleted', updateAfterMessageDeleted);
         const offReadUpdated = on('channel.read.updated', handleReadUpdated);
+        const offReaction = on('message.reaction.updated', (event: MessageReactionUpdatedEvent) => {
+            bumpChannelToTop(event.channel_id);
+        });
 
         return () => {
             offCreated();
             offDeleted();
             offReadUpdated();
+            offReaction();
         };
-    }, [on, updateLastMessage, updateAfterMessageDeleted, handleReadUpdated]);
+    }, [
+        on,
+        updateLastMessage,
+        updateAfterMessageDeleted,
+        handleReadUpdated,
+        bumpChannelToTop,
+    ]);
 
     useEffect(() => {
         const offDeleted = on('channel.deleted', ({ id, name }) => {
@@ -92,7 +103,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         <div className="flex h-full min-h-0 w-full overflow-hidden">
             {/* Sidebar */}
             <div
-                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 sm:flex sm:w-[280px] md:w-[320px] dark:border-slate-700 dark:bg-slate-800 ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
+                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 sm:flex sm:w-70 md:w-[320px] dark:border-slate-700 dark:bg-slate-800 ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
             >
                 <div className="flex items-center justify-between px-3 py-2 text-lg font-semibold text-slate-800 dark:border-slate-700 dark:text-slate-100">
                     My channels

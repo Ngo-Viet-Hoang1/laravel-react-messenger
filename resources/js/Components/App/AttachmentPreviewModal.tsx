@@ -86,7 +86,7 @@ const AttachmentPreviewModal = ({
                     </div>
                 </div>
 
-                <div className="relative flex min-h-0 flex-1 items-center justify-center px-12 pb-12 pt-4">
+                <div className="relative flex min-h-0 flex-1 items-center justify-center px-12 pt-4 pb-12">
                     {showNav && (
                         <button
                             type="button"
@@ -98,7 +98,7 @@ const AttachmentPreviewModal = ({
                                 )
                             }
                             aria-label="Previous"
-                            className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 sm:left-3"
+                            className="absolute top-1/2 left-2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 sm:left-3"
                         >
                             <ChevronLeftIcon className="h-5 w-5" />
                         </button>
@@ -113,7 +113,7 @@ const AttachmentPreviewModal = ({
                                 )
                             }
                             aria-label="Next"
-                            className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 sm:right-3"
+                            className="absolute top-1/2 right-2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 sm:right-3"
                         >
                             <ChevronRightIcon className="h-5 w-5" />
                         </button>
@@ -135,7 +135,7 @@ const AttachmentPreviewModal = ({
                             renderFileFallback={
                                 <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/10 px-10 py-8 text-white backdrop-blur-sm">
                                     <DocumentIcon className="h-12 w-12 opacity-70" />
-                                    <p className="max-w-[200px] break-words text-center text-sm font-medium">
+                                    <p className="max-w-50 text-center text-sm font-medium wrap-break-word">
                                         {attachment.name}
                                     </p>
                                     <a

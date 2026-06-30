@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\DeleteChannelJob;
 use App\Models\Channel;
+use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Repositories\Interfaces\IChannelRepo;
 use Illuminate\Database\Eloquent\Collection;
@@ -12,7 +13,8 @@ class ChannelService
 {
     public function __construct(
         private IChannelRepo $channelRepo
-    ) {}
+    ) {
+    }
 
     public function getChannelsForUser(User $user): Collection
     {
@@ -41,6 +43,12 @@ class ChannelService
         return $this->channelRepo->findOrCreateDirect($authUserId, $targetUserId);
     }
 
+    public function findOrCreateSecretDirect(int $authUserId, int $targetUserId): Channel
+    {
+        return $this->channelRepo->findOrCreateE2EEDirect($authUserId, $targetUserId);
+    }
+
+
     public function updateChannel(Channel $channel, array $data): Channel
     {
         $channel->update([
@@ -55,6 +63,16 @@ class ChannelService
         return $channel;
     }
 
+    public function addMember(Channel $channel, User $user): void
+    {
+        $channel->members()->syncWithoutDetaching([$user->id]);
+    }
+
+    public function removeMember(Channel $channel, User $user): void
+    {
+        $channel->members()->detach($user->id);
+    }
+
     public function deleteChannel(Channel $channel): void
     {
         DeleteChannelJob::dispatch($channel->id)->delay(now()->addSeconds(1));
@@ -67,5 +85,20 @@ class ChannelService
     public function markAsRead(Channel $channel, int $userId, ?int $lastReadMessageId): void
     {
         $this->channelRepo->markAsRead($channel, $userId, $lastReadMessageId);
+    }
+
+    /**
+     * Get all attachments for a channel, excluding audio.
+     *
+     * @return Collection<int, MessageAttachment>
+     */
+    public function getChannelAttachments(Channel $channel): Collection
+    {
+        return MessageAttachment::whereHas('message', function ($query) use ($channel) {
+            $query->where('channel_id', $channel->id);
+        })
+            ->where('mime', 'not like', 'audio/%')
+            ->latest()
+            ->get();
     }
 }

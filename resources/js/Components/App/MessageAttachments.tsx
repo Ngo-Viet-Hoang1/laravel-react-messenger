@@ -32,10 +32,14 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
         index: i,
     }));
     const mediaItems = allWithIndex.filter(
-        ({ attachment }) => isImage(attachment) || isVideo(attachment),
+        ({ attachment }) =>
+            (isImage(attachment) || isVideo(attachment)) &&
+            !isAudio(attachment),
     );
     const nonMediaItems = allWithIndex.filter(
-        ({ attachment }) => !isImage(attachment) && !isVideo(attachment),
+        ({ attachment }) =>
+            (!isImage(attachment) && !isVideo(attachment)) ||
+            isAudio(attachment),
     );
 
     return (
@@ -101,7 +105,7 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
                                     <audio
                                         src={attachment.url}
                                         controls
-                                        className="color:scheme-light h-10 w-full dark:scheme-dark"
+                                        className="h-10 w-full scheme-light dark:scheme-dark"
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                 </div>

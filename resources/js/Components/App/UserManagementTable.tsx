@@ -1,7 +1,7 @@
 import { User } from '@/types';
-import UserTableActionsDropdown from './UserTableActionsDropdown';
-import UserAvatar from './UserAvatar';
 import Table, { TableColumn } from './Table';
+import UserAvatar from './UserAvatar';
+import UserTableActionsDropdown from './UserTableActionsDropdown';
 
 type Props = {
     users: User[];
@@ -16,7 +16,9 @@ const RoleBadge = ({ isAdmin }: { isAdmin: boolean }) => {
         : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
 
     return (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}>
+        <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}
+        >
             {isAdmin ? 'Admin' : 'User'}
         </span>
     );
@@ -48,14 +50,21 @@ const StatusBadge = ({
             };
 
     return (
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${config.bg}`}>
+        <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${config.bg}`}
+        >
             <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
             {config.text}
         </span>
     );
 };
 
-const UserManagementTable = ({ users, isOnline, selectedIds, setSelectedIds }: Props) => {
+const UserManagementTable = ({
+    users,
+    isOnline,
+    selectedIds,
+    setSelectedIds,
+}: Props) => {
     if (users.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500">
@@ -73,10 +82,7 @@ const UserManagementTable = ({ users, isOnline, selectedIds, setSelectedIds }: P
             key: 'name',
             render: (user) => (
                 <div className="flex items-center gap-3">
-                    <UserAvatar
-                        user={user}
-                        online={isOnline(user.id)}
-                    />
+                    <UserAvatar user={user} online={isOnline(user.id)} />
                     <div className="min-w-0">
                         <p className="truncate font-medium text-slate-800 dark:text-slate-100">
                             {user.name}
@@ -113,9 +119,7 @@ const UserManagementTable = ({ users, isOnline, selectedIds, setSelectedIds }: P
             title: 'Actions',
             key: 'actions',
             align: 'right',
-            render: (user) => (
-                <UserTableActionsDropdown user={user} />
-            ),
+            render: (user) => <UserTableActionsDropdown user={user} />,
         },
     ];
 

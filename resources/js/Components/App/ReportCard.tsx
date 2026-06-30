@@ -55,7 +55,7 @@ export default function ReportCard({
                             </div>
                         </div>
                         {report.message.content && (
-                            <p className="whitespace-pre-wrap break-words text-sm text-slate-700 dark:text-slate-300">
+                            <p className="text-sm break-words whitespace-pre-wrap text-slate-700 dark:text-slate-300">
                                 {report.message.content}
                             </p>
                         )}
@@ -72,14 +72,14 @@ export default function ReportCard({
                                 report.message.attachments.length === 0) && (
                                 <InputError
                                     message="[empty message]"
-                                    className="italic !text-slate-700 text-slate-700 opacity-60 dark:!text-slate-300 dark:text-slate-300"
+                                    className="!text-slate-700 text-slate-700 italic opacity-60 dark:!text-slate-300 dark:text-slate-300"
                                 />
                             )}
                     </div>
 
                     {/* Sibling Reports (List of individual report details) */}
                     <div className="space-y-2">
-                        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        <h4 className="text-xs font-semibold tracking-wider text-slate-400 uppercase dark:text-slate-500">
                             Reporters & Reasons
                         </h4>
                         <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-slate-50/50 dark:divide-slate-700/50 dark:border-slate-800 dark:bg-slate-900/10">
@@ -114,7 +114,7 @@ export default function ReportCard({
                                         </span>
                                     </div>
                                     {sib.note && (
-                                        <p className="mt-1.5 pl-10 text-xs italic text-slate-500 dark:text-slate-400">
+                                        <p className="mt-1.5 pl-10 text-xs text-slate-500 italic dark:text-slate-400">
                                             "{sib.note}"
                                         </p>
                                     )}
@@ -162,7 +162,7 @@ export default function ReportCard({
                         report.reviewer &&
                         report.reviewed_at && (
                             <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/50 dark:bg-slate-900/40">
-                                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                <span className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
                                     Processed By
                                 </span>
                                 <span

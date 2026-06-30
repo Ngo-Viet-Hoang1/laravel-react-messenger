@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export type TableColumn<T> = {
     title: React.ReactNode;
@@ -44,10 +44,16 @@ export default function Table<T>({
         return selection.selectedRowKeys.includes(key);
     };
 
-    const allRowKeys = dataSource.map((record, index) => getRowKey(record, index));
-    const selectedCount = dataSource.filter((record, index) => isSelected(record, index)).length;
-    const isAllSelected = dataSource.length > 0 && selectedCount === dataSource.length;
-    const isIndeterminate = selectedCount > 0 && selectedCount < dataSource.length;
+    const allRowKeys = dataSource.map((record, index) =>
+        getRowKey(record, index),
+    );
+    const selectedCount = dataSource.filter((record, index) =>
+        isSelected(record, index),
+    ).length;
+    const isAllSelected =
+        dataSource.length > 0 && selectedCount === dataSource.length;
+    const isIndeterminate =
+        selectedCount > 0 && selectedCount < dataSource.length;
 
     useEffect(() => {
         if (selectAllRef.current) {
@@ -58,11 +64,13 @@ export default function Table<T>({
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>): void => {
         if (!selection) return;
         if (e.target.checked) {
-            const newSelected = Array.from(new Set([...selection.selectedRowKeys, ...allRowKeys]));
+            const newSelected = Array.from(
+                new Set([...selection.selectedRowKeys, ...allRowKeys]),
+            );
             selection.onChange(newSelected);
         } else {
             const newSelected = selection.selectedRowKeys.filter(
-                (key) => !allRowKeys.includes(key)
+                (key) => !allRowKeys.includes(key),
             );
             selection.onChange(newSelected);
         }
@@ -93,15 +101,17 @@ export default function Table<T>({
                 <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-700/50">
                         {selection && (
-                            <th className="w-12 px-4 py-3 bg-slate-50/50 dark:bg-slate-800/30">
+                            <th className="w-12 bg-slate-50/50 px-4 py-3 dark:bg-slate-800/30">
                                 <label className="flex items-center">
                                     <input
                                         ref={selectAllRef}
                                         type="checkbox"
-                                        className="checkbox checkbox-sm rounded border-slate-400 dark:border-slate-500 [--chkbg:black] [--chkfg:white] dark:[--chkbg:white] dark:[--chkfg:black] checked:border-black dark:checked:border-white"
+                                        className="checkbox rounded border-slate-400 checkbox-sm [--chkbg:black] [--chkfg:white] checked:border-black dark:border-slate-500 dark:[--chkbg:white] dark:[--chkfg:black] dark:checked:border-white"
                                         checked={isAllSelected}
                                         onChange={handleSelectAll}
-                                        disabled={isLoading || dataSource.length === 0}
+                                        disabled={
+                                            isLoading || dataSource.length === 0
+                                        }
                                     />
                                 </label>
                             </th>
@@ -109,8 +119,8 @@ export default function Table<T>({
                         {columns.map((column) => (
                             <th
                                 key={column.key}
-                                className={`px-4 py-3 bg-slate-50/50 dark:bg-slate-800/30 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 ${getAlignmentClass(
-                                    column.align
+                                className={`bg-slate-50/50 px-4 py-3 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:bg-slate-800/30 dark:text-slate-400 ${getAlignmentClass(
+                                    column.align,
                                 )} ${column.className || ''}`}
                             >
                                 {column.title}
@@ -120,7 +130,9 @@ export default function Table<T>({
                 </thead>
                 <tbody>
                     {isLoading ? (
-                        Array.from({ length: Math.max(dataSource.length, 3) }).map((_, rowIndex) => (
+                        Array.from({
+                            length: Math.max(dataSource.length, 3),
+                        }).map((_, rowIndex) => (
                             <tr
                                 key={`skeleton-${rowIndex}`}
                                 className="border-b border-slate-100 dark:border-slate-700/50"
@@ -163,19 +175,29 @@ export default function Table<T>({
                                             <label className="flex items-center">
                                                 <input
                                                     type="checkbox"
-                                                    className="checkbox checkbox-sm rounded border-slate-400 dark:border-slate-500 [--chkbg:black] [--chkfg:white] dark:[--chkbg:white] dark:[--chkfg:black] checked:border-black dark:checked:border-white"
+                                                    className="checkbox rounded border-slate-400 checkbox-sm [--chkbg:black] [--chkfg:white] checked:border-black dark:border-slate-500 dark:[--chkbg:white] dark:[--chkfg:black] dark:checked:border-white"
                                                     checked={selected}
-                                                    onChange={() => handleSelectRow(record, index)}
+                                                    onChange={() =>
+                                                        handleSelectRow(
+                                                            record,
+                                                            index,
+                                                        )
+                                                    }
                                                 />
                                             </label>
                                         </td>
                                     )}
                                     {columns.map((column) => {
-                                        const alignClass = getAlignmentClass(column.align);
+                                        const alignClass = getAlignmentClass(
+                                            column.align,
+                                        );
                                         let cellContent: React.ReactNode = null;
 
                                         if (column.render) {
-                                            cellContent = column.render(record, index);
+                                            cellContent = column.render(
+                                                record,
+                                                index,
+                                            );
                                         } else if (column.dataIndex) {
                                             cellContent = record[
                                                 column.dataIndex as keyof T
@@ -185,7 +207,7 @@ export default function Table<T>({
                                         return (
                                             <td
                                                 key={column.key}
-                                                className={`px-4 py-3.5 text-sm text-slate-700 dark:text-slate-300 align-middle ${alignClass} ${
+                                                className={`px-4 py-3.5 align-middle text-sm text-slate-700 dark:text-slate-300 ${alignClass} ${
                                                     column.className || ''
                                                 }`}
                                             >

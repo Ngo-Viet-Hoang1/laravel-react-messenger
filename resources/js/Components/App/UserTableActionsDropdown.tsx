@@ -51,7 +51,7 @@ export default function UserTableActionsDropdown({ user }: Props) {
                     setIsLoading(false);
                 },
                 onError: () => setIsLoading(false),
-            }
+            },
         );
     };
 
@@ -69,7 +69,7 @@ export default function UserTableActionsDropdown({ user }: Props) {
                     setIsLoading(false);
                 },
                 onError: () => setIsLoading(false),
-            }
+            },
         );
     };
 
@@ -87,7 +87,7 @@ export default function UserTableActionsDropdown({ user }: Props) {
                     setIsLoading(false);
                 },
                 onError: () => setIsLoading(false),
-            }
+            },
         );
     };
 
@@ -105,7 +105,7 @@ export default function UserTableActionsDropdown({ user }: Props) {
                     setIsLoading(false);
                 },
                 onError: () => setIsLoading(false),
-            }
+            },
         );
     };
 
@@ -116,10 +116,10 @@ export default function UserTableActionsDropdown({ user }: Props) {
         <Menu as="div" className="relative inline-block text-left">
             <MenuButton
                 disabled={isLoading}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"
             >
                 {isLoading ? (
-                    <span className="loading loading-spinner loading-xs" />
+                    <span className="loading loading-xs loading-spinner" />
                 ) : (
                     <EllipsisVerticalIcon className="h-5 w-5" />
                 )}
@@ -127,7 +127,7 @@ export default function UserTableActionsDropdown({ user }: Props) {
 
             <MenuItems
                 transition
-                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-xl border border-slate-200 bg-white p-1 shadow-lg transition duration-100 ease-out focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 dark:border-slate-700 dark:bg-slate-800"
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-xl border border-slate-200 bg-white p-1 shadow-lg transition duration-100 ease-out focus:outline-none data-closed:scale-95 data-closed:opacity-0 dark:border-slate-700 dark:bg-slate-800"
             >
                 <MenuItem>
                     <button
@@ -162,7 +162,9 @@ export default function UserTableActionsDropdown({ user }: Props) {
                             className={menuItemClassName}
                         >
                             <LockClosedIcon className="h-4 w-4 text-red-500" />
-                            <span className="text-red-600 dark:text-red-400">Block</span>
+                            <span className="text-red-600 dark:text-red-400">
+                                Block
+                            </span>
                         </button>
                     </MenuItem>
                 )}

@@ -1,10 +1,12 @@
+import { useE2EE } from '@/Contexts/E2EEContext';
 import {
     type ChatItem,
     type ChatMessage,
     type ChatMessageCollection,
+    type MessageReactionGroup,
 } from '@/types';
 import axios from 'axios';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseMessagesReturn = {
     chatMessages: ChatMessage[];
@@ -14,6 +16,7 @@ type UseMessagesReturn = {
     firstMessageDate: string | null;
     addMessage: (message: ChatMessage) => boolean;
     markMessageDeleted: (message: ChatMessage) => void;
+    updateMessageReactions: (messageId: number, reactions: MessageReactionGroup[]) => void;
     loadOlderMessages: () => Promise<void>;
 };
 
@@ -21,12 +24,20 @@ const useMessages = (
     messages: ChatMessageCollection | null | undefined,
     selectedChannel: ChatItem | null,
 ): UseMessagesReturn => {
+    const { decryptForPeer, isE2EEReady } = useE2EE();
+
     const initialData = messages?.data ?? [];
 
     const [chatMessages, setChatMessages] =
         useState<ChatMessage[]>(initialData);
     const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
     const [hasLoadedAllMessages, setHasLoadedAllMessages] = useState(false);
+
+    const [decryptedOverrides, setDecryptedOverrides] = useState<
+        Record<number, string>
+    >({});
+
+    const decryptingIdsRef = useRef<Set<number>>(new Set());
 
     const messageIdSetRef = useRef<Set<number>>(
         new Set(initialData.map((m) => m.id)),
@@ -46,6 +57,64 @@ const useMessages = (
         setHasLoadedAllMessages(false);
     }
 
+    useEffect(() => {
+        setDecryptedOverrides({});
+        decryptingIdsRef.current.clear();
+    }, [selectedChannel?.id]);
+
+    useEffect(() => {
+        const isSecretChat =
+            isE2EEReady &&
+            selectedChannel?.is_e2ee_enabled &&
+            selectedChannel.peer_user_id != null;
+
+        if (!isSecretChat) return;
+
+        const peerUserId = selectedChannel.peer_user_id!;
+
+        const toDecrypt = chatMessages.filter(
+            (m) =>
+                m.is_encrypted &&
+                m.iv &&
+                m.ciphertext &&
+                !decryptingIdsRef.current.has(m.id),
+        );
+
+        if (toDecrypt.length === 0) return;
+
+        toDecrypt.forEach((m) => decryptingIdsRef.current.add(m.id));
+
+        void Promise.all(
+            toDecrypt.map(async (m) => ({
+                id: m.id,
+                content:
+                    (await decryptForPeer(m, peerUserId)) ?? '[Cannot decrypt]',
+            })),
+        ).then((results) => {
+            setDecryptedOverrides((prev) => ({
+                ...prev,
+                ...Object.fromEntries(results.map((r) => [r.id, r.content])),
+            }));
+        });
+    }, [
+        chatMessages,
+        isE2EEReady,
+        selectedChannel?.id,
+        selectedChannel?.is_e2ee_enabled,
+        selectedChannel?.peer_user_id,
+        decryptForPeer,
+    ]);
+
+    const chatMessagesDisplayed = useMemo(
+        () =>
+            chatMessages.map((m) =>
+                m.is_encrypted && decryptedOverrides[m.id] !== undefined
+                    ? { ...m, content: decryptedOverrides[m.id] }
+                    : m,
+            ),
+        [chatMessages, decryptedOverrides],
+    );
+
     const addMessage = useCallback((message: ChatMessage): boolean => {
         if (messageIdSetRef.current.has(message.id)) return false;
         messageIdSetRef.current.add(message.id);
@@ -63,11 +132,25 @@ const useMessages = (
                           deleted_at:
                               message.deleted_at ?? new Date().toISOString(),
                           attachments: [],
+                          reactions: [],
                       }
                     : current,
             ),
         );
     }, []);
+
+    const updateMessageReactions = useCallback(
+        (messageId: number, reactions: MessageReactionGroup[]): void => {
+            setChatMessages((prev) =>
+                prev.map((msg) =>
+                    msg.id === messageId
+                        ? { ...msg, reactions }
+                        : msg,
+                ),
+            );
+        },
+        [],
+    );
 
     const loadOlderMessages = useCallback(async (): Promise<void> => {
         if (hasLoadedAllMessages || isFetchingRef.current || !selectedChannel)
@@ -116,13 +199,14 @@ const useMessages = (
     }, [chatMessages]);
 
     return {
-        chatMessages,
+        chatMessages: chatMessagesDisplayed,
         chatMessagesRef,
         isLoadingOlderMessages,
         hasLoadedAllMessages,
         firstMessageDate,
         addMessage,
         markMessageDeleted,
+        updateMessageReactions,
         loadOlderMessages,
     };
 };
