@@ -52,7 +52,7 @@ const AttachmentMedia = ({
         return (
             <video
                 controls
-                preload={autoPlay ? 'auto' : 'none'}
+                preload={autoPlay ? 'auto' : 'metadata'}
                 poster={thumbnailUrl ?? undefined}
                 autoPlay={autoPlay}
                 className={`${cls.video} scheme-light dark:scheme-dark`}
