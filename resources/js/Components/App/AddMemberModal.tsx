@@ -14,11 +14,13 @@ type Props = {
     onMemberAdded: (newMember: ChatMember) => void;
 };
 
+const EMPTY_CHANNELS: ChatItem[] = [];
+
 const AddMemberModal = ({ isOpen, channel, onClose, onMemberAdded }: Props) => {
     const [query, setQuery] = useState('');
     const [adding, setAdding] = useState<number | null>(null);
 
-    const { results, isLoading } = useUserSearch(query, []);
+    const { results, isLoading } = useUserSearch(query, EMPTY_CHANNELS);
 
     const existingMemberIds = useMemo(
         () => new Set((channel.users ?? []).map((u) => u.id)),
