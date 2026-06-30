@@ -99,7 +99,7 @@ export default function UpdateProfileInformation({
                         <div className="flex items-center gap-3">
                             <button
                                 type="button"
-                                className="btn btn-outline btn-sm shadow-sm"
+                                className="btn shadow-sm btn-outline btn-sm"
                                 onClick={() => fileInput.current?.click()}
                             >
                                 <CameraIcon className="mr-1.5 h-4 w-4" />
@@ -174,7 +174,7 @@ export default function UpdateProfileInformation({
                                 href={route('verification.send')}
                                 method="post"
                                 as="button"
-                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-100 dark:focus:ring-offset-gray-800"
+                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:text-gray-400 dark:hover:text-gray-100 dark:focus:ring-offset-gray-800"
                             >
                                 Click here to re-send the verification email.
                             </Link>

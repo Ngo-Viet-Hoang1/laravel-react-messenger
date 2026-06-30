@@ -5,8 +5,8 @@ import UserAvatar from '@/Components/App/UserAvatar';
 import ApplicationLogo from '@/Components/Breeze/ApplicationLogo';
 import Dropdown from '@/Components/Breeze/Dropdown';
 import NavLink from '@/Components/Breeze/NavLink';
-import PrimaryButton from '@/Components/Breeze/PrimaryButton';
 import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
+import { E2EEProvider } from '@/Contexts/E2EEContext';
 import { UserModalProvider } from '@/Contexts/UserModalContext';
 import { PageProps } from '@/types';
 import {
@@ -71,7 +71,7 @@ const AuthenticatedInner = ({
                             {user.is_admin && (
                                 <Link
                                     href={route('admin.users.index')}
-                                    className="ms-3 inline-flex items-center gap-1.5 rounded-md border border-transparent bg-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:bg-gray-900 dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white dark:focus:bg-white dark:focus:ring-offset-gray-800 dark:active:bg-gray-300"
+                                    className="ms-3 inline-flex items-center gap-1.5 rounded-md border border-transparent bg-gray-800 px-3 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none active:bg-gray-900 dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white dark:focus:bg-white dark:focus:ring-offset-gray-800 dark:active:bg-gray-300"
                                 >
                                     <UserGroupIcon className="h-4 w-4" />
                                     Users
@@ -84,12 +84,12 @@ const AuthenticatedInner = ({
                                         <span className="inline-flex rounded-md">
                                             <button
                                                 type="button"
-                                                className="inline-flex items-center gap-2 rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                                                className="inline-flex items-center gap-2 rounded-md border border-transparent bg-white px-3 py-2 text-sm leading-4 font-medium text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
                                             >
                                                 <UserAvatar user={user} />
                                                 {user.name}
                                                 <svg
-                                                    className="-me-0.5 ms-2 h-4 w-4"
+                                                    className="ms-2 -me-0.5 h-4 w-4"
                                                     xmlns="http://www.w3.org/2000/svg"
                                                     viewBox="0 0 20 20"
                                                     fill="currentColor"
@@ -171,7 +171,7 @@ const AuthenticatedInner = ({
                         ' sm:hidden'
                     }
                 >
-                    <div className="space-y-1 pb-3 pt-2">
+                    <div className="space-y-1 pt-2 pb-3">
                         {user.is_admin && (
                             <ResponsiveNavLink
                                 href={route('admin.reports.index')}
@@ -194,7 +194,7 @@ const AuthenticatedInner = ({
                         </ResponsiveNavLink>
                     </div>
 
-                    <div className="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
+                    <div className="border-t border-gray-200 pt-4 pb-1 dark:border-gray-600">
                         <div className="px-4">
                             <div className="text-base font-medium text-gray-800 dark:text-gray-200">
                                 {user.name}
@@ -239,9 +239,11 @@ const AuthenticatedInner = ({
 
 const AuthenticatedLayout = ({ children }: { children: ReactNode }) => {
     return (
-        <UserModalProvider>
-            <AuthenticatedInner>{children}</AuthenticatedInner>
-        </UserModalProvider>
+        <E2EEProvider>
+            <UserModalProvider>
+                <AuthenticatedInner>{children}</AuthenticatedInner>
+            </UserModalProvider>
+        </E2EEProvider>
     );
 };
 

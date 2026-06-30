@@ -32,10 +32,14 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
         index: i,
     }));
     const mediaItems = allWithIndex.filter(
-        ({ attachment }) => isImage(attachment) || isVideo(attachment),
+        ({ attachment }) =>
+            (isImage(attachment) || isVideo(attachment)) &&
+            !isAudio(attachment),
     );
     const nonMediaItems = allWithIndex.filter(
-        ({ attachment }) => !isImage(attachment) && !isVideo(attachment),
+        ({ attachment }) =>
+            (!isImage(attachment) && !isVideo(attachment)) ||
+            isAudio(attachment),
     );
 
     return (
@@ -68,6 +72,8 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
                                     url={attachment.url}
                                     mime={attachment.mime}
                                     name={attachment.name}
+                                    streamUrl={attachment.stream_url}
+                                    thumbnailUrl={attachment.thumbnail_url}
                                     onMediaClick={(e) => e.stopPropagation()}
                                     classNames={{
                                         image: 'h-auto w-auto max-h-[350px] max-w-full object-contain',
@@ -99,7 +105,7 @@ const MessageAttachments = ({ attachments, onAttachmentClick }: Props) => {
                                     <audio
                                         src={attachment.url}
                                         controls
-                                        className="h-10 w-full [color-scheme:light] dark:[color-scheme:dark]"
+                                        className="h-10 w-full scheme-light dark:scheme-dark"
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                 </div>

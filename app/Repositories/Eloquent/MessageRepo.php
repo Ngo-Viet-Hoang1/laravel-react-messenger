@@ -15,6 +15,7 @@ class MessageRepo implements IMessageRepo
         'attachments',
         'parent.sender:id,name,avatar_url',
         'parent.attachments',
+        'reactions',
     ];
 
     public function getByChannel(Channel $channel, int $perPage): LengthAwarePaginator
@@ -33,27 +34,21 @@ class MessageRepo implements IMessageRepo
                 $driver = DB::connection()->getDriverName();
                 $cleanQuery = trim($query);
 
-                // MySQL Fulltext requires search terms to be >= innodb_ft_min_token_size (default 3)
-                // For shorter queries, or SQLite, we fallback to standard LIKE search
                 if ($driver === 'mysql' && mb_strlen($cleanQuery) >= 3) {
                     $words = preg_split('/\s+/', $cleanQuery);
                     $formattedQuery = '';
                     foreach ($words as $word) {
-                        if (mb_strlen($word) >= 3) {
-                            $formattedQuery .= $word.'* ';
-                        } else {
-                            $formattedQuery .= $word.' ';
-                        }
+                        $formattedQuery .= (mb_strlen($word) >= 3 ? $word . '* ' : $word . ' ');
                     }
                     $formattedQuery = trim($formattedQuery);
 
-                    if (! empty($formattedQuery)) {
+                    if (!empty($formattedQuery)) {
                         $q->whereFullText('content', $formattedQuery, ['mode' => 'boolean']);
                     } else {
-                        $q->where('content', 'like', '%'.$cleanQuery.'%');
+                        $q->where('content', 'like', '%' . $cleanQuery . '%');
                     }
                 } else {
-                    $q->where('content', 'like', '%'.$cleanQuery.'%');
+                    $q->where('content', 'like', '%' . $cleanQuery . '%');
                 }
             })
             ->with(self::MESSAGE_EAGER_LOADS)

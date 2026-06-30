@@ -47,13 +47,10 @@ const useUserSearch = (
             setIsLoading(true);
 
             try {
-                const { data } = await axios.get<User[]>(
-                    route('users.index'),
-                    {
-                        params: { q: debouncedQuery },
-                        cancelToken: source.token,
-                    },
-                );
+                const { data } = await axios.get<User[]>(route('users.index'), {
+                    params: { q: debouncedQuery },
+                    cancelToken: source.token,
+                });
                 // Filter out users who already have a DM channel
                 setResults(
                     data.filter((user) => !existingPeerIds.has(user.id)),

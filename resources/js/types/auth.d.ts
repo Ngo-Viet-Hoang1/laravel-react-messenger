@@ -4,6 +4,9 @@ export interface User {
     email: string;
     avatar_url?: string | null;
     email_verified_at?: string | null;
+    public_key?: Record<string, unknown> | null;
+    public_key_fingerprint?: string | null;
+    key_version?: number;
     is_admin: boolean;
     is_premium: boolean;
     blocked_at?: string | null;

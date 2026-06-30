@@ -19,6 +19,9 @@ class Message extends Model
         'sender_id',
         'parent_id',
         'content',
+        'is_encrypted',
+        'iv',
+        'ciphertext',
     ];
 
     public function channel(): BelongsTo
@@ -49,5 +52,10 @@ class Message extends Model
     public function reports(): HasMany
     {
         return $this->hasMany(MessageReport::class);
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(MessageReaction::class);
     }
 }

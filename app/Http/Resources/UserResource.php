@@ -32,6 +32,9 @@ class UserResource extends JsonResource
             'premium_expires_at' => $this->premium_expires_at,
             'last_message' => $this->last_message,
             'last_message_date' => $this->last_message_date,
+            'public_key' => $this->public_key,
+            'public_key_fingerprint' => $this->public_key_fingerprint,
+            'key_version' => $this->key_version,
         ];
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Requests\StoreChannelRequest;
 use App\Http\Requests\UpdateChannelRequest;
 use App\Http\Resources\ChannelDetailResource;
 use App\Http\Resources\ChannelResource;
+use App\Http\Resources\MessageAttachmentResource;
 use App\Http\Resources\MessageResource;
 use App\Http\Resources\UserResource;
 use App\Models\Channel;
@@ -15,6 +16,7 @@ use App\Services\ChannelService;
 use App\Services\MessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Response;
 
 class ChannelController extends Controller
@@ -22,7 +24,8 @@ class ChannelController extends Controller
     public function __construct(
         private ChannelService $channelService,
         private MessageService $messageService
-    ) {}
+    ) {
+    }
 
     public function show(Channel $channel): Response
     {
@@ -79,7 +82,7 @@ class ChannelController extends Controller
 
         abort_if($authUserId === $user->id, 422, 'Cannot create DM with yourself.');
 
-        if (! auth()->user()?->is_admin) {
+        if (!auth()->user()?->is_admin) {
             abort_if($user->blocked_at !== null, 403, 'Cannot message a blocked user.');
         }
 
@@ -87,6 +90,21 @@ class ChannelController extends Controller
 
         return redirect()->route('channels.show', $channel->id);
     }
+
+    public function findOrCreateE2EEDirect(User $user): RedirectResponse
+    {
+        $authUser = auth()->user();
+        $authUserId = (int) $authUser->id;
+
+        abort_if($authUserId === $user->id, 422, 'Cannot create Secret Chat with yourself.');
+        abort_unless($authUser->public_key, 422, 'Please wait for encryption setup to complete.');
+        abort_unless($user->public_key, 422, 'This user has not set up encryption yet.');
+
+        $channel = $this->channelService->findOrCreateSecretDirect($authUserId, $user->id);
+
+        return redirect()->route('channels.show', $channel->id);
+    }
+
 
     public function getMembers(Channel $channel): JsonResponse
     {
@@ -97,6 +115,32 @@ class ChannelController extends Controller
         $members = $this->channelService->getMembers($channel);
 
         return response()->json(UserResource::collection($members));
+    }
+
+    public function addMember(Channel $channel, User $user): JsonResponse
+    {
+        $authUser = auth()->user();
+
+        abort_if($channel->type === 'direct', 403, 'Cannot add members to a direct channel.');
+        abort_unless($authUser?->is_admin || $channel->owner_id === (int) $authUser?->id, 403, 'Unauthorized.');
+        abort_if($channel->members()->whereKey($user->id)->exists(), 422, 'User is already a member.');
+
+        $this->channelService->addMember($channel, $user);
+
+        return response()->json(['message' => 'Member added successfully.']);
+    }
+
+    public function removeMember(Channel $channel, User $user): JsonResponse
+    {
+        $authUser = auth()->user();
+
+        abort_if($channel->type === 'direct', 403, 'Cannot remove members from a direct channel.');
+        abort_unless($authUser?->is_admin || $channel->owner_id === (int) $authUser?->id, 403, 'Unauthorized.');
+        abort_if($channel->owner_id === $user->id, 422, 'Cannot remove the channel owner.');
+
+        $this->channelService->removeMember($channel, $user);
+
+        return response()->json(['message' => 'Member removed successfully.']);
     }
 
     public function update(UpdateChannelRequest $request, Channel $channel): RedirectResponse
@@ -113,21 +157,20 @@ class ChannelController extends Controller
     public function destroy(Channel $channel): JsonResponse
     {
         $user = auth()->user();
-        abort_unless($user, 403);
+        abort_unless((bool) $user, 403);
 
-        if (! $user->is_admin) {
+        if (!$user->is_admin) {
             $isMember = $user->channels()->whereKey($channel->id)->exists();
             abort_unless($isMember, 403, 'Unauthorized');
         }
 
-        if ($channel->type === 'group' && ! $user->is_admin) {
+        if ($channel->type === 'group' && !$user->is_admin) {
             $isOwner = $channel->owner_id === (int) $user->id;
             abort_unless($isOwner, 403, 'Only the channel owner can delete it.');
         }
 
         $channel->loadMissing('members:id,name');
         $channelLabel = $this->getChannelDeletionLabel($channel, (int) $user->id);
-
         $this->channelService->deleteChannel($channel);
 
         return response()->json([
@@ -140,7 +183,7 @@ class ChannelController extends Controller
         if ($channel->type === 'direct') {
             $peerName = $channel->members
                 ->firstWhere('id', '!=', $currentUserId)
-                ?->name;
+                    ?->name;
 
             return $peerName !== null
                 ? "Chat with \"{$peerName}\""
@@ -148,5 +191,20 @@ class ChannelController extends Controller
         }
 
         return "Channel \"{$channel->name}\"";
+    }
+
+    /**
+     * Get shared attachments (excluding audio) for the channel.
+     */
+    public function attachments(Channel $channel): AnonymousResourceCollection
+    {
+        abort_unless(
+            auth()->user()?->channels()->whereKey($channel->id)->exists(),
+            403,
+        );
+
+        $attachments = $this->channelService->getChannelAttachments($channel);
+
+        return MessageAttachmentResource::collection($attachments);
     }
 }
