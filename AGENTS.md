@@ -69,10 +69,12 @@ This project has domain-specific skills available. You MUST activate the relevan
 - **EventBus Events** (defined in `AppEventMap` in `resources/js/types/events.d.ts`):
     - `message.created`: Fired when a message is created (payload: `ChatMessage`).
     - `message.deleted`: Fired when a message is deleted (payload: `MessageDeletedEvent` `{message: ChatMessage, newLastMessage: ChatMessage | null}`).
+    - `message.reaction.updated`: Fired when reactions change (payload: `MessageReactionUpdatedEvent` `{message_id, channel_id, reactions: MessageReactionGroup[]}`).
     - `channel.deleted`: Fired when a channel is deleted (payload: `ChannelDeletedEvent` `{id: number, name: string}`).
+    - `channel.read.updated`: Fired when a channel is marked as read (payload: `ChannelReadUpdatedEvent` `{channel_id, user_id, last_read_message_id}`).
     - `toast.show`: Triggers a toast notification with the given message (payload: `string`).
 - **Echo/Reverb hooks** in `resources/js/hooks/` manage real-time subscriptions and app state:
-    - `useChannelSockets`: Subscribes to message channels (`message.channel.{channelId}`) and user channels (`user.{userId}`); emits `message.created` on incoming `MessageCreated` events and `channel.deleted` on `ChannelDeleted` events.
+    - `useChannelSockets`: Subscribes to message channels (`message.channel.{channelId}`) and user channels (`user.{userId}`); emits `message.created`, `message.deleted`, `message.reaction.updated` on incoming events; emits `channel.deleted` and `channel.read.updated` on user channel events. Also handles E2EE decryption of incoming encrypted messages via `useE2EE`.
     - `useChannels`: Manages sidebar channel lists, last message updates, and sidebar metadata when `ChannelUpdated` or message events are received.
     - `useMessages`: Manages message lists, appends new messages, and handles deletions.
     - `useSendMessage`: Handles message creation via API and UI feedback.
@@ -83,15 +85,24 @@ This project has domain-specific skills available. You MUST activate the relevan
     - `useInfiniteScroll`: Utilizes `IntersectionObserver` to trigger cursor pagination for infinite scrolling through older messages.
     - `useChatScroll`: Handles scroll position management (including auto-scroll and stick-to-bottom) for reverse-scroll layouts (`flex-col-reverse`).
     - `useAttachmentsPreviewModal`: Manages open/close states and currently selected media for file/image preview modals.
+    - `useTypingIndicator`: Sends and receives whisper events (`typing`) over Echo private channels to show live typing indicators. Uses debounced emit and auto-expiry timers.
+    - `useDraftMessages`: Persists per-channel draft text in `localStorage` (`draft:{channelId}` key); restores on channel switch.
+    - `useMessageSearch`: Debounced full-text search against `GET /channels/{channel}/messages/search` with cursor pagination and cancel-token cleanup.
+    - `useAiMessageSuggestion`: Calls `POST /channels/{channel}/message-suggestions` (rate-limited 6/min) to generate AI reply suggestions via Gemini.
+    - `useAdminUsers`: Fetches and manages the user list for the admin panel with filtering, pagination, and CRUD operations.
+    - `useUserSearch`: Searches users for adding members or starting DMs.
+    - `useDebounce`: Utility debounce hook used internally by search hooks.
 - **Broadcast Channels** (defined in `routes/channels.php`):
     - `online`: Public Presence channel for tracking online users.
     - `message.channel.{channelId}`: Private channel for message broadcasting, authorized if the user is a member of that channel.
-    - `user.{userId}`: Private channel for user-specific notifications (e.g. `ChannelDeleted`, `ChannelUpdated` updates).
+    - `user.{userId}`: Private channel for user-specific notifications (e.g. `ChannelDeleted`, `ChannelUpdated`, `ChannelReadUpdated` updates).
 - **Real-Time Events**:
     - `MessageCreated`: Broadcasts on `message.channel.{channelId}` (payload: `{message: MessageResource}`) to notify others of new messages.
+    - `MessageDeleted`: Broadcasts on `message.channel.{channelId}` (payload: `{message, newLastMessage}`) — no longer client-only; uses `ShouldBroadcastNow`.
+    - `MessageReactionUpdated`: Broadcasts on `message.channel.{channelId}` (payload: `{message_id, channel_id, reactions}`) when a reaction is toggled.
     - `ChannelUpdated`: Broadcasts on `user.{userId}` to all channel members to update their sidebar list with the latest metadata and members (payload: `{channel: ...}`).
     - `ChannelDeleted`: Broadcasts on `user.{userId}` when a group is deleted (payload: `{id, name}`).
-    - Message Deletion: Triggered purely client-side via EventBus event `'message.deleted'` after calling `DELETE /messages/{message}`.
+    - `ChannelReadUpdated`: Broadcasts on `user.{userId}` when a user marks a channel as read (payload: `{channel_id, user_id, last_read_message_id}`).
 - Realtime/broadcasting plumbing exists, but channel/event wiring may be incomplete; verify end-to-end flow before claiming realtime behavior works.
 - Always unsubscribe from channels on component unmount to prevent memory leaks.
 
@@ -107,6 +118,9 @@ This project has domain-specific skills available. You MUST activate the relevan
 - **App Modals & Dialogs**:
     - `CreateOrEditGroupModal`: Accessible group creation and editing dialog under `resources/js/Components/App/`.
     - `CreateOrEditUserModal`: Accessible user management modal for administration under `resources/js/Components/App/`.
+    - `AddMemberModal`: Modal for adding a member to a group channel.
+    - `ReportMessageModal`: Modal for reporting a message (under `resources/js/Components/App/`).
+    - `AttachmentPreviewModal`: Full-screen media preview modal for images/videos/files.
 - Prefer existing components in `resources/js/Components/` over creating new UI primitives.
 
 ## Verification Scripts
@@ -129,6 +143,18 @@ This project has domain-specific skills available. You MUST activate the relevan
     - `deleted`: Recomputes `last_message_id` for the channel if and only if the deleted message was the current last message.
 - **Asynchronous Deletion Jobs**: `DeleteChannelJob` handles background group channel deletion. It collects attachment directories, zeroes out `last_message_id` to avoid foreign key constraints, deletes database records, physically deletes attachment directories from storage, detaches members, deletes the channel, and dispatches a `ChannelDeleted` event to every channel member.
 - **Mailables**: The `UserCreated` mailable (`app/Mail/UserCreated.php`) is sent automatically when an administrator creates a new user, notifying them of their account creation.
+- **Services** (`app/Services/`): Encapsulate business logic extracted from controllers.
+    - `ChannelService`: Channel creation, member management, read-tracking, and deletion orchestration.
+    - `MessageService`: Message retrieval (`getMessagesForChannel`, `searchMessages`).
+    - `MessageSuggestionService`: Delegates to `MessageSuggestionProvider` contract to generate AI suggestions.
+    - `ChunkUploadService`: Handles multi-chunk large file uploads; chunks are stored in `storage/app/` temp directories and merged on final chunk.
+    - `VideoThumbnailService`: Generates video thumbnails after upload.
+    - `PremiumCheckoutService`: Orchestrates PayPal order creation and capture for premium subscriptions.
+- **Repository Pattern** (`app/Repositories/Eloquent/`): `ChannelRepo` and `MessageRepo` wrap Eloquent queries behind interfaces in `app/Repositories/Interfaces/` for testability. Use these when adding complex query logic rather than putting raw Eloquent in controllers or services.
+- **Template Method Pattern** (`app/Patterns/TemplateMethod/DirectChannel/`): `DirectChannelCreator` (abstract), `DirectCreator`, and `E2EEDirectCreator` encapsulate the two variants of creating a direct channel (plain vs. E2EE). Do not duplicate this logic inline.
+- **Adapters** (`app/Adapters/`): `GeminiMessageSuggestionAdapter` implements `MessageSuggestionProvider` using the Gemini API. Swap adapters by rebinding the contract in a service provider.
+- **Contracts** (`app/Contracts/`): `MessageSuggestionProvider` (AI text generation) and `PaymentGateway` (payment processing). Always program to these interfaces, not concrete implementations.
+- **Payment Gateway** (`app/Services/Payments/`): `PaypalPaymentGateway` implements `PaymentGateway`. `PaymentGatewayFactory` resolves the correct gateway from config. Do not hardcode PayPal references in `PremiumController`.
 
 ## Application Structure & Architecture
 
@@ -138,11 +164,22 @@ This project has domain-specific skills available. You MUST activate the relevan
 - Backend routing utilizes `active` middleware alongside standard auth, and role-based actions (e.g., promote/demote/block) are protected by `admin` middleware.
 - Frontend is Inertia + React in `resources/js/` with pages resolved from `resources/js/Pages/**/*.tsx` in `resources/js/app.tsx`.
 - **Profile Edit Page**: The user profile management interface lives in `resources/js/Pages/Profile/Edit.tsx` and utilizes sub-components: `UpdateProfileInformationForm.tsx`, `UpdatePasswordForm.tsx`, and `DeleteUserForm.tsx`.
+- **Admin Pages**: `resources/js/Pages/Admin/Users.tsx` (user management) and `resources/js/Pages/Admin/Reports.tsx` (message report review). Routes: `GET /admin/users` (`admin.users.index`) and `GET /admin/reports` (`admin.reports.index`).
+- **Premium Page**: `resources/js/Pages/Premium/Index.tsx` — PayPal checkout flow for premium subscriptions. Routes: `GET /premium`, `POST /premium/paypal/checkout`, `POST /premium/paypal/capture/{orderId}`.
 - **Sidebar Loading Performance**: Eager loading is used to fetch channels in `HomeController@index` and `ChannelController@show`. In the frontend, selecting a channel does a partial reload via Inertia request options (e.g. updating the active channel state and reloading message data), which preserves the already loaded sidebar channels without re-fetching them from the server.
 - **Message Loading & Cursor Pagination**: `MessageController@index` supports loading older messages using cursor pagination. It queries messages with compound cursor parameters `before_id` and `before_at` to load pages smoothly and avoid duplicate/skipped messages.
+- **Message Search**: `GET /channels/{channel}/messages/search` (route name `channels.messages.search`) accepts `query` and `page` params, returns paginated `MessageResource` collection. Frontend: `useMessageSearch` hook with 350ms debounce and cancel-token management.
+- **Message Reactions**: `POST /messages/{message}/reactions` (route `messages.reactions.toggle`) — toggles emoji reactions. `MessageReaction` model stores `message_id`, `user_id`, `emoji`. On toggle, broadcasts `MessageReactionUpdated` event. `MessageReactionResource::aggregateForMessage()` groups reactions by emoji with counts and user IDs.
+- **Message Reporting**: `POST /messages/{message}/report` (route `messages.report`) stores a `MessageReport`. Admins review via `PATCH /admin/reports/{messageReport}` (route `admin.reports.review`). `MessageReportController` handles both endpoints.
+- **Chunked File Uploads**: Large files are uploaded via `POST /messages/upload-chunk` (route `messages.upload-chunk`) using `ChunkUploadService`. Frontend `UploadContext` (`resources/js/Contexts/UploadContext.tsx`) manages active upload tasks with progress tracking and cancellation. After all chunks land, the temp file is moved to public storage during `MessageController@store` when `uploaded_attachments` are present. Use `useUploads()` hook to access `uploadFile`, `cancelUpload`, `clearUpload`.
+- **Video Streaming**: `GET /attachments/{attachment}/stream` (route `attachments.stream`) — `VideoStreamController` serves media with HTTP Range Requests (206 Partial Content) for efficient video playback.
+- **AI Message Suggestions**: `POST /channels/{channel}/message-suggestions` (route `channels.message-suggestions.store`, throttle 6/min). `AiMessageSuggestionController` delegates to `MessageSuggestionService` → `MessageSuggestionProvider` interface → `GeminiMessageSuggestionAdapter`. Returns `503` when AI is unavailable (`MessageSuggestionUnavailableException`).
+- **E2EE (End-to-End Encryption)**: Direct channels can be created as E2EE via `POST /channels/secret-direct/{user}` (route `channels.secret-direct`). E2EE uses ECDH P-256 key exchange + AES-GCM-256 encryption (via Web Crypto API). Key management lives in `resources/js/utils/crypto.ts` and `resources/js/utils/key-storage.ts`. The `E2EEProvider` context (`resources/js/Contexts/E2EEContext.tsx`) exposes `encryptForUser`, `decryptForPeer`, and `isE2EEReady`. User public keys are stored server-side via `PUT /users/public-key` (route `users.key.update`, handled by `UserKeyController`). Encrypted messages have `is_encrypted: true`, `iv`, and `ciphertext` fields; `content` is stored as `null` in the DB. `useChannelSockets` automatically decrypts incoming E2EE messages before emitting them to the EventBus.
+- **Channel Read Tracking**: `POST /channels/{channel}/read` (route `channels.read`) marks a channel as read and broadcasts `ChannelReadUpdated` on the `user.{userId}` private channel. Frontend unread counts are tracked via `last_read_message_id` on `ChatItem`.
 - Authentication baseline comes from Breeze-style controllers/pages; preserve middleware and named-route patterns.
-- Global and feature-specific UI states are managed via React Context providers in `resources/js/Contexts/` (e.g., `ConfirmProvider` in `ConfirmContext.tsx` for confirmations, and `ChannelModalProvider` in `ChannelModalContext.tsx` & `UserModalProvider` in `UserModalContext.tsx` for managing channel/user modals).
+- Global and feature-specific UI states are managed via React Context providers in `resources/js/Contexts/` (e.g., `ConfirmProvider` in `ConfirmContext.tsx` for confirmations; `ChannelModalProvider`/`UserModalProvider` for modals; `E2EEProvider` for encryption state; `UploadProvider` for chunked upload task management).
 - Real-time stack uses Reverb/Echo (`configureEcho` in `resources/js/app.tsx`).
+- **Models**: `Channel`, `Message`, `MessageAttachment`, `MessageReaction`, `MessageReport`, `PremiumPayment`, `PremiumPaymentEvent`, `User`. Do NOT create a `Group` model — groups are represented by `Channel` with `type='group'`.
 - `README.md` is mostly upstream Laravel boilerplate; prioritize repository files over README assumptions.
 
 ## Frontend Bundling
