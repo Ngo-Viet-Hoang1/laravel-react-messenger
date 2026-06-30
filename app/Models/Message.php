@@ -53,4 +53,9 @@ class Message extends Model
     {
         return $this->hasMany(MessageReport::class);
     }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(MessageReaction::class);
+    }
 }

@@ -12,6 +12,7 @@ type UseChannelsReturn = {
         channelId: number,
         lastReadMessageId: number | null,
     ) => void;
+    bumpChannelToTop: (channelId: number) => void;
 };
 
 const useChannels = (
@@ -100,6 +101,21 @@ const useChannels = (
         });
     }, []);
 
+    const bumpChannelToTop = useCallback((channelId: number) => {
+        setChannelsMap((prev) => {
+            const channel = prev[channelId];
+            if (!channel) return prev;
+
+            return {
+                ...prev,
+                [channelId]: {
+                    ...channel,
+                    last_message_date: new Date().toISOString(),
+                },
+            };
+        });
+    }, []);
+
     const sortedChannels = useMemo(() => {
         return Object.values(channelsMap)
             .filter((c) => c.name?.toLocaleLowerCase().includes(search))
@@ -127,6 +143,7 @@ const useChannels = (
         updateAfterMessageDeleted,
         removeChannel,
         markChannelAsRead,
+        bumpChannelToTop,
     };
 };
 

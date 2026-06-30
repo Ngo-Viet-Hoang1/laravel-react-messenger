@@ -39,6 +39,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         ->name('channels.message-suggestions.store');
 
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
+    Route::post('/messages/{message}/reactions', [MessageController::class, 'toggleReaction'])->name('messages.reactions.toggle');
 
     Route::post('/messages/{message}/report', [MessageReportController::class, 'store'])->name('messages.report');
 

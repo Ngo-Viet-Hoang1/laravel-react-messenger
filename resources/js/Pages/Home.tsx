@@ -21,8 +21,12 @@ import {
     ChatMember,
     ChatMessage,
     ChatMessageCollection,
+    MessageReactionGroup,
 } from '@/types';
-import { MessageDeletedEvent } from '@/types/events';
+import {
+    MessageDeletedEvent,
+    MessageReactionUpdatedEvent,
+} from '@/types/events';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -62,6 +66,7 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         firstMessageDate,
         addMessage,
         markMessageDeleted,
+        updateMessageReactions,
         loadOlderMessages,
     } = useMessages(messages, selectedChannel);
 
@@ -193,6 +198,39 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         setReplyTo(message);
     }, []);
 
+    const handleReaction = useCallback(
+        async (messageId: number, emoji: string) => {
+            try {
+                const { data } = await axios.post<{
+                    message_id: number;
+                    channel_id: number;
+                    reactions: MessageReactionGroup[];
+                }>(route('messages.reactions.toggle', messageId), { emoji });
+
+                updateMessageReactions(data.message_id, data.reactions);
+
+                // Notify sidebar to bump channel to top
+                emit('message.reaction.updated', {
+                    message_id: data.message_id,
+                    channel_id: data.channel_id,
+                    reactions: data.reactions,
+                });
+            } catch {
+                emit('toast.show', 'Failed to react to message');
+            }
+        },
+        [emit, updateMessageReactions],
+    );
+
+    const handleReactionUpdated = useCallback(
+        (event: MessageReactionUpdatedEvent) => {
+            if (!selectedChannel || event.channel_id !== selectedChannel.id)
+                return;
+            updateMessageReactions(event.message_id, event.reactions);
+        },
+        [selectedChannel, updateMessageReactions],
+    );
+
     const handleScroll = useCallback(() => {
         handleChatScroll();
         syncReadState();
@@ -205,12 +243,14 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     useEffect(() => {
         const offCreated = on('message.created', handleMessageCreated);
         const offDeleted = on('message.deleted', handleMessageDeleted);
+        const offReaction = on('message.reaction.updated', handleReactionUpdated);
 
         return () => {
             offCreated();
             offDeleted();
+            offReaction();
         };
-    }, [on, handleMessageCreated, handleMessageDeleted]);
+    }, [on, handleMessageCreated, handleMessageDeleted, handleReactionUpdated]);
 
     const handleInfoToggle = useCallback((): void => {
         setShowInfo((prev) => !prev);
@@ -333,7 +373,10 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                                         isOwnMessage={
                                             message.sender_id === myId
                                         }
+                                        currentUserId={myId}
+                                        channelUsers={selectedChannel?.users}
                                         onReply={handleReply}
+                                        onReaction={handleReaction}
                                         onAttachmentClick={open}
                                     />
                                 </div>

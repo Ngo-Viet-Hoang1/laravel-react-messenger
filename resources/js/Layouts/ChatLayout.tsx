@@ -11,7 +11,7 @@ import useChannelSockets from '@/hooks/useChannelSockets';
 import useOnlinePresence from '@/hooks/useOnlinePresence';
 import useUserSearch from '@/hooks/useUserSearch';
 import { ChatItem, ChatPageProps } from '@/types';
-import { ChannelReadUpdatedEvent } from '@/types/events';
+import { ChannelReadUpdatedEvent, MessageReactionUpdatedEvent } from '@/types/events';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
@@ -36,6 +36,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         updateAfterMessageDeleted,
         markChannelAsRead,
         removeChannel,
+        bumpChannelToTop,
     } = useChannels(channels, search.toLowerCase(), Number(currentUser.id));
 
     const { results: userSearchResults, isLoading: isSearchLoadingUsers } =
@@ -69,13 +70,23 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         const offCreated = on('message.created', updateLastMessage);
         const offDeleted = on('message.deleted', updateAfterMessageDeleted);
         const offReadUpdated = on('channel.read.updated', handleReadUpdated);
+        const offReaction = on('message.reaction.updated', (event: MessageReactionUpdatedEvent) => {
+            bumpChannelToTop(event.channel_id);
+        });
 
         return () => {
             offCreated();
             offDeleted();
             offReadUpdated();
+            offReaction();
         };
-    }, [on, updateLastMessage, updateAfterMessageDeleted, handleReadUpdated]);
+    }, [
+        on,
+        updateLastMessage,
+        updateAfterMessageDeleted,
+        handleReadUpdated,
+        bumpChannelToTop,
+    ]);
 
     useEffect(() => {
         const offDeleted = on('channel.deleted', ({ id, name }) => {

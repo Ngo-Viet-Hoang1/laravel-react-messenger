@@ -4,11 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Events\MessageCreated;
 use App\Events\MessageDeleted;
+use App\Events\MessageReactionUpdated;
 use App\Http\Requests\StoreMessageRequest;
+use App\Http\Requests\ToggleReactionRequest;
+use App\Http\Resources\MessageReactionResource;
 use App\Http\Resources\MessageResource;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageAttachment;
+use App\Models\MessageReaction;
+use Illuminate\Http\JsonResponse;
 use App\Services\MessageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -49,7 +54,7 @@ class MessageController extends Controller
         $beforeAt = request()->query('before_at');
 
         $query = Message::where('channel_id', $channel->id)
-            ->with(['sender', 'attachments', 'parent.sender', 'parent.attachments']);
+            ->with(['sender', 'attachments', 'parent.sender', 'parent.attachments', 'reactions']);
 
         if ($beforeId && $beforeAt) {
             $query->where(function ($q) use ($beforeAt, $beforeId) {
@@ -146,6 +151,7 @@ class MessageController extends Controller
                 'attachments',
                 'parent.sender',
                 'parent.attachments',
+                'reactions',
             ]);
         });
 
@@ -267,6 +273,57 @@ class MessageController extends Controller
         return response()->json([
             'message' => $deletedSnapshot,
             'newLastMessage' => $newLastMessage,
+        ]);
+    }
+
+    public function toggleReaction(ToggleReactionRequest $request, Message $message): JsonResponse
+    {
+        $userId = (int) $request->user()->id;
+        $emoji = $request->validated('emoji');
+
+        $existing = MessageReaction::where('message_id', $message->id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($existing) {
+            if ($existing->emoji === $emoji) {
+                // Same emoji → remove reaction
+                $existing->delete();
+            } else {
+                // Different emoji → update to new one
+                $existing->update(['emoji' => $emoji]);
+            }
+        } else {
+            // No existing reaction → create new
+            MessageReaction::create([
+                'message_id' => $message->id,
+                'user_id' => $userId,
+                'emoji' => $emoji,
+            ]);
+        }
+
+        // Update channel last_message_id to push channel to top of sidebar
+        Channel::whereKey($message->channel_id)
+            ->where(function ($query) use ($message) {
+                $query->whereNull('last_message_id')
+                    ->orWhere('last_message_id', '<=', $message->id);
+            })
+            ->update(['last_message_id' => $message->id]);
+
+        // Reload reactions to get fresh aggregated data
+        $message->load('reactions');
+        $reactions = MessageReactionResource::aggregateForMessage($message);
+
+        broadcast(new MessageReactionUpdated(
+            $message->id,
+            $message->channel_id,
+            $reactions,
+        ))->toOthers();
+
+        return response()->json([
+            'message_id' => $message->id,
+            'channel_id' => $message->channel_id,
+            'reactions' => $reactions,
         ]);
     }
 

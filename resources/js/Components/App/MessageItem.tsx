@@ -1,4 +1,4 @@
-import { ChatMessage, MessageAttachment } from '@/types';
+import { type ChatMember, type ChatMessage, type MessageAttachment } from '@/types';
 import { formatChatTime } from '@/utils/chatTime.util';
 import React from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -6,13 +6,18 @@ import rehypeSanitize from 'rehype-sanitize';
 import CodeBlock from './CodeBlock';
 import MessageAttachments from './MessageAttachments';
 import MessageOptionsDropdown from './MessageOptionsDropdown';
+import MessageReactions from './MessageReactions';
+import ReactionPicker from './ReactionPicker';
 import ReplyPreview from './ReplyPreview';
 import UserAvatar from './UserAvatar';
 
 type Props = {
     message: ChatMessage;
     isOwnMessage?: boolean;
+    currentUserId: number;
+    channelUsers?: ChatMember[];
     onReply?: (message: ChatMessage) => void;
+    onReaction?: (messageId: number, emoji: string) => void;
     onAttachmentClick?: (
         attachments: MessageAttachment[],
         index: number,
@@ -48,13 +53,20 @@ const markdownComponents: Components = {
 const MessageItem = ({
     message,
     isOwnMessage,
+    currentUserId,
+    channelUsers = [],
     onReply,
+    onReaction,
     onAttachmentClick,
 }: Props) => {
     const sender = message.sender ?? DELETED_USER;
     const senderName = sender.name;
     const formattedTime = formatChatTime(message.created_at);
     const isDeleted = message.deleted_at != null;
+
+    const handleReaction = (emoji: string): void => {
+        onReaction?.(message.id, emoji);
+    };
 
     return (
         <div
@@ -87,13 +99,16 @@ const MessageItem = ({
                     isOwnMessage
                         ? 'chat-bubble-success text-white'
                         : 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100'
-                }`}
+                } ${!isDeleted && message.reactions?.length > 0 ? 'mb-3' : ''}`}
             >
                 <div
-                    className={`absolute top-1/2 -translate-y-1/2 ${
-                        isOwnMessage ? '-left-10' : '-right-10'
+                    className={`absolute top-1/2 flex -translate-y-1/2 items-center gap-0.5 ${
+                        isOwnMessage ? '-left-20' : '-right-20'
                     }`}
                 >
+                    {!isDeleted && (
+                        <ReactionPicker onSelectEmoji={handleReaction} />
+                    )}
                     <MessageOptionsDropdown
                         message={message}
                         onReply={onReply}
@@ -125,6 +140,20 @@ const MessageItem = ({
                         onAttachmentClick={onAttachmentClick}
                     />
                 </div>
+
+                {!isDeleted && message.reactions?.length > 0 && (
+                    <div
+                        className={`absolute -bottom-2.5 ${
+                            isOwnMessage ? 'right-1' : 'left-1'
+                        }`}
+                    >
+                        <MessageReactions
+                            reactions={message.reactions}
+                            currentUserId={currentUserId}
+                            channelUsers={channelUsers}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
