@@ -27,8 +27,8 @@ class MessageAttachmentResource extends JsonResource
             'storage_disk' => $this->storage_disk,
             'thumbnail_path' => $this->thumbnail_path,
             'url' => Storage::disk($this->storage_disk)->url($this->path),
-            'thumbnail_url' => $this->thumbnail_path ? Storage::disk($this->storage_disk)->url($this->thumbnail_path) : null,
-            'stream_url' => route('attachments.stream', $this->id),
+            'thumbnail_url' => ($this->mime === 'video/mp4' && $this->thumbnail_path) ? Storage::disk($this->storage_disk)->url($this->thumbnail_path) : null,
+            'stream_url' => $this->mime === 'video/mp4' ? route('attachments.stream', $this->id) : null,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -19,7 +19,11 @@ class VideoStreamController extends Controller
      */
     public function stream(Request $request, MessageAttachment $attachment)
     {
-        // 1. Authorization check
+        // 1. Authorization check & format check
+        if ($attachment->mime !== 'video/mp4') {
+            abort(403, 'Unauthorized');
+        }
+
         $channelId = $attachment->message?->channel_id;
         if (! $channelId) {
             abort(403, 'Unauthorized');

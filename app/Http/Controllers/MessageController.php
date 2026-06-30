@@ -6,20 +6,20 @@ use App\Events\MessageCreated;
 use App\Events\MessageDeleted;
 use App\Events\MessageReactionUpdated;
 use App\Http\Requests\StoreMessageRequest;
-use App\Http\Requests\UploadChunkRequest;
 use App\Http\Requests\ToggleReactionRequest;
+use App\Http\Requests\UploadChunkRequest;
 use App\Http\Resources\MessageReactionResource;
 use App\Http\Resources\MessageResource;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageReaction;
-use Illuminate\Http\JsonResponse;
+use App\Services\ChunkUploadService;
 use App\Services\MessageService;
+use App\Services\VideoThumbnailService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use App\Services\ChunkUploadService;
-use App\Services\VideoThumbnailService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -89,7 +89,7 @@ class MessageController extends Controller
             abort_unless($channel->is_e2ee_enabled, 422, 'Cannot send encrypted messages to a non-E2EE channel.');
             $data['content'] = null;
         }
-        if ($channel->is_e2ee_enabled && !($data['is_encrypted'] ?? false)) {
+        if ($channel->is_e2ee_enabled && ! ($data['is_encrypted'] ?? false)) {
             abort(422, 'E2EE channel requires encrypted messages.');
         }
 
@@ -102,14 +102,15 @@ class MessageController extends Controller
 
             if ($files !== []) {
                 foreach ($files as $file) {
-                    $directory = 'attachments/' . Str::random(40);
+                    $directory = 'attachments/'.Str::random(40);
                     Storage::disk('public')->makeDirectory($directory);
 
                     $path = $file->store($directory, 'public');
                     $mime = $file->getMimeType();
-                    $thumbnailPath = null;
+                    $mime = $this->determineMimeType($file->getClientOriginalName(), $mime);
 
-                    if (str_starts_with($mime, 'video/')) {
+                    $thumbnailPath = null;
+                    if ($mime === 'video/mp4') {
                         $thumbnailPath = $this->videoThumbnailService->generate($path, 'public');
                     }
 
@@ -127,14 +128,14 @@ class MessageController extends Controller
 
             if ($uploadedAttachments !== []) {
                 foreach ($uploadedAttachments as $att) {
-                    $tempPath = storage_path('app/' . $att['path']);
+                    $tempPath = storage_path('app/'.$att['path']);
                     if (file_exists($tempPath)) {
-                        $directory = 'attachments/' . Str::random(40);
+                        $directory = 'attachments/'.Str::random(40);
                         Storage::disk('public')->makeDirectory($directory);
 
                         $ext = pathinfo($att['name'], PATHINFO_EXTENSION);
-                        $filename = Str::random(40) . ($ext ? '.' . $ext : '');
-                        $finalRelativePath = $directory . '/' . $filename;
+                        $filename = Str::random(40).($ext ? '.'.$ext : '');
+                        $finalRelativePath = $directory.'/'.$filename;
                         $finalPath = Storage::disk('public')->path($finalRelativePath);
 
                         // Move the merged chunk file to its final public storage directory
@@ -147,9 +148,10 @@ class MessageController extends Controller
                         }
 
                         $mime = $att['mime'];
-                        $thumbnailPath = null;
+                        $mime = $this->determineMimeType($att['name'], $mime);
 
-                        if (str_starts_with($mime, 'video/')) {
+                        $thumbnailPath = null;
+                        if ($mime === 'video/mp4') {
                             $thumbnailPath = $this->videoThumbnailService->generate($finalRelativePath, 'public');
                         }
 
@@ -300,8 +302,8 @@ class MessageController extends Controller
         $formatAttachment = function (MessageAttachment $attachment) {
             $arr = $attachment->toArray();
             $arr['url'] = Storage::disk($attachment->storage_disk)->url($attachment->path);
-            $arr['thumbnail_url'] = $attachment->thumbnail_path ? Storage::disk($attachment->storage_disk)->url($attachment->thumbnail_path) : null;
-            $arr['stream_url'] = route('attachments.stream', $attachment->id);
+            $arr['thumbnail_url'] = ($attachment->mime === 'video/mp4' && $attachment->thumbnail_path) ? Storage::disk($attachment->storage_disk)->url($attachment->thumbnail_path) : null;
+            $arr['stream_url'] = $attachment->mime === 'video/mp4' ? route('attachments.stream', $attachment->id) : null;
 
             return $arr;
         };
@@ -333,5 +335,54 @@ class MessageController extends Controller
             'created_at' => $message->created_at?->toISOString(),
             'updated_at' => $message->updated_at?->toISOString(),
         ];
+    }
+
+    private function determineMimeType(string $name, string $detectedMime): string
+    {
+        $lowerName = strtolower($name);
+
+        $isAudio = str_starts_with($detectedMime, 'audio/') ||
+            str_starts_with($lowerName, 'audio-') ||
+            str_ends_with($lowerName, '.mp3') ||
+            str_ends_with($lowerName, '.wav') ||
+            str_ends_with($lowerName, '.m4a') ||
+            str_ends_with($lowerName, '.aac') ||
+            str_ends_with($lowerName, '.flac') ||
+            str_ends_with($lowerName, '.ogg') ||
+            str_ends_with($lowerName, '.oga');
+
+        if ($isAudio) {
+            if (str_starts_with($detectedMime, 'audio/')) {
+                return $detectedMime;
+            }
+            if (str_ends_with($lowerName, '.mp3')) {
+                return 'audio/mpeg';
+            }
+            if (str_ends_with($lowerName, '.wav')) {
+                return 'audio/wav';
+            }
+            if (str_ends_with($lowerName, '.m4a')) {
+                return 'audio/mp4';
+            }
+            if (str_ends_with($lowerName, '.aac')) {
+                return 'audio/aac';
+            }
+            if (str_ends_with($lowerName, '.flac')) {
+                return 'audio/flac';
+            }
+            if (str_ends_with($lowerName, '.ogg') || str_ends_with($lowerName, '.oga')) {
+                return 'audio/ogg';
+            }
+            if (str_ends_with($lowerName, '.webm')) {
+                return 'audio/webm';
+            }
+            if (str_ends_with($lowerName, '.mp4')) {
+                return 'audio/mp4';
+            }
+
+            return 'audio/mpeg';
+        }
+
+        return $detectedMime;
     }
 }
