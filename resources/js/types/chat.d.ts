@@ -12,6 +12,8 @@ export type ChatMember = Pick<
 
 export type MessageAttachment = DbMessageAttachment & {
     url: string;
+    thumbnail_url?: string | null;
+    stream_url?: string | null;
 };
 
 export type ParentMessage = {

@@ -7,6 +7,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VideoStreamController;
 use App\Http\Controllers\UserKeyController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +45,8 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::post('/messages/{message}/report', [MessageReportController::class, 'store'])->name('messages.report');
 
     Route::post('/messages/upload-chunk', [MessageController::class, 'uploadChunk'])->name('messages.upload-chunk');
+
+    Route::get('/attachments/{attachment}/stream', [VideoStreamController::class, 'stream'])->name('attachments.stream');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::put('/users/public-key', [UserKeyController::class, 'update'])->name('users.key.update');

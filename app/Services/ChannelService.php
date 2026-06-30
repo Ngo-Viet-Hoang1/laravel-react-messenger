@@ -82,7 +82,6 @@ class ChannelService
     {
         return $channel->loadMissing(['members:id,name,avatar_url,is_admin,blocked_at']);
     }
-
     public function markAsRead(Channel $channel, int $userId, ?int $lastReadMessageId): void
     {
         $this->channelRepo->markAsRead($channel, $userId, $lastReadMessageId);

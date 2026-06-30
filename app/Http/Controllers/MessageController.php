@@ -6,6 +6,7 @@ use App\Events\MessageCreated;
 use App\Events\MessageDeleted;
 use App\Events\MessageReactionUpdated;
 use App\Http\Requests\StoreMessageRequest;
+use App\Http\Requests\UploadChunkRequest;
 use App\Http\Requests\ToggleReactionRequest;
 use App\Http\Resources\MessageReactionResource;
 use App\Http\Resources\MessageResource;
@@ -17,6 +18,8 @@ use Illuminate\Http\JsonResponse;
 use App\Services\MessageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use App\Services\ChunkUploadService;
+use App\Services\VideoThumbnailService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,7 +27,9 @@ use Illuminate\Support\Str;
 class MessageController extends Controller
 {
     public function __construct(
-        private MessageService $messageService
+        private MessageService $messageService,
+        protected ChunkUploadService $chunkUploadService,
+        protected VideoThumbnailService $videoThumbnailService
     ) {}
 
     public function search(Request $request, Channel $channel): AnonymousResourceCollection
@@ -100,14 +105,22 @@ class MessageController extends Controller
                     $directory = 'attachments/' . Str::random(40);
                     Storage::disk('public')->makeDirectory($directory);
 
+                    $path = $file->store($directory, 'public');
+                    $mime = $file->getMimeType();
+                    $thumbnailPath = null;
+
+                    if (str_starts_with($mime, 'video/')) {
+                        $thumbnailPath = $this->videoThumbnailService->generate($path, 'public');
+                    }
+
                     MessageAttachment::create([
                         'message_id' => $message->id,
-                        'path' => $file->store($directory, 'public'),
+                        'path' => $path,
                         'name' => $file->getClientOriginalName(),
                         'size' => $file->getSize(),
-                        'mime' => $file->getClientMimeType(),
+                        'mime' => $mime,
                         'storage_disk' => 'public',
-                        'thumbnail_path' => null,
+                        'thumbnail_path' => $thumbnailPath,
                     ]);
                 }
             }
@@ -133,14 +146,21 @@ class MessageController extends Controller
                             @rmdir($tempDir);
                         }
 
+                        $mime = $att['mime'];
+                        $thumbnailPath = null;
+
+                        if (str_starts_with($mime, 'video/')) {
+                            $thumbnailPath = $this->videoThumbnailService->generate($finalRelativePath, 'public');
+                        }
+
                         MessageAttachment::create([
                             'message_id' => $message->id,
                             'path' => $finalRelativePath,
                             'name' => $att['name'],
                             'size' => (int) $att['size'],
-                            'mime' => $att['mime'],
+                            'mime' => $mime,
                             'storage_disk' => 'public',
-                            'thumbnail_path' => null,
+                            'thumbnail_path' => $thumbnailPath,
                         ]);
                     }
                 }
@@ -164,80 +184,23 @@ class MessageController extends Controller
         return new MessageResource($message);
     }
 
-    public function uploadChunk(Request $request)
+    public function uploadChunk(UploadChunkRequest $request)
     {
-        $request->validate([
-            'file_uuid' => ['required', 'string'],
-            'chunk_index' => ['required', 'integer'],
-            'total_chunks' => ['required', 'integer'],
-            'name' => ['required', 'string'],
-            'size' => ['required', 'integer'],
-            'mime' => ['required', 'string'],
-            'file' => ['required', 'file'],
-        ]);
+        try {
+            $result = $this->chunkUploadService->uploadChunk(
+                $request->input('file_uuid'),
+                (int) $request->input('chunk_index'),
+                (int) $request->input('total_chunks'),
+                $request->input('name'),
+                $request->input('mime'),
+                (int) $request->input('size'),
+                $request->file('file')
+            );
 
-        $fileUuid = $request->input('file_uuid');
-        $chunkIndex = (int) $request->input('chunk_index');
-        $totalChunks = (int) $request->input('total_chunks');
-        $fileName = $request->input('name');
-        $fileMime = $request->input('mime');
-        $fileSize = (int) $request->input('size');
-        $chunkFile = $request->file('file');
-
-        $tempDir = storage_path('app/chunks/' . $fileUuid);
-        if (!file_exists($tempDir)) {
-            mkdir($tempDir, 0777, true);
+            return response()->json($result);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        $chunkFile->move($tempDir, (string) $chunkIndex);
-
-        $uploadedCount = 0;
-        for ($i = 0; $i < $totalChunks; $i++) {
-            if (file_exists($tempDir . '/' . $i)) {
-                $uploadedCount++;
-            }
-        }
-
-        if ($uploadedCount === $totalChunks) {
-            $mergedFilePath = $tempDir . '/merged';
-            $out = fopen($mergedFilePath, 'wb');
-            if ($out === false) {
-                return response()->json(['error' => 'Failed to open output stream'], 500);
-            }
-
-            for ($i = 0; $i < $totalChunks; $i++) {
-                $chunkPath = $tempDir . '/' . $i;
-                $in = fopen($chunkPath, 'rb');
-                if ($in === false) {
-                    fclose($out);
-
-                    return response()->json(['error' => 'Failed to open chunk ' . $i], 500);
-                }
-                while ($buff = fread($in, 4096)) {
-                    fwrite($out, $buff);
-                }
-                fclose($in);
-            }
-            fclose($out);
-
-            // Clean up chunks
-            for ($i = 0; $i < $totalChunks; $i++) {
-                @unlink($tempDir . '/' . $i);
-            }
-
-            return response()->json([
-                'status' => 'completed',
-                'path' => 'chunks/' . $fileUuid . '/merged',
-                'name' => $fileName,
-                'mime' => $fileMime,
-                'size' => $fileSize,
-            ]);
-        }
-
-        return response()->json([
-            'status' => 'uploading',
-            'progress' => round(($uploadedCount / $totalChunks) * 100),
-        ]);
     }
 
     public function destroy(Message $message)
@@ -334,6 +297,30 @@ class MessageController extends Controller
     {
         $message->loadMissing(['sender', 'attachments', 'parent.sender', 'parent.attachments']);
 
+        $formatAttachment = function (MessageAttachment $attachment) {
+            $arr = $attachment->toArray();
+            $arr['url'] = Storage::disk($attachment->storage_disk)->url($attachment->path);
+            $arr['thumbnail_url'] = $attachment->thumbnail_path ? Storage::disk($attachment->storage_disk)->url($attachment->thumbnail_path) : null;
+            $arr['stream_url'] = route('attachments.stream', $attachment->id);
+
+            return $arr;
+        };
+
+        $attachmentsArray = [];
+        foreach ($message->attachments as $attachment) {
+            $attachmentsArray[] = $formatAttachment($attachment);
+        }
+
+        $parent = null;
+        if ($message->parent) {
+            $parentAttachments = [];
+            foreach ($message->parent->attachments as $attachment) {
+                $parentAttachments[] = $formatAttachment($attachment);
+            }
+            $parent = $message->parent->toArray();
+            $parent['attachments'] = $parentAttachments;
+        }
+
         return [
             'id' => $message->id,
             'content' => $message->content,
@@ -341,8 +328,8 @@ class MessageController extends Controller
             'sender_id' => $message->sender_id,
             'parent_id' => $message->parent_id,
             'sender' => $message->sender?->toArray(),
-            'parent' => $message->parent?->toArray(),
-            'attachments' => $message->attachments->toArray(),
+            'parent' => $parent,
+            'attachments' => $attachmentsArray,
             'created_at' => $message->created_at?->toISOString(),
             'updated_at' => $message->updated_at?->toISOString(),
         ];

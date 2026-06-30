@@ -17,6 +17,8 @@ type Props = {
     autoPlay?: boolean;
     onMediaClick?: MouseEventHandler;
     renderFileFallback?: ReactNode;
+    streamUrl?: string | null;
+    thumbnailUrl?: string | null;
 };
 
 const DEFAULT_CLASSNAMES = {
@@ -34,6 +36,8 @@ const AttachmentMedia = ({
     autoPlay = false,
     onMediaClick,
     renderFileFallback,
+    streamUrl,
+    thumbnailUrl,
 }: Props) => {
     const src = { mime };
     const cls = { ...DEFAULT_CLASSNAMES, ...classNames };
@@ -47,12 +51,15 @@ const AttachmentMedia = ({
     if (isVideo(src)) {
         return (
             <video
-                src={url}
                 controls
+                preload={autoPlay ? 'auto' : 'none'}
+                poster={thumbnailUrl ?? undefined}
                 autoPlay={autoPlay}
                 className={`${cls.video} scheme-light dark:scheme-dark`}
                 onClick={onMediaClick}
-            />
+            >
+                <source src={streamUrl || url} type={mime || 'video/mp4'} />
+            </video>
         );
     }
 
