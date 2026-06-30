@@ -18,6 +18,7 @@ import UserAvatar from './UserAvatar';
 type Props = {
     channel: ChatItem;
     currentUserId: number;
+    online?: boolean;
     onClose: () => void;
     onSearchClick: () => void;
     onDeleteClick: () => void;
@@ -31,6 +32,7 @@ type Props = {
 const ChannelInfoPanel = ({
     channel,
     currentUserId,
+    online = false,
     onClose,
     onSearchClick,
     onDeleteClick,
@@ -136,9 +138,6 @@ const ChannelInfoPanel = ({
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600 transition-colors group-hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 dark:group-hover:bg-red-900/30">
                                 <TrashIcon className="h-5 w-5" />
                             </div>
-                            <span className="text-xs font-medium text-red-500 group-hover:text-red-600 dark:text-red-400 dark:group-hover:text-red-300">
-                                Delete
-                            </span>
                         </button>
                     </div>
 

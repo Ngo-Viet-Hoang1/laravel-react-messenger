@@ -24,7 +24,8 @@ class ChannelController extends Controller
     public function __construct(
         private ChannelService $channelService,
         private MessageService $messageService
-    ) {}
+    ) {
+    }
 
     public function show(Channel $channel): Response
     {
@@ -81,7 +82,7 @@ class ChannelController extends Controller
 
         abort_if($authUserId === $user->id, 422, 'Cannot create DM with yourself.');
 
-        if (! auth()->user()?->is_admin) {
+        if (!auth()->user()?->is_admin) {
             abort_if($user->blocked_at !== null, 403, 'Cannot message a blocked user.');
         }
 
@@ -89,6 +90,21 @@ class ChannelController extends Controller
 
         return redirect()->route('channels.show', $channel->id);
     }
+
+    public function findOrCreateE2EEDirect(User $user): RedirectResponse
+    {
+        $authUser = auth()->user();
+        $authUserId = (int) $authUser->id;
+
+        abort_if($authUserId === $user->id, 422, 'Cannot create Secret Chat with yourself.');
+        abort_unless($authUser->public_key, 422, 'Please wait for encryption setup to complete.');
+        abort_unless($user->public_key, 422, 'This user has not set up encryption yet.');
+
+        $channel = $this->channelService->findOrCreateSecretDirect($authUserId, $user->id);
+
+        return redirect()->route('channels.show', $channel->id);
+    }
+
 
     public function getMembers(Channel $channel): JsonResponse
     {
@@ -141,14 +157,14 @@ class ChannelController extends Controller
     public function destroy(Channel $channel): JsonResponse
     {
         $user = auth()->user();
-        abort_unless($user, 403);
+        abort_unless((bool) $user, 403);
 
-        if (! $user->is_admin) {
+        if (!$user->is_admin) {
             $isMember = $user->channels()->whereKey($channel->id)->exists();
             abort_unless($isMember, 403, 'Unauthorized');
         }
 
-        if ($channel->type === 'group' && ! $user->is_admin) {
+        if ($channel->type === 'group' && !$user->is_admin) {
             $isOwner = $channel->owner_id === (int) $user->id;
             abort_unless($isOwner, 403, 'Only the channel owner can delete it.');
         }
@@ -168,7 +184,7 @@ class ChannelController extends Controller
         if ($channel->type === 'direct') {
             $peerName = $channel->members
                 ->firstWhere('id', '!=', $currentUserId)
-                ?->name;
+                    ?->name;
 
             return $peerName !== null
                 ? "Chat with \"{$peerName}\""

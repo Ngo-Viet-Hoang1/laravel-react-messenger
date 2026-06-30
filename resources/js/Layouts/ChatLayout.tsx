@@ -92,7 +92,7 @@ const ChatLayoutInner = ({ children }: { children: ReactNode }) => {
         <div className="flex h-full min-h-0 w-full overflow-hidden">
             {/* Sidebar */}
             <div
-                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 sm:flex sm:w-[280px] md:w-[320px] dark:border-slate-700 dark:bg-slate-800 ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
+                className={`min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-sm shadow-slate-900/5 sm:flex sm:w-70 md:w-[320px] dark:border-slate-700 dark:bg-slate-800 ${selectedChannel ? 'hidden sm:flex' : 'flex'}`}
             >
                 <div className="flex items-center justify-between px-3 py-2 text-lg font-semibold text-slate-800 dark:border-slate-700 dark:text-slate-100">
                     My channels

@@ -34,6 +34,7 @@ export type ChatItem = {
     name: string | null;
     description?: string | null;
     type: 'direct' | 'group';
+    is_e2ee_enabled: boolean;
 
     peer_user_id?: number | null;
     peer_is_admin?: boolean | null;

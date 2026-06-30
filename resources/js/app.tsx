@@ -6,8 +6,8 @@ import { configureEcho } from '@laravel/echo-react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { ConfirmProvider } from './Contexts/ConfirmContext';
-import { EventBusProvider } from './EventBus';
 import { UploadProvider } from './Contexts/UploadContext';
+import { EventBusProvider } from './EventBus';
 
 configureEcho({
     broadcaster: 'reverb',
