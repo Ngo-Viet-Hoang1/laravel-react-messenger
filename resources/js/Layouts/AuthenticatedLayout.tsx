@@ -9,7 +9,11 @@ import ResponsiveNavLink from '@/Components/Breeze/ResponsiveNavLink';
 import { E2EEProvider } from '@/Contexts/E2EEContext';
 import { UserModalProvider } from '@/Contexts/UserModalContext';
 import { PageProps } from '@/types';
-import { FlagIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import {
+    CreditCardIcon,
+    FlagIcon,
+    UserGroupIcon,
+} from '@heroicons/react/24/outline';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 
@@ -47,6 +51,14 @@ const AuthenticatedInner = ({
                                         <span>Reports</span>
                                     </NavLink>
                                 )}
+                                <NavLink
+                                    href={route('premium.index')}
+                                    active={route().current('premium.index')}
+                                    className="flex items-center gap-1"
+                                >
+                                    <CreditCardIcon className="inline h-4 w-4" />
+                                    <span>Premium</span>
+                                </NavLink>
                             </div>
                             <div className="hidden sm:ms-6 sm:flex sm:items-center">
                                 <HeaderUserSearch />
@@ -171,6 +183,15 @@ const AuthenticatedInner = ({
                                 </span>
                             </ResponsiveNavLink>
                         )}
+                        <ResponsiveNavLink
+                            href={route('premium.index')}
+                            active={route().current('premium.index')}
+                        >
+                            <span className="flex items-center">
+                                <CreditCardIcon className="mr-2 h-4 w-4" />
+                                Premium
+                            </span>
+                        </ResponsiveNavLink>
                     </div>
 
                     <div className="border-t border-gray-200 pt-4 pb-1 dark:border-gray-600">
