@@ -2,10 +2,6 @@ namespace MessengerApp.WebAPI.Hubs;
 
 public interface IChatClient
 {
-    Task ChannelJoined(Guid channelId);
-
-    Task ChannelLeft(Guid channelId);
-
     Task ReceiveMessage(object message);
 
     Task UserConnected(Guid userId);

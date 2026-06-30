@@ -12,6 +12,7 @@ public class TestDbContext : DbContext, IApplicationDbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Channel> Channels => Set<Channel>();
     public DbSet<ChannelMember> ChannelMembers => Set<ChannelMember>();
+    public DbSet<Message> Messages => Set<Message>();
 
     public static TestDbContext Create()
     {

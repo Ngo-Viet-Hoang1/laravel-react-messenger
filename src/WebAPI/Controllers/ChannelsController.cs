@@ -4,11 +4,16 @@ using MessengerApp.Application.Channels.Commands.GetOrCreateDirectChannel;
 using MessengerApp.Application.Channels.Common;
 using MessengerApp.Application.Channels.Queries.GetChannelById;
 using MessengerApp.Application.Channels.Queries.GetUserChannels;
+using MessengerApp.Application.Messages.Commands.SendMessage;
+using MessengerApp.Application.Messages.Common;
 using MessengerApp.Domain.Common;
 using MessengerApp.WebAPI.Common;
 using MessengerApp.WebAPI.Contracts.Channels;
+using MessengerApp.WebAPI.Contracts.Messages;
+using MessengerApp.WebAPI.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace MessengerApp.WebAPI.Controllers;
 
@@ -64,5 +69,27 @@ public class ChannelsController(ISender sender) : ApiController
         GetOrCreateDirectChannelCommand command = new(CurrentUserId, targetUserId);
         Result<ChannelDetailDto> result = await sender.Send(command, ct);
         return HandleResult(result);
+    }
+
+    [HttpPost("{channelId:guid}/messages")]
+    [ProducesResponseType(typeof(MessageDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SendMessage(
+        [FromRoute] Guid channelId,
+        [FromBody] SendMessageRequest request,
+        [FromServices] IHubContext<ChatHub, IChatClient> hubContext,
+        CancellationToken ct)
+    {
+        SendMessageCommand command = new(CurrentUserId, channelId, request.Content, request.ClientMessageId);
+        Result<MessageDto> result = await sender.Send(command, ct);
+
+        if (result.IsSuccess)
+        {
+            await hubContext.Clients.Group(ChatHub.GetChannelGroupName(channelId)).ReceiveMessage(result.Value);
+        }
+
+        return HandleCreatedResult(result);
     }
 }

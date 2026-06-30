@@ -1,5 +1,9 @@
 using System.Security.Claims;
+using MediatR;
 using MessengerApp.Application.Common.Interfaces;
+using MessengerApp.Application.Messages.Commands.SendMessage;
+using MessengerApp.Application.Messages.Common;
+using MessengerApp.Domain.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +14,7 @@ namespace MessengerApp.WebAPI.Hubs;
 public class ChatHub(
     IApplicationDbContext dbContext,
     IPresenceTracker presenceTracker,
+    ISender sender,
     ILogger<ChatHub> logger) : Hub<IChatClient>
 {
     protected Guid CurrentUserId
@@ -34,19 +39,26 @@ public class ChatHub(
             Context.Abort();
             return;
         }
-
         bool isFirstConnection = await presenceTracker.ConnectionOpenedAsync(userId, Context.ConnectionId);
-        if (isFirstConnection)
+        List<Guid> peerUserIds = await dbContext.ChannelMembers
+            .AsNoTracking()
+            .Where(m => dbContext.ChannelMembers
+                .Where(my => my.UserId == userId)
+                .Select(my => my.ChannelId)
+                .Contains(m.ChannelId) && m.UserId != userId)
+            .Select(m => m.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        if (isFirstConnection && peerUserIds.Count > 0)
         {
-            await Clients.Others.UserConnected(userId);
+            await Clients.Users(peerUserIds.Select(id => id.ToString()).ToList()).UserConnected(userId);
         }
-
-        IReadOnlyCollection<Guid> onlineUsers = await presenceTracker.GetOnlineUsersAsync();
-        await Clients.Caller.OnlineUsers(onlineUsers);
-
+        IReadOnlyCollection<Guid> allOnlineUsers = await presenceTracker.GetOnlineUsersAsync();
+        List<Guid> relevantOnlineUsers = peerUserIds.Intersect(allOnlineUsers).ToList();
+        await Clients.Caller.OnlineUsers(relevantOnlineUsers);
         await base.OnConnectedAsync();
     }
-
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         Guid userId = CurrentUserId;
@@ -55,8 +67,19 @@ public class ChatHub(
             bool isLastConnection = await presenceTracker.ConnectionClosedAsync(userId, Context.ConnectionId);
             if (isLastConnection)
             {
-                await Clients.Others.UserDisconnected(userId);
-
+                List<Guid> peerUserIds = await dbContext.ChannelMembers
+                    .AsNoTracking()
+                    .Where(m => dbContext.ChannelMembers
+                        .Where(my => my.UserId == userId)
+                        .Select(my => my.ChannelId)
+                        .Contains(m.ChannelId) && m.UserId != userId)
+                    .Select(m => m.UserId)
+                    .Distinct()
+                    .ToListAsync();
+                if (peerUserIds.Count > 0)
+                {
+                    await Clients.Users(peerUserIds.Select(id => id.ToString()).ToList()).UserDisconnected(userId);
+                }
                 try
                 {
                     await dbContext.Users
@@ -99,7 +122,6 @@ public class ChatHub(
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, GetChannelGroupName(channelId));
-        await Clients.Caller.ChannelJoined(channelId);
     }
 
     public async Task LeaveChannel(Guid channelId)
@@ -107,6 +129,28 @@ public class ChatHub(
         if (channelId == Guid.Empty) return;
 
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, GetChannelGroupName(channelId));
-        await Clients.Caller.ChannelLeft(channelId);
+    }
+
+    public async Task SendMessage(Guid channelId, string content, string? clientMessageId = null)
+    {
+        Guid userId = CurrentUserId;
+        if (userId == Guid.Empty || channelId == Guid.Empty)
+        {
+            throw new HubException("Invalid authentication or channel identifier.");
+        }
+
+        SendMessageCommand command = new(userId, channelId, content, clientMessageId);
+        Result<MessageDto> result = await sender.Send(command);
+
+        if (result.IsFailure)
+        {
+            logger.LogWarning("Message dispatch rejected for User {UserId} in Channel {ChannelId}: {ErrorCode} - {ErrorDesc}",
+                userId, channelId, result.Error.Code, result.Error.Description);
+            await Clients.Caller.HubError(result.Error.Code, result.Error.Description);
+            return;
+        }
+
+        MessageDto message = result.Value;
+        await Clients.Group(GetChannelGroupName(channelId)).ReceiveMessage(message);
     }
 }
