@@ -26,6 +26,11 @@ class MessageResource extends JsonResource
             'parent' => new MessageResource($this->whenLoaded('parent')),
             'attachments' => MessageAttachmentResource::collection($this->whenLoaded('attachments')),
             'reactions' => $this->whenLoaded('reactions', fn () => MessageReactionResource::aggregateForMessage($this->resource)),
+
+            'is_encrypted' => (bool) $this->is_encrypted,
+            'iv' => $this->iv,
+            'ciphertext' => $this->ciphertext,
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

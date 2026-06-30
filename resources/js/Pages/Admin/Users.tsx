@@ -14,7 +14,10 @@ export type AdminUsersPageProps = {
     filters: AdminUserFilters;
 };
 
-function AdminUsers({ users: initialUsers, filters: initialFilters }: AdminUsersPageProps) {
+function AdminUsers({
+    users: initialUsers,
+    filters: initialFilters,
+}: AdminUsersPageProps) {
     const { isOnline } = useOnlinePresence();
     const { openModal } = useUserModal();
     const {
@@ -37,7 +40,7 @@ function AdminUsers({ users: initialUsers, filters: initialFilters }: AdminUsers
         <>
             <Head title="User Management" />
 
-            <div className="min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white dark:bg-slate-800 xs:m-2 xs:shadow-sm">
+            <div className="min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md bg-white xs:m-2 xs:shadow-sm dark:bg-slate-800">
                 <div className="flex h-full flex-col overflow-hidden">
                     <UserFiltersBar
                         search={search}
@@ -80,9 +83,7 @@ function AdminUsers({ users: initialUsers, filters: initialFilters }: AdminUsers
 }
 
 AdminUsers.layout = (page: React.ReactNode) => (
-    <AuthenticatedLayout>
-        {page}
-    </AuthenticatedLayout>
+    <AuthenticatedLayout>{page}</AuthenticatedLayout>
 );
 
 export default AdminUsers;

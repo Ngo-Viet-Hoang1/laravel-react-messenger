@@ -2,6 +2,10 @@ export type User = {
     id: number;
     name: string;
     email: string;
+    password: string;
+    public_key: Record<string, unknown> | null;
+    public_key_fingerprint: string | null;
+    key_version: number | null;
     avatar_url?: string | null;
     email_verified_at?: string | null;
     is_admin: boolean;
@@ -13,6 +17,7 @@ export type User = {
 export type Channel = {
     id: number;
     type: 'direct' | 'group';
+    is_e2ee_enabled: boolean;
     direct_key: string | null;
     name: string | null;
     description: string | null;
@@ -37,6 +42,11 @@ export type Message = {
     parent_id: number | null;
     content: string | null;
     deleted_at?: string | null;
+
+    is_encrypted: boolean;
+    iv: string | null;
+    ciphertext: string | null;
+
     created_at: string;
     updated_at: string;
 };

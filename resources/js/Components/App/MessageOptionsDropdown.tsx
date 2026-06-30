@@ -40,7 +40,7 @@ const MessageOptionsDropdown = ({ message, onReply, isOwnMessage }: Props) => {
         <>
             <Menu as="div" className="relative z-20 flex items-center">
                 <MenuButton
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 opacity-0 transition-all hover:bg-slate-200 hover:text-slate-700 group-hover:opacity-100 data-[open]:opacity-100 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 opacity-0 transition-all group-hover:opacity-100 hover:bg-slate-200 hover:text-slate-700 data-[open]:opacity-100 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                     aria-label="Message options"
                     title="Message options"
                 >

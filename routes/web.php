@@ -7,6 +7,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserKeyController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
@@ -14,12 +15,20 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
     Route::get('/channels', [ChannelController::class, 'index'])->name('channels.index');
     Route::post('/channels', [ChannelController::class, 'store'])->name('channels.store');
+
+    Route::get('/channels/{channel}/members', [ChannelController::class, 'getMembers'])->name('channels.members');
+    Route::post('/channels/direct/{user}', [ChannelController::class, 'findOrCreateDirect'])->name('channels.direct');
+    Route::post('/channels/secret-direct/{user}', [ChannelController::class, 'findOrCreateE2EEDirect'])->name('channels.secret-direct');
+
     Route::get('/channels/{channel}', [ChannelController::class, 'show'])->name('channels.show');
     Route::put('/channels/{channel}', [ChannelController::class, 'update'])->name('channels.update');
     Route::delete('/channels/{channel}', [ChannelController::class, 'destroy'])->name('channels.destroy');
     Route::post('/channels/{channel}/read', [ChannelController::class, 'markAsRead'])->name('channels.read');
 
     Route::get('/channels/{channel}/members', [ChannelController::class, 'getMembers'])->name('channels.members');
+    Route::post('/channels/{channel}/members/{user}', [ChannelController::class, 'addMember'])->name('channels.members.add');
+    Route::delete('/channels/{channel}/members/{user}', [ChannelController::class, 'removeMember'])->name('channels.members.remove');
+    Route::get('/channels/{channel}/attachments', [ChannelController::class, 'attachments'])->name('channels.attachments');
     Route::post('/channels/direct/{user}', [ChannelController::class, 'findOrCreateDirect'])->name('channels.direct');
 
     Route::get('/channels/{channel}/messages', [MessageController::class, 'index'])->name('channels.messages');
@@ -37,6 +46,9 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::post('/messages/upload-chunk', [MessageController::class, 'uploadChunk'])->name('messages.upload-chunk');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::put('/users/public-key', [UserKeyController::class, 'update'])->name('users.key.update');
+    Route::get('/users/{user}/public-key', [UserKeyController::class, 'show'])->name('users.public-key');
+
     Route::middleware('admin')->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}/promote', [UserController::class, 'promote'])->name('users.promote');
@@ -58,4 +70,4 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

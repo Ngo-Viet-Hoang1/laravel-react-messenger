@@ -68,11 +68,11 @@ export const ConfirmProvider = ({ children }: { children: ReactNode }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="data-closed:scale-95 data-closed:opacity-0 w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all duration-200 ease-out dark:bg-slate-800"
+                            className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all duration-200 ease-out data-closed:scale-95 data-closed:opacity-0 dark:bg-slate-800"
                         >
                             <DialogTitle
                                 as="h3"
-                                className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100"
+                                className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100"
                             >
                                 {options?.title}
                             </DialogTitle>

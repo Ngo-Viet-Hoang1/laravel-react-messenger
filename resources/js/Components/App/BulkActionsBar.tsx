@@ -60,7 +60,7 @@ export default function BulkActionsBar({
     };
 
     return (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 transform px-4 w-full max-w-xl transition-all duration-300">
+        <div className="fixed bottom-6 left-1/2 z-50 w-full max-w-xl -translate-x-1/2 transform px-4 transition-all duration-300">
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/95 px-6 py-4 shadow-2xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/95">
                 <div className="flex items-center gap-3">
                     <span className="inline-flex h-6 items-center justify-center rounded-full bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
@@ -80,7 +80,7 @@ export default function BulkActionsBar({
                     <button
                         onClick={() => handleAction(onUnblock)}
                         disabled={isLoading}
-                        className="btn btn-outline btn-sm h-9 gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                        className="btn h-9 gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 btn-outline btn-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                         <LockOpenIcon className="h-3.5 w-3.5" />
                         Unblock
@@ -89,7 +89,7 @@ export default function BulkActionsBar({
                     <button
                         onClick={handleBulkBlock}
                         disabled={isLoading}
-                        className="btn btn-sm h-9 gap-1.5 rounded-lg border-none bg-gray-800 hover:bg-gray-700 text-white dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white px-3 text-xs font-semibold disabled:opacity-50"
+                        className="btn h-9 gap-1.5 rounded-lg border-none bg-gray-800 px-3 text-xs font-semibold text-white btn-sm hover:bg-gray-700 disabled:opacity-50 dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white"
                     >
                         <LockClosedIcon className="h-3.5 w-3.5" />
                         Block
@@ -98,7 +98,7 @@ export default function BulkActionsBar({
                     <button
                         onClick={handleBulkDelete}
                         disabled={isLoading}
-                        className="btn btn-error btn-sm h-9 gap-1.5 rounded-lg border-none bg-red-600 hover:bg-red-500 text-white px-3 text-xs font-semibold disabled:opacity-50"
+                        className="btn h-9 gap-1.5 rounded-lg border-none bg-red-600 px-3 text-xs font-semibold text-white btn-sm btn-error hover:bg-red-500 disabled:opacity-50"
                     >
                         <TrashIcon className="h-3.5 w-3.5" />
                         Delete
