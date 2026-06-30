@@ -100,7 +100,7 @@ class MessageController extends Controller
                         'path' => $file->store($directory, 'public'),
                         'name' => $file->getClientOriginalName(),
                         'size' => $file->getSize(),
-                        'mime' => $file->getMimeType(),
+                        'mime' => $file->getClientMimeType(),
                         'storage_disk' => 'public',
                         'thumbnail_path' => null,
                     ]);

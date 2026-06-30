@@ -25,6 +25,12 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::delete('/channels/{channel}', [ChannelController::class, 'destroy'])->name('channels.destroy');
     Route::post('/channels/{channel}/read', [ChannelController::class, 'markAsRead'])->name('channels.read');
 
+    Route::get('/channels/{channel}/members', [ChannelController::class, 'getMembers'])->name('channels.members');
+    Route::post('/channels/{channel}/members/{user}', [ChannelController::class, 'addMember'])->name('channels.members.add');
+    Route::delete('/channels/{channel}/members/{user}', [ChannelController::class, 'removeMember'])->name('channels.members.remove');
+    Route::get('/channels/{channel}/attachments', [ChannelController::class, 'attachments'])->name('channels.attachments');
+    Route::post('/channels/direct/{user}', [ChannelController::class, 'findOrCreateDirect'])->name('channels.direct');
+
     Route::get('/channels/{channel}/messages', [MessageController::class, 'index'])->name('channels.messages');
     Route::get('/channels/{channel}/messages/search', [MessageController::class, 'search'])->name('channels.messages.search');
     Route::post('/channels/{channel}/messages', [MessageController::class, 'store'])->name('channels.messages.store');

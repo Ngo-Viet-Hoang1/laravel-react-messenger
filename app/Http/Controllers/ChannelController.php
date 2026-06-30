@@ -7,6 +7,7 @@ use App\Http\Requests\StoreChannelRequest;
 use App\Http\Requests\UpdateChannelRequest;
 use App\Http\Resources\ChannelDetailResource;
 use App\Http\Resources\ChannelResource;
+use App\Http\Resources\MessageAttachmentResource;
 use App\Http\Resources\MessageResource;
 use App\Http\Resources\UserResource;
 use App\Models\Channel;
@@ -15,6 +16,7 @@ use App\Services\ChannelService;
 use App\Services\MessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Response;
 
 class ChannelController extends Controller
@@ -115,6 +117,32 @@ class ChannelController extends Controller
         return response()->json(UserResource::collection($members));
     }
 
+    public function addMember(Channel $channel, User $user): JsonResponse
+    {
+        $authUser = auth()->user();
+
+        abort_if($channel->type === 'direct', 403, 'Cannot add members to a direct channel.');
+        abort_unless($authUser?->is_admin || $channel->owner_id === (int) $authUser?->id, 403, 'Unauthorized.');
+        abort_if($channel->members()->whereKey($user->id)->exists(), 422, 'User is already a member.');
+
+        $this->channelService->addMember($channel, $user);
+
+        return response()->json(['message' => 'Member added successfully.']);
+    }
+
+    public function removeMember(Channel $channel, User $user): JsonResponse
+    {
+        $authUser = auth()->user();
+
+        abort_if($channel->type === 'direct', 403, 'Cannot remove members from a direct channel.');
+        abort_unless($authUser?->is_admin || $channel->owner_id === (int) $authUser?->id, 403, 'Unauthorized.');
+        abort_if($channel->owner_id === $user->id, 422, 'Cannot remove the channel owner.');
+
+        $this->channelService->removeMember($channel, $user);
+
+        return response()->json(['message' => 'Member removed successfully.']);
+    }
+
     public function update(UpdateChannelRequest $request, Channel $channel): RedirectResponse
     {
         abort_if($channel->type === 'direct', 403, 'Cannot edit a direct message channel.');
@@ -164,5 +192,20 @@ class ChannelController extends Controller
         }
 
         return "Channel \"{$channel->name}\"";
+    }
+
+    /**
+     * Get shared attachments (excluding audio) for the channel.
+     */
+    public function attachments(Channel $channel): AnonymousResourceCollection
+    {
+        abort_unless(
+            auth()->user()?->channels()->whereKey($channel->id)->exists(),
+            403,
+        );
+
+        $attachments = $this->channelService->getChannelAttachments($channel);
+
+        return MessageAttachmentResource::collection($attachments);
     }
 }

@@ -74,7 +74,12 @@ const AudioRecorder = ({ onFileReady, onError }: Props) => {
                 audio: true,
             });
             streamRef.current = stream;
-            const mediaRecorder = new MediaRecorder(stream);
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+                ? 'audio/webm'
+                : 'audio/mp4';
+            const ext = mimeType === 'audio/mp4' ? 'mp4' : 'webm';
+
+            const mediaRecorder = new MediaRecorder(stream, { mimeType });
             mediaRecorderRef.current = mediaRecorder;
 
             const chunks: BlobPart[] = [];
@@ -87,15 +92,12 @@ const AudioRecorder = ({ onFileReady, onError }: Props) => {
                 const timestamp = new Date()
                     .toISOString()
                     .replace(/[:.]/g, '-');
-                const mimeType = MediaRecorder.isTypeSupported('audio/webm')
-                    ? 'audio/webm'
-                    : 'audio/mp4';
                 const blob = new Blob(chunks, { type: mimeType });
-                const filename = `audio-${timestamp}-${durationSeconds}s.${mimeType.split('/')[1]}`;
+                const filename = `audio-${timestamp}-${durationSeconds}s.${ext}`;
 
                 onFileReady?.(
                     new File([blob], filename, {
-                        type: blob.type,
+                        type: mimeType,
                     }),
                 );
                 clearTimer();

@@ -18,6 +18,7 @@ import ChatLayout from '@/Layouts/ChatLayout';
 import {
     PageProps as AppPageProps,
     ChatItem,
+    ChatMember,
     ChatMessage,
     ChatMessageCollection,
 } from '@/types';
@@ -40,6 +41,9 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
     const [showSearch, setShowSearch] = useState(false);
     const [showInfo, setShowInfo] = useState(false);
+    const [localChannel, setLocalChannel] = useState<ChatItem | null>(
+        selectedChannel,
+    );
     const [highlightedMessageId, setHighlightedMessageId] = useState<
         number | null
     >(null);
@@ -82,8 +86,14 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         setReplyTo(null);
         setShowSearch(false);
         setShowInfo(false);
+        setLocalChannel(selectedChannel);
         lastScheduledReadIdRef.current = null;
     }, [selectedChannel?.id]);
+
+    // Sync localChannel when selectedChannel changes (e.g. after Inertia navigation)
+    useEffect(() => {
+        setLocalChannel(selectedChannel);
+    }, [selectedChannel]);
 
     useEffect(() => {
         return () => {
@@ -207,6 +217,12 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         setShowSearch(false);
     }, []);
 
+    const handleMembersChange = useCallback((updatedUsers: ChatMember[]) => {
+        setLocalChannel((prev) =>
+            prev ? { ...prev, users: updatedUsers } : prev,
+        );
+    }, []);
+
     const handleDeleteChannel = useCallback(async (): Promise<void> => {
         if (!selectedChannel) return;
 
@@ -271,11 +287,13 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
         );
     }
 
+    const activeChannel = localChannel ?? selectedChannel;
+
     return (
         <div className="flex h-full w-full bg-transparent">
             <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 dark:border-slate-700 dark:bg-slate-800">
                 <ChannelHeader
-                    channel={selectedChannel}
+                    channel={activeChannel}
                     online={
                         selectedChannel?.type === 'direct' &&
                         selectedChannel.peer_user_id != null
@@ -376,11 +394,12 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                 </>
             )}
 
-            {showInfo && selectedChannel && (
+            {showInfo && activeChannel && (
                 <>
                     <div className="w-2 shrink-0 bg-transparent" />
                     <ChannelInfoPanel
-                        channel={selectedChannel}
+                        channel={activeChannel}
+                        currentUserId={myId}
                         online={
                             selectedChannel.type === 'direct' &&
                             selectedChannel.peer_user_id != null
@@ -393,6 +412,8 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                             setShowSearch(true);
                         }}
                         onDeleteClick={handleDeleteChannel}
+                        onMembersChange={handleMembersChange}
+                        onAttachmentClick={open}
                     />
                 </>
             )}
