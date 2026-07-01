@@ -1,0 +1,223 @@
+services:
+  # ─── PHP-FPM ─────────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: ${APP_NAME:-laravel}_app
+    restart: unless-stopped
+    environment:
+      APP_ENV: local
+      # ── Docker service name overrides ──────────────────────────────────────
+      # .env có thể chứa localhost/127.0.0.1 (từ Laragon) nhưng trong Docker
+      # network, phải dùng tên service. Các biến ở đây override .env.
+      # DB_HOST: override để dùng service name thay 127.0.0.1
+      DB_HOST: mysql
+      # DB_DATABASE, DB_USERNAME, DB_PASSWORD: cần export ra container environment
+      # Lý do: healthcheck.sh dùng `php -r` + getenv() để check DB connection
+      # getenv() đọc OS environment, KHÔNG đọc .env file (chỉ Laravel Dotenv mới đọc file)
+      # Nếu không set ở đây → getenv() trả về empty → fallback về 'laravel'/'secret'
+      # → không khớp với DB_DATABASE=laravel-react-messenger trong .env → Access denied
+      DB_DATABASE: ${DB_DATABASE:-laravel}
+      DB_USERNAME: ${DB_USERNAME:-laravel}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+      REVERB_HOST: reverb
+    volumes:
+      - .:/var/www
+      - vendor:/var/www/vendor # Named volume: tránh cross-OS slowness
+    networks:
+      - laravel
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 10s
+      timeout: 15s
+      retries: 10
+      start_period: 120s # Đủ thời gian để composer install lần đầu
+
+  # ─── Nginx ───────────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ${APP_NAME:-laravel}_nginx
+    restart: unless-stopped
+    ports:
+      - '${APP_PORT:-8000}:80'
+    volumes:
+      - .:/var/www:ro
+      - ./docker/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - laravel
+    depends_on:
+      - app
+
+  # ─── MySQL ───────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: ${APP_NAME:-laravel}_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-laravel}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+      MYSQL_USER: ${DB_USERNAME:-laravel}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - '${FORWARD_DB_PORT:-3306}:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - laravel
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-uroot',
+          '-p${DB_ROOT_PASSWORD:-rootsecret}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ${APP_NAME:-laravel}_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '${FORWARD_REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - laravel
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Horizon (Queue Manager) ─────────────────────────────────────────────────
+  # Thay thế queue:listen / queue:work
+  # Dashboard: http://localhost:8000/horizon
+  horizon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: ${APP_NAME:-laravel}_horizon
+    restart: unless-stopped
+    command: php artisan horizon
+    environment:
+      APP_ENV: local
+      # Dùng service name Docker, không dùng localhost
+      DB_HOST: mysql
+      DB_DATABASE: ${DB_DATABASE:-laravel}
+      DB_USERNAME: ${DB_USERNAME:-laravel}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+    volumes:
+      - .:/var/www
+      - vendor:/var/www/vendor
+    networks:
+      - laravel
+    depends_on:
+      # Horizon chỉ cần Redis để xử lý jobs, không cần app healthy
+      # app có start_period: 120s → chờ app sẽ làm Horizon delay 2+ phút
+      redis: { condition: service_healthy }
+
+  # ─── Reverb (WebSocket) ──────────────────────────────────────────────────────
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: ${APP_NAME:-laravel}_reverb
+    restart: unless-stopped
+    # --host=0.0.0.0: nhận kết nối từ bên ngoài container
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080 --debug
+    environment:
+      APP_ENV: local
+      DB_HOST: mysql
+      DB_DATABASE: ${DB_DATABASE:-laravel}
+      DB_USERNAME: ${DB_USERNAME:-laravel}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+    ports:
+      - '${REVERB_PORT:-8080}:8080'
+    volumes:
+      - .:/var/www
+      - vendor:/var/www/vendor
+    networks:
+      - laravel
+    depends_on:
+      app: { condition: service_healthy }
+
+  # ─── MinIO (S3-compatible) ───────────────────────────────────────────────────
+  # Dev dùng MinIO để behavior giống production S3
+  # Khi đổi storage disk sang 's3', file upload hoạt động giống hệt prod
+  minio:
+    image: minio/minio:latest
+    container_name: ${APP_NAME:-laravel}_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
+    ports:
+      - '${MINIO_PORT:-9000}:9000' # S3 API
+      - '${MINIO_CONSOLE_PORT:-9001}:9001' # Web console
+    volumes:
+      - minio_data:/data
+    networks:
+      - laravel
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Mailpit (Mail Catcher) ──────────────────────────────────────────────────
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ${APP_NAME:-laravel}_mailpit
+    restart: unless-stopped
+    ports:
+      - '${MAIL_PORT:-1025}:1025'
+      - '${MAILPIT_UI_PORT:-8025}:8025'
+    networks:
+      - laravel
+
+  # ─── Vite ────────────────────────────────────────────────────────────────────
+  # KHUYẾN NGHỊ: Chạy Vite LOCAL (npm run dev) để HMR nhanh, tránh inotify issues
+  # Docker option (chỉ bật khi thực sự cần):
+  # vite:
+  #   image: node:22-alpine
+  #   working_dir: /app
+  #   command: sh -c "npm install && npm run dev"
+  #   ports: ["${VITE_PORT:-5173}:5173"]
+  #   volumes:
+  #     - .:/app
+  #     - node_modules:/app/node_modules
+  #   networks: [laravel]
+
+networks:
+  laravel:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  minio_data:
+  vendor:
+  # node_modules:   # Uncomment nếu dùng Vite trong Docker

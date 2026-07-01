@@ -1,0 +1,249 @@
+services:
+  # ─── PHP-FPM ─────────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: ${APP_NAME:-laravel}:${APP_VERSION:-latest}
+    container_name: ${APP_NAME:-laravel}_app
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      # Docker service names thay cho localhost
+      DB_HOST: mysql
+      # DB_DATABASE/USERNAME/PASSWORD: cần export ra container env
+      # Lý do: healthcheck.sh dùng php -r + getenv() đọc OS env, không đọc .env file
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      # REDIS_PASSWORD bắt buộc vì Redis prod dùng --requirepass
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REVERB_HOST: reverb
+    volumes:
+      - .:/var/www:ro            # Code read-only từ host (Phase 1: git pull deploy)
+      - storage_data:/var/www/storage
+      - bootstrap_cache:/var/www/bootstrap/cache
+    networks:
+      - laravel
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    # ─── Security hardening ───────────────────────────────────────────────
+    security_opt:
+      # Ngăn tiến trình leo thang quyền (setuid/setgid executables bị vô hiệu)
+      # Nếu attacker exploit được container → không thể escalate lên root
+      - no-new-privileges:true
+    cap_drop:
+      # Bỏ TẤT CẢ Linux capabilities mặc định (whitelist approach)
+      # Mặc định Docker add: NET_RAW, CHOWN, DAC_OVERRIDE, ... (quá nhiều)
+      - ALL
+    cap_add:
+      # Chỉ thêm lại những cái PHP-FPM thực sự cần:
+      # SETUID: FPM master chạy root, cần setuid để spawn workers chạy www-data
+      # SETGID: tương tự cho group
+      - SETUID
+      - SETGID
+    healthcheck:
+      test: ['CMD', '/healthcheck.sh']
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+
+  # ─── Nginx (với rate limiting) ───────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ${APP_NAME:-laravel}_nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./public:/var/www/public:ro # Serve static files trực tiếp
+      - ./docker/nginx/prod/nginx.conf:/etc/nginx/nginx.conf:ro # Override http block
+      - ./docker/nginx/prod/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Uncomment khi có SSL:
+      # - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - laravel
+    depends_on:
+      - app
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      # Nginx master cần bind port 80/443 (port dưới 1024 cần NET_BIND_SERVICE)
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+
+  # ─── MySQL ───────────────────────────────────────────────────────────────────
+  # Production tip: thay bằng managed service (RDS, PlanetScale) và xóa service này
+  mysql:
+    image: mysql:8.0
+    container_name: ${APP_NAME:-laravel}_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - laravel
+    # Không expose port ra ngoài trong production
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-uroot',
+          '-p${DB_ROOT_PASSWORD}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─── Redis ───────────────────────────────────────────────────────────────────
+  # Production tip: thay bằng ElastiCache/Upstash và xóa service này
+  redis:
+    image: redis:7-alpine
+    container_name: ${APP_NAME:-laravel}_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - laravel
+    # Không expose port ra ngoài trong production
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Horizon ─────────────────────────────────────────────────────────────────
+  horizon:
+    image: ${APP_NAME:-laravel}:${APP_VERSION:-latest}
+    container_name: ${APP_NAME:-laravel}_horizon
+    restart: unless-stopped
+    command: php artisan horizon
+    environment:
+      APP_ENV: production
+      DB_HOST: mysql
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - .:/var/www:ro
+      - storage_data:/var/www/storage
+      - bootstrap_cache:/var/www/bootstrap/cache
+    networks:
+      - laravel
+    depends_on:
+      # Horizon chỉ cần Redis (queue driver), không cần app healthy
+      redis: { condition: service_healthy }
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+
+  # ─── Reverb ──────────────────────────────────────────────────────────────────
+  # REVERB_SCALING_ENABLED=true trong .env → Redis pub/sub sync
+  # Khi scale lên 2+ replicas, chúng sync qua Redis tự động
+  reverb:
+    image: ${APP_NAME:-laravel}:${APP_VERSION:-latest}
+    container_name: ${APP_NAME:-laravel}_reverb
+    restart: unless-stopped
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    # Prod: không dùng --debug (verbose output không cần thiết)
+    environment:
+      APP_ENV: production
+      DB_HOST: mysql
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - '${REVERB_PORT:-8080}:8080'
+    volumes:
+      - .:/var/www:ro
+      - storage_data:/var/www/storage
+      - bootstrap_cache:/var/www/bootstrap/cache
+    networks:
+      - laravel
+    depends_on:
+      # Reverb cần Redis (pub/sub scaling) và app healthy (config cache)
+      app: { condition: service_healthy }
+    # Scale Reverb nếu cần (REVERB_SCALING_ENABLED=true trong .env):
+    # deploy:
+    #   replicas: 2
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+
+  # ─── Scheduler ───────────────────────────────────────────────────────────────
+  # schedule:work chạy scheduler mỗi phút (Laravel 10+)
+  # Thay thế crontab truyền thống
+  scheduler:
+    image: ${APP_NAME:-laravel}:${APP_VERSION:-latest}
+    container_name: ${APP_NAME:-laravel}_scheduler
+    restart: unless-stopped
+    # schedule:work chạy scheduler mỗi phút (Laravel 10+), thay crontab
+    command: php artisan schedule:work
+    environment:
+      APP_ENV: production
+      DB_HOST: mysql
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - .:/var/www:ro
+      - storage_data:/var/www/storage
+      - bootstrap_cache:/var/www/bootstrap/cache
+    networks:
+      - laravel
+    depends_on:
+      app: { condition: service_healthy }
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+
+networks:
+  laravel:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  storage_data:
+  bootstrap_cache:

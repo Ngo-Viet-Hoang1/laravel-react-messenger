@@ -1,0 +1,36 @@
+.env
+.env.*
+!.env.example
+.env.laragon.backup
+.env.docker
+
+.git
+.gitignore
+.gitattributes
+
+node_modules/
+vendor/
+
+public/storage
+storage/app/public/*
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# ─── Dev tools ───────────────────────────────────────────────────────────────
+tests/
+# docker/
+compose.*.yml
+docker-compose*.yml
+Dockerfile
+.phpunit*
+.php-cs-fixer*
+phpstan*
+*.md
+Makefile
+
+# ─── IDE ─────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
