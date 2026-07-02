@@ -18,55 +18,74 @@ public static class DbInitializer
     {
         try
         {
-            var hashedPassword = passwordHasher.HashPassword(DefaultPassword);
+            // Short-circuit: skip immediately if core data already exists (<2ms)
+            bool isAlreadySeeded = await context.Users
+                .AsNoTracking()
+                .AnyAsync(u => u.Email == "admin@messenger.local", ct);
 
-            var coreUsers = new (string Username, string Email)[]
+            if (isAlreadySeeded)
             {
+                bool hasChannels = await context.Channels
+                    .AsNoTracking()
+                    .AnyAsync(c => c.Type == ChannelType.Group, ct);
+
+                if (hasChannels) return;
+            }
+
+            string hashedPassword = passwordHasher.HashPassword(DefaultPassword);
+
+            (string Username, string Email)[] coreUsers =
+            [
                 ("admin_user", "admin@messenger.local"),
                 ("alex_rivers", "alex.rivers@messenger.local"),
                 ("sarah_connor", "sarah.connor@messenger.local"),
                 ("david_kim", "david.kim@messenger.local"),
                 ("elena_rostova", "elena.rostova@messenger.local"),
-            };
+            ];
 
-            var dummyNames = new[]
-            {
+            string[] dummyNames =
+            [
                 "marcus_vance", "liam_nguyen", "chloe_zhao", "maya_patel", "jordan_taylor",
                 "noah_centineo", "lucas_mendes", "sophia_chen", "emily_blunt", "alan_turing",
                 "grace_hopper", "james_wilson", "zoe_saldana", "evelyn_cross", "oliver_twist",
                 "isabella_rossi", "ethan_hunt", "daniel_craig", "nathan_drake", "mia_khalid",
                 "ava_maxwell", "emma_watson", "william_shakespeare", "harper_lee", "benjamin_button",
                 "henry_ford", "abigail_adams", "matthew_mcconaughey", "tom_hanks", "scarlett_johansson"
-            };
+            ];
 
-            var allDefinitions = coreUsers
+            List<(string Username, string Email)> allDefinitions = coreUsers
                 .Concat(dummyNames.Select(name => (Username: name, Email: $"{name.Replace('_', '.')}@messenger.local")))
                 .ToList();
 
-            var userMap = new Dictionary<string, User>(StringComparer.OrdinalIgnoreCase);
+            List<User> existingUsers = await context.Users
+                .Where(u => !u.IsDeleted)
+                .ToListAsync(ct);
 
-            foreach (var def in allDefinitions)
+            Dictionary<string, User> userMap = existingUsers.ToDictionary(u => u.Username, StringComparer.OrdinalIgnoreCase);
+            List<User> newUsers = [];
+
+            foreach ((string Username, string Email) def in allDefinitions)
             {
-                var existingUser = await context.Users
-                    .FirstOrDefaultAsync(u => u.Email == def.Email || u.Username == def.Username, ct);
-
-                if (existingUser == null)
+                if (!userMap.TryGetValue(def.Username, out User? user))
                 {
-                    var avatarUrl = $"https://api.dicebear.com/7.x/avataaars/svg?seed={def.Username}";
-                    existingUser = User.Create(def.Email, def.Username, hashedPassword, avatarUrl);
-                    context.Users.Add(existingUser);
+                    string avatarUrl = $"https://api.dicebear.com/7.x/avataaars/svg?seed={def.Username}";
+                    user = User.Create(def.Email, def.Username, hashedPassword, avatarUrl);
+                    newUsers.Add(user);
+                    userMap[def.Username] = user;
                 }
-
-                userMap[def.Username] = existingUser;
             }
 
-            await context.SaveChangesAsync(ct);
-
-            var allUsers = await context.Users.Where(u => !u.IsDeleted).ToListAsync(ct);
-            var leadUser = userMap.GetValueOrDefault("alex_rivers") ?? allUsers.First();
-
-            var channelDefs = new (string Name, string Description, bool IsCompanyWide)[]
+            if (newUsers.Count > 0)
             {
+                await context.Users.AddRangeAsync(newUsers, ct);
+                await context.SaveChangesAsync(ct);
+            }
+
+            List<User> allUsers = userMap.Values.ToList();
+            User leadUser = userMap.GetValueOrDefault("alex_rivers") ?? allUsers.First();
+
+            (string Name, string Description, bool IsCompanyWide)[] channelDefs =
+            [
                 ("general", "Company-wide discussions and office banter", true),
                 ("announcements", "Official updates, releases and town halls", true),
                 ("frontend-craft", "React, TypeScript, Tailwind and UI/UX delights", false),
@@ -77,63 +96,96 @@ public static class DbInitializer
                 ("ai-machine-learning", "LLM integrations, embeddings and AI features", false),
                 ("random", "Non-work chats, memes and casual coffee talk", true),
                 ("gaming-lounge", "PC gaming, console favorites and Friday game nights", true),
-            };
+            ];
 
-            foreach (var ch in channelDefs)
+            List<Channel> existingChannels = await context.Channels
+                .Include(c => c.Members)
+                .Where(c => c.Type == ChannelType.Group && !c.IsDeleted)
+                .ToListAsync(ct);
+
+            Dictionary<string, Channel> channelMap = existingChannels.ToDictionary(c => c.Name!, StringComparer.OrdinalIgnoreCase);
+            List<Channel> newChannels = [];
+            List<ChannelMember> newMembers = [];
+
+            foreach ((string Name, string Description, bool IsCompanyWide) ch in channelDefs)
             {
-                var existingChannel = await context.Channels
-                    .FirstOrDefaultAsync(c => c.Type == ChannelType.Group && c.Name == ch.Name, ct);
-
-                if (existingChannel == null)
+                if (!channelMap.TryGetValue(ch.Name, out Channel? channel))
                 {
-                    var avatarUrl = $"https://api.dicebear.com/7.x/identicon/svg?seed={ch.Name}";
-                    existingChannel = Channel.CreateGroup(ch.Name, leadUser.Id, ch.Description, avatarUrl);
-                    context.Channels.Add(existingChannel);
-                    await context.SaveChangesAsync(ct);
+                    string avatarUrl = $"https://api.dicebear.com/7.x/identicon/svg?seed={ch.Name}";
+                    channel = Channel.CreateGroup(ch.Name, leadUser.Id, ch.Description, avatarUrl);
+                    newChannels.Add(channel);
+                    channelMap[ch.Name] = channel;
                 }
 
-                var targetMembers = ch.IsCompanyWide ? allUsers : allUsers.Take(15);
+                HashSet<Guid> existingMemberIds = channel.Members.Select(m => m.UserId).ToHashSet();
+                IEnumerable<User> targetMembers = ch.IsCompanyWide ? allUsers : allUsers.Take(15);
 
-                foreach (var member in targetMembers)
+                foreach (User member in targetMembers)
                 {
-                    var isAlreadyMember = await context.ChannelMembers
-                        .AnyAsync(m => m.ChannelId == existingChannel.Id && m.UserId == member.Id, ct);
-
-                    if (!isAlreadyMember)
+                    if (existingMemberIds.Add(member.Id))
                     {
-                        var role = member.Id == leadUser.Id ? ChannelMemberRole.Owner : ChannelMemberRole.Member;
-                        var memberEntity = new ChannelMember(existingChannel.Id, member.Id, role);
-                        context.Entry(memberEntity).State = EntityState.Added;
+                        ChannelMemberRole role = member.Id == leadUser.Id ? ChannelMemberRole.Owner : ChannelMemberRole.Member;
+                        newMembers.Add(new ChannelMember(channel.Id, member.Id, role));
                     }
                 }
             }
 
-            await context.SaveChangesAsync(ct);
-
-            var directPartners = new[]
+            if (newChannels.Count > 0)
             {
+                await context.Channels.AddRangeAsync(newChannels, ct);
+            }
+
+            if (newMembers.Count > 0)
+            {
+                await context.ChannelMembers.AddRangeAsync(newMembers, ct);
+            }
+
+            if (newChannels.Count > 0 || newMembers.Count > 0)
+            {
+                await context.SaveChangesAsync(ct);
+            }
+
+            string[] directPartners =
+            [
                 "sarah_connor", "david_kim", "elena_rostova", "marcus_vance",
                 "chloe_zhao", "liam_nguyen", "jordan_taylor", "maya_patel"
-            };
+            ];
 
-            foreach (var partnerName in directPartners)
+            List<Channel> existingDirectChannels = await context.Channels
+                .Include(c => c.Members)
+                .Where(c => c.Type == ChannelType.Direct && !c.IsDeleted)
+                .ToListAsync(ct);
+
+            HashSet<string> existingDirectPairs = [];
+            foreach (Channel directChannel in existingDirectChannels)
             {
-                if (!userMap.TryGetValue(partnerName, out var partner)) continue;
-
-                var directExists = await context.Channels
-                    .Where(c => c.Type == ChannelType.Direct && !c.IsDeleted)
-                    .AnyAsync(c =>
-                        c.Members.Any(m => m.UserId == leadUser.Id) &&
-                        c.Members.Any(m => m.UserId == partner.Id), ct);
-
-                if (!directExists)
+                List<Guid> memberIds = directChannel.Members.Select(m => m.UserId).OrderBy(id => id).ToList();
+                if (memberIds.Count == 2)
                 {
-                    context.Channels.Add(Channel.CreateDirect(leadUser.Id, partner.Id));
+                    existingDirectPairs.Add($"{memberIds[0]}_{memberIds[1]}");
                 }
             }
 
-            await context.SaveChangesAsync(ct);
-            logger?.LogInformation("Database seeded successfully ({Users} users, {Channels} groups).", allUsers.Count, channelDefs.Length);
+            List<Channel> newDirectChannels = [];
+            foreach (string partnerName in directPartners)
+            {
+                if (!userMap.TryGetValue(partnerName, out User? partner)) continue;
+
+                string pairKey = leadUser.Id.CompareTo(partner.Id) < 0
+                    ? $"{leadUser.Id}_{partner.Id}"
+                    : $"{partner.Id}_{leadUser.Id}";
+
+                if (existingDirectPairs.Add(pairKey))
+                {
+                    newDirectChannels.Add(Channel.CreateDirect(leadUser.Id, partner.Id));
+                }
+            }
+
+            if (newDirectChannels.Count > 0)
+            {
+                await context.Channels.AddRangeAsync(newDirectChannels, ct);
+                await context.SaveChangesAsync(ct);
+            }
         }
         catch (Exception ex)
         {

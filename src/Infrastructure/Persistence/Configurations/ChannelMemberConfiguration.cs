@@ -26,5 +26,7 @@ public class ChannelMemberConfiguration : IEntityTypeConfiguration<ChannelMember
             .WithMany()
             .HasForeignKey(m => m.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasQueryFilter(m => !m.Channel.IsDeleted);
     }
 }
