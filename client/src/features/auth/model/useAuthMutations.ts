@@ -2,8 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, type LoginDto, type RegisterDto } from '../api/authApi';
 import { authKeys } from '../api/authQueries';
 import { useAppDispatch } from '@/app/store';
-import { setAuth, clearAuth } from '@/entities/user';
+import { setAuth, clearAuth, usePresenceStore } from '@/entities/user';
 import { sessionHint } from '@/shared/lib/sessionHint';
+import { stopSignalRConnection } from '@/shared/lib/signalr';
 import { toast } from 'sonner';
 
 export const useLoginMutation = (options?: {
@@ -85,21 +86,30 @@ export const useLogoutMutation = () => {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
 
+  const handleCleanup = () => {
+    stopSignalRConnection().catch((err) => {
+      console.warn('[SignalR] Error closing connection on logout:', err);
+    });
+    usePresenceStore.getState().setOnlineUsers([]);
+    sessionHint.clearSession();
+    dispatch(clearAuth());
+    queryClient.clear();
+  };
+
   return useMutation({
-    mutationFn: () => authApi.logout(),
+    mutationFn: async () => {
+      await stopSignalRConnection().catch(() => {});
+      return authApi.logout();
+    },
     meta: {
       suppressToast: true,
     },
     onSuccess: () => {
-      sessionHint.clearSession();
-      dispatch(clearAuth());
-      queryClient.clear();
+      handleCleanup();
       toast.info('You have been logged out.');
     },
     onError: () => {
-      sessionHint.clearSession();
-      dispatch(clearAuth());
-      queryClient.clear();
+      handleCleanup();
     },
   });
 };
