@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use RuntimeException;
 
 class ChunkUploadService
@@ -30,53 +32,75 @@ class ChunkUploadService
         int $fileSize,
         UploadedFile $chunkFile
     ): array {
-        $tempDir = storage_path('app/chunks/'.$fileUuid);
-        if (! file_exists($tempDir)) {
-            mkdir($tempDir, 0777, true);
+        $tempDir = storage_path('app/chunks/' . $fileUuid);
+
+        if (!is_dir($tempDir)) {
+            try {
+                File::ensureDirectoryExists($tempDir);
+            } catch (\Throwable $e) {
+                if (!is_dir($tempDir)) {
+                    throw $e;
+                }
+            }
         }
 
         $chunkFile->move($tempDir, (string) $chunkIndex);
 
         $uploadedCount = 0;
         for ($i = 0; $i < $totalChunks; $i++) {
-            if (file_exists($tempDir.'/'.$i)) {
+            if (file_exists($tempDir . '/' . $i)) {
                 $uploadedCount++;
             }
         }
 
         if ($uploadedCount === $totalChunks) {
-            $mergedFilePath = $tempDir.'/merged';
-            $out = fopen($mergedFilePath, 'wb');
-            if ($out === false) {
-                throw new RuntimeException('Failed to open output stream');
-            }
+            $lock = Cache::lock('merge-chunks-' . $fileUuid, 30);
 
-            for ($i = 0; $i < $totalChunks; $i++) {
-                $chunkPath = $tempDir.'/'.$i;
-                $in = fopen($chunkPath, 'rb');
-                if ($in === false) {
-                    fclose($out);
-                    throw new RuntimeException('Failed to open chunk '.$i);
-                }
-                while ($buff = fread($in, 4096)) {
-                    fwrite($out, $buff);
-                }
-                fclose($in);
-            }
-            fclose($out);
+            try {
+                $result = $lock->block(30, function () use ($tempDir, $fileUuid, $fileName, $fileMime, $fileSize, $totalChunks) {
+                    $mergedFilePath = $tempDir . '/merged';
 
-            // Clean up chunks
-            for ($i = 0; $i < $totalChunks; $i++) {
-                @unlink($tempDir.'/'.$i);
-            }
+                    if (!file_exists($mergedFilePath)) {
+                        $out = fopen($mergedFilePath, 'wb');
+                        if ($out === false) {
+                            throw new RuntimeException('Failed to open output stream');
+                        }
 
-            return [
-                'status' => 'completed',
-                'path' => 'chunks/'.$fileUuid.'/merged',
-                'name' => $fileName,
-                'mime' => $fileMime,
-                'size' => $fileSize,
-            ];
+                        for ($i = 0; $i < $totalChunks; $i++) {
+                            $chunkPath = $tempDir . '/' . $i;
+                            if (!file_exists($chunkPath)) {
+                                fclose($out);
+                                throw new RuntimeException('Missing chunk file: ' . $i);
+                            }
+
+                            $in = fopen($chunkPath, 'rb');
+                            if ($in === false) {
+                                fclose($out);
+                                throw new RuntimeException('Failed to open chunk ' . $i);
+                            }
+
+                            stream_copy_to_stream($in, $out);
+                            fclose($in);
+                        }
+                        fclose($out);
+
+                        for ($i = 0; $i < $totalChunks; $i++) {
+                            @unlink($tempDir . '/' . $i);
+                        }
+                    }
+
+                    return [
+                        'status' => 'completed',
+                        'path' => 'chunks/' . $fileUuid . '/merged',
+                        'name' => $fileName,
+                        'mime' => $fileMime,
+                        'size' => $fileSize,
+                    ];
+                });
+
+                return $result;
+            } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+            }
         }
 
         return [
