@@ -54,7 +54,7 @@ export const getSignalRConnection = (): HubConnection => {
   return hubConnection;
 };
 
-export const startSignalRConnection = async (maxInitialRetries = 3): Promise<HubConnection> => {
+export const startSignalRConnection = async (): Promise<HubConnection> => {
   const token = onGetToken?.();
   if (!token) {
     throw new Error('[SignalR] Cannot connect without an access token.');
@@ -70,48 +70,25 @@ export const startSignalRConnection = async (maxInitialRetries = 3): Promise<Hub
     return startPromise;
   }
 
-  const executeStartWithRetry = async (): Promise<HubConnection> => {
-    let attempt = 0;
-    while (attempt < maxInitialRetries) {
-      try {
-        if (connection.state === HubConnectionState.Connected) {
-          return connection;
-        }
-
+  startPromise = (async () => {
+    try {
+      if (connection.state === HubConnectionState.Disconnected) {
         await connection.start();
-        return connection;
-      } catch (err) {
-        attempt++;
-        if (attempt >= maxInitialRetries) {
-          console.error(`[SignalR] Connection failed after ${maxInitialRetries} attempts:`, err);
-          throw err;
-        }
-
-        const delayMs = attempt * 1000;
-        console.warn(`[SignalR] Start attempt ${attempt} failed, retrying in ${delayMs}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
+      return connection;
+    } catch (err) {
+      console.error('[SignalR] Connection start failed:', err);
+      throw err;
+    } finally {
+      startPromise = null;
     }
-    return connection;
-  };
-
-  startPromise = executeStartWithRetry().finally(() => {
-    startPromise = null;
-  });
+  })();
 
   return startPromise;
 };
 
 export const stopSignalRConnection = async (): Promise<void> => {
-  if (startPromise) {
-    try {
-      await startPromise;
-    } catch (err) {
-      console.warn('[SignalR] In-flight start failed prior to stop:', err);
-    }
-  }
-
-  if (hubConnection && hubConnection.state !== HubConnectionState.Disconnected) {
+  if (hubConnection && hubConnection.state === HubConnectionState.Connected) {
     await hubConnection.stop();
   }
 };

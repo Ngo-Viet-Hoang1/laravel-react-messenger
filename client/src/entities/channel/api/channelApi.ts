@@ -13,6 +13,9 @@ export const channelApi = {
 
   getOrCreateDirectChannel: (targetUserId: string): Promise<ChannelDetail> =>
     api.post<ChannelDetail>(`/Channels/direct/${targetUserId}`),
+
+  markAsRead: (channelId: string): Promise<void> =>
+    api.post<void>(`/Channels/${channelId}/read`),
 };
 
 

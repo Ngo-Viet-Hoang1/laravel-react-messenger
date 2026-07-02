@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { channelApi } from './channelApi';
 import { channelKeys } from './channelQueries';
-import type { ChannelDetail, CreateChannelPayload } from '../model/types';
+import type { ChannelDetail, ChannelSummary, CreateChannelPayload } from '../model/types';
 
 export interface UseCreateChannelMutationOptions {
   onSuccess?: (channel: ChannelDetail) => void;
@@ -42,6 +42,24 @@ export const useStartDirectChatMutation = (options?: UseStartDirectChatMutationO
     },
     onError: (error: unknown) => {
       options?.onError?.(error);
+    },
+  });
+};
+
+export const useMarkAsReadMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (channelId: string) => channelApi.markAsRead(channelId),
+    onMutate: async (channelId: string) => {
+      queryClient.setQueryData<ChannelSummary[]>(channelKeys.lists(), (old = []) =>
+        old.map((ch) =>
+          ch.id === channelId ? { ...ch, unreadCount: 0, hasUnread: false } : ch
+        )
+      );
+    },
+    onError: (err) => {
+      console.warn('[Channel] Failed to mark as read in DB:', err);
     },
   });
 };

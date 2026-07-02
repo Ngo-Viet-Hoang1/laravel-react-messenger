@@ -38,6 +38,15 @@ export const SidebarChannels: React.FC<SidebarChannelsProps> = ({ className = ''
       }
     }
 
+    const sortByActivity = (a: ChannelSummary, b: ChannelSummary) => {
+      const timeA = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : new Date(a.createdAt).getTime();
+      const timeB = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : new Date(b.createdAt).getTime();
+      return timeB - timeA;
+    };
+
+    groups.sort(sortByActivity);
+    directs.sort(sortByActivity);
+
     return { groupChannels: groups, directChannels: directs };
   }, [channels, searchTerm]);
 

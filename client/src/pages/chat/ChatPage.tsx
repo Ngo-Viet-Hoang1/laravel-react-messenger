@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
-import { ChatPane } from '@/widgets/chat-pane';
+import { ChatWindow } from '@/widgets/chat-window';
 import { MessageSquareDashed, Hash, MessageCircle } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { useModalStore } from '@/shared/model/useModalStore';
@@ -43,6 +43,6 @@ export const ChatPage: React.FC = () => {
     );
   }
 
-  return <ChatPane channelId={channelId} />;
+  return <ChatWindow channelId={channelId} />;
 };
 

@@ -1,5 +1,9 @@
+import type { components } from '@/shared/api';
+
+export type SignalRMessageDto = components['schemas']['MessageDto'];
+
 export interface ChatClientEvents {
-  ReceiveMessage: (message: unknown) => void;
+  ReceiveMessage: (message: SignalRMessageDto) => void;
   UserConnected: (userId: string) => void;
   UserDisconnected: (userId: string) => void;
   OnlineUsers: (userIds: string[]) => void;
