@@ -28,8 +28,6 @@ public class ChatHub(
         }
     }
 
-    public static string GetChannelGroupName(Guid channelId) => $"channel:{channelId}";
-
     public override async Task OnConnectedAsync()
     {
         Guid userId = CurrentUserId;
@@ -39,57 +37,71 @@ public class ChatHub(
             Context.Abort();
             return;
         }
-        bool isFirstConnection = await presenceTracker.ConnectionOpenedAsync(userId, Context.ConnectionId);
-        List<Guid> peerUserIds = await dbContext.ChannelMembers
-            .AsNoTracking()
-            .Where(m => dbContext.ChannelMembers
-                .Where(my => my.UserId == userId)
-                .Select(my => my.ChannelId)
-                .Contains(m.ChannelId) && m.UserId != userId)
-            .Select(m => m.UserId)
-            .Distinct()
-            .ToListAsync();
 
-        if (isFirstConnection && peerUserIds.Count > 0)
+        try
         {
-            await Clients.Users(peerUserIds.Select(id => id.ToString()).ToList()).UserConnected(userId);
+            bool isFirstConnection = await presenceTracker.ConnectionOpenedAsync(userId, Context.ConnectionId);
+            List<Guid> peerUserIds = await dbContext.ChannelMembers
+                .AsNoTracking()
+                .Where(m => dbContext.ChannelMembers
+                    .Where(my => my.UserId == userId)
+                    .Select(my => my.ChannelId)
+                    .Contains(m.ChannelId) && m.UserId != userId)
+                .Select(m => m.UserId)
+                .Distinct()
+                .ToListAsync(Context.ConnectionAborted);
+
+            if (isFirstConnection && peerUserIds.Count > 0)
+            {
+                await Clients.Users(peerUserIds.Select(id => id.ToString()).ToList()).UserConnected(userId);
+            }
+            IReadOnlyCollection<Guid> allOnlineUsers = await presenceTracker.GetOnlineUsersAsync();
+            List<Guid> relevantOnlineUsers = peerUserIds.Intersect(allOnlineUsers).ToList();
+            await Clients.Caller.OnlineUsers(relevantOnlineUsers);
+
+            await base.OnConnectedAsync();
         }
-        IReadOnlyCollection<Guid> allOnlineUsers = await presenceTracker.GetOnlineUsersAsync();
-        List<Guid> relevantOnlineUsers = peerUserIds.Intersect(allOnlineUsers).ToList();
-        await Clients.Caller.OnlineUsers(relevantOnlineUsers);
-        await base.OnConnectedAsync();
+        catch (OperationCanceledException)
+        {
+            logger.LogDebug("Connection setup was canceled for {ConnectionId}", Context.ConnectionId);
+        }
     }
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         Guid userId = CurrentUserId;
         if (userId != Guid.Empty)
         {
-            bool isLastConnection = await presenceTracker.ConnectionClosedAsync(userId, Context.ConnectionId);
-            if (isLastConnection)
+            try
             {
-                List<Guid> peerUserIds = await dbContext.ChannelMembers
-                    .AsNoTracking()
-                    .Where(m => dbContext.ChannelMembers
-                        .Where(my => my.UserId == userId)
-                        .Select(my => my.ChannelId)
-                        .Contains(m.ChannelId) && m.UserId != userId)
-                    .Select(m => m.UserId)
-                    .Distinct()
-                    .ToListAsync();
-                if (peerUserIds.Count > 0)
+                bool isLastConnection = await presenceTracker.ConnectionClosedAsync(userId, Context.ConnectionId);
+                if (isLastConnection)
                 {
-                    await Clients.Users(peerUserIds.Select(id => id.ToString()).ToList()).UserDisconnected(userId);
-                }
-                try
-                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    CancellationToken timeoutCt = cts.Token;
+
+                    List<Guid> peerUserIds = await dbContext.ChannelMembers
+                        .AsNoTracking()
+                        .Where(m => dbContext.ChannelMembers
+                            .Where(my => my.UserId == userId)
+                            .Select(my => my.ChannelId)
+                            .Contains(m.ChannelId) && m.UserId != userId)
+                        .Select(m => m.UserId)
+                        .Distinct()
+                        .ToListAsync(timeoutCt);
+
+                    if (peerUserIds.Count > 0)
+                    {
+                        await Clients.Users(peerUserIds.Select(id => id.ToString()).ToList()).UserDisconnected(userId);
+                    }
+
                     await dbContext.Users
                         .Where(u => u.Id == userId)
-                        .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastSeenAt, DateTimeOffset.UtcNow));
+                        .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastSeenAt, DateTimeOffset.UtcNow), timeoutCt);
                 }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to update LastSeenAt for user {UserId}", userId);
-                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to broadcast disconnect / update LastSeenAt for user {UserId}", userId);
             }
         }
 
@@ -101,35 +113,6 @@ public class ChatHub(
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task JoinChannel(Guid channelId)
-    {
-        Guid userId = CurrentUserId;
-        if (userId == Guid.Empty || channelId == Guid.Empty)
-        {
-            throw new HubException("Invalid authentication or channel identifier.");
-        }
-
-        // BOLA / Group Poisoning Defense: verify membership in database before group admission
-        bool isMember = await dbContext.ChannelMembers
-            .AsNoTracking()
-            .AnyAsync(m => m.ChannelId == channelId && m.UserId == userId && !m.Channel.IsDeleted);
-
-        if (!isMember)
-        {
-            logger.LogWarning("Security violation: User {UserId} attempted unauthorized join to channel {ChannelId}", userId, channelId);
-            await Clients.Caller.HubError("FORBIDDEN_CHANNEL_ACCESS", "You are not a member of this channel.");
-            throw new HubException("Access denied: You are not authorized to join this channel.");
-        }
-
-        await Groups.AddToGroupAsync(Context.ConnectionId, GetChannelGroupName(channelId));
-    }
-
-    public async Task LeaveChannel(Guid channelId)
-    {
-        if (channelId == Guid.Empty) return;
-
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GetChannelGroupName(channelId));
-    }
 
     public async Task SendMessage(Guid channelId, string content, string? clientMessageId = null)
     {
@@ -151,6 +134,16 @@ public class ChatHub(
         }
 
         MessageDto message = result.Value;
-        await Clients.Group(GetChannelGroupName(channelId)).ReceiveMessage(message);
+
+        List<string> memberUserIds = await dbContext.ChannelMembers
+            .AsNoTracking()
+            .Where(m => m.ChannelId == channelId)
+            .Select(m => m.UserId.ToString())
+            .ToListAsync(Context.ConnectionAborted);
+
+        if (memberUserIds.Count > 0)
+        {
+            await Clients.Users(memberUserIds).ReceiveMessage(message);
+        }
     }
 }

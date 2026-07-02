@@ -9,7 +9,10 @@ public record ChannelSummaryDto(
     string? AvatarUrl,
     DateTimeOffset? LastReadAt,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? LastActivityAt
+    DateTimeOffset? LastActivityAt,
+    bool HasUnread = false,
+    int UnreadCount = 0,
+    Guid? OtherUserId = null
 );
 
 public record ChannelDetailDto(

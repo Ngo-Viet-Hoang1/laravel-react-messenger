@@ -629,6 +629,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Channels/{channelId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number | string;
+                };
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageDto"][];
+                        "application/json": components["schemas"]["MessageDto"][];
+                        "text/json": components["schemas"]["MessageDto"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SendMessageRequest"];
+                    "text/json": components["schemas"]["SendMessageRequest"];
+                    "application/*+json": components["schemas"]["SendMessageRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageDto"];
+                        "application/json": components["schemas"]["MessageDto"];
+                        "text/json": components["schemas"]["MessageDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Channels/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Users": {
         parameters: {
             query?: never;
@@ -715,6 +875,15 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             lastActivityAt: null | string;
+            /** @default false */
+            hasUnread: boolean;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            unreadCount: number | string;
+            /** Format: uuid */
+            otherUserId?: null | string;
         };
         ChannelType: number;
         CreateChannelRequest: {
@@ -744,6 +913,20 @@ export interface components {
         LogoutCommand: {
             refreshToken: string;
         };
+        MessageDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            channelId: string;
+            /** Format: uuid */
+            senderId: string;
+            senderUsername: string;
+            senderAvatarUrl: null | string;
+            content: string;
+            clientMessageId: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         PaginatedListOfUserDto: {
             items: components["schemas"]["UserDto"][];
             /** Format: int32 */
@@ -771,6 +954,10 @@ export interface components {
             username: string;
             password: string;
             avatarUrl?: null | string;
+        };
+        SendMessageRequest: {
+            content: string;
+            clientMessageId?: null | string;
         };
         UserDto: {
             /** Format: uuid */

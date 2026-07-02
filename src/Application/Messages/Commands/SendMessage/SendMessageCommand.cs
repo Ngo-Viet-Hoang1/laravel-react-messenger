@@ -39,11 +39,11 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
 {
     public async Task<Result<MessageDto>> Handle(SendMessageCommand cmd, CancellationToken ct)
     {
-        bool isMember = await context.ChannelMembers
-            .AsNoTracking()
-            .AnyAsync(m => m.ChannelId == cmd.ChannelId && m.UserId == cmd.SenderId && !m.Channel.IsDeleted, ct);
+        Channel? channel = await context.Channels
+            .Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.Id == cmd.ChannelId && !c.IsDeleted, ct);
 
-        if (!isMember)
+        if (channel == null || !channel.Members.Any(m => m.UserId == cmd.SenderId))
         {
             return Result.Failure<MessageDto>(
                 Error.Forbidden("Channel.NotMember", "You are not authorized to send messages to this channel."));
@@ -77,6 +77,12 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
 
         Message message = Message.Create(cmd.ChannelId, cmd.SenderId, cmd.Content, cmd.ClientMessageId);
         context.Messages.Add(message);
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        channel.LastModifiedAt = now;
+        ChannelMember? senderMember = channel.Members.FirstOrDefault(m => m.UserId == cmd.SenderId);
+        senderMember?.MarkAsRead(now);
+
         await context.SaveChangesAsync(ct);
 
         return Result.Success(message.ToDto(sender));

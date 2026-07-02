@@ -5,19 +5,24 @@ namespace MessengerApp.Application.Channels.Common;
 
 public static class ChannelMappingExtensions
 {
-    public static ChannelSummaryDto ToSummaryDto(this Channel channel, Guid currentUserId)
+    public static ChannelSummaryDto ToSummaryDto(this Channel channel, Guid currentUserId, int unreadCount = 0)
     {
         string displayName = channel.Name ?? string.Empty;
         string? displayAvatar = channel.AvatarUrl;
         DateTimeOffset? lastReadAt = null;
+        Guid? otherUserId = null;
 
         if (channel.Type == ChannelType.Direct)
         {
-            User? otherUser = channel.Members.FirstOrDefault(m => m.UserId != currentUserId)?.User;
-            if (otherUser != null)
+            ChannelMember? otherMember = channel.Members.FirstOrDefault(m => m.UserId != currentUserId);
+            if (otherMember != null)
             {
-                displayName = otherUser.Username;
-                displayAvatar = otherUser.AvatarUrl;
+                otherUserId = otherMember.UserId;
+                if (otherMember.User != null)
+                {
+                    displayName = otherMember.User.Username;
+                    displayAvatar = otherMember.User.AvatarUrl;
+                }
             }
         }
 
@@ -27,7 +32,8 @@ public static class ChannelMappingExtensions
             lastReadAt = currentMember.LastReadAt;
         }
 
-        DateTimeOffset? lastActivityAt = channel.LastModifiedAt ?? channel.CreatedAt;
+        DateTimeOffset? lastActivityAt = channel.LastModifiedAt;
+        bool hasUnread = unreadCount > 0;
 
         return new ChannelSummaryDto(
             channel.Id,
@@ -36,7 +42,10 @@ public static class ChannelMappingExtensions
             displayAvatar,
             lastReadAt,
             channel.CreatedAt,
-            lastActivityAt
+            lastActivityAt,
+            hasUnread,
+            unreadCount,
+            otherUserId
         );
     }
 

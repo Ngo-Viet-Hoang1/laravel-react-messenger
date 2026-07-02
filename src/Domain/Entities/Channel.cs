@@ -62,7 +62,8 @@ public class Channel : BaseAuditableEntity, ISoftDelete
         {
             ChannelId = Id,
             UserId = userId,
-            Role = role
+            Role = role,
+            LastReadAt = DateTimeOffset.UtcNow
         });
     }
 

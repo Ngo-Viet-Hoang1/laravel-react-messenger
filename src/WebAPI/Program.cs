@@ -33,6 +33,11 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.ShutdownTimeout = TimeSpan.FromSeconds(builder.Environment.IsDevelopment() ? 2 : 30);
+});
+
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "super-secret-messenger-app-key-with-at-least-256-bits-length!";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MessengerApp";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "MessengerAppClient";
