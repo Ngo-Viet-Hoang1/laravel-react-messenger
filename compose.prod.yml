@@ -60,7 +60,7 @@ services:
       - ./docker/nginx/prod/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/prod/default.conf:/etc/nginx/conf.d/default.conf:ro
       # SSL certs from Certbot
-      # - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     networks:
       - laravel
     depends_on:
