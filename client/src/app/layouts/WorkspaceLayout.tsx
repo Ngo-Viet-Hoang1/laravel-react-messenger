@@ -7,9 +7,16 @@ import { Sheet, SheetContent, SheetTitle } from '@/shared/ui/sheet';
 import { useModalStore } from '@/shared/model/useModalStore';
 import { CreateChannelModal } from '@/features/create-channel';
 import { StartDirectChatModal } from '@/features/start-direct-chat';
-import { channelKeys, type ChannelSummary, useMarkAsReadMutation } from '@/entities/channel';
-import { messageKeys, MESSAGE_STATUS, type ChatMessage } from '@/entities/message';
-import { usePresenceStore } from '@/entities/user';
+import { channelKeys, type ChannelSummary } from '@/entities/channel';
+import {
+  messageKeys,
+  MESSAGE_STATUS,
+  type ChatMessage,
+  type MessagesInfiniteData,
+  type MessagesPage,
+} from '@/entities/message';
+import { useAppSelector } from '@/app/store';
+import { selectCurrentUser, usePresenceStore } from '@/entities/user';
 import {
   startSignalRConnection,
   stopSignalRConnection,
@@ -23,6 +30,7 @@ export const WorkspaceLayout: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const currentUser = useAppSelector(selectCurrentUser);
   const activeChannelId = location.pathname.startsWith('/chat/')
     ? location.pathname.replace('/chat/', '')
     : null;
@@ -59,50 +67,69 @@ export const WorkspaceLayout: React.FC = () => {
   });
 
   useSignalREvent('ReceiveMessage', (receivedMsg: SignalRMessageDto) => {
+    const isSentByMe = Boolean(currentUser?.id && currentUser.id === receivedMsg.senderId);
 
     queryClient.setQueryData<ChannelSummary[]>(channelKeys.lists(), (old = []) =>
       old.map((ch) => {
         if (ch.id !== receivedMsg.channelId) return ch;
-        const isCurrentActive = ch.id === activeChannelId;
         const currentUnread = Number(ch.unreadCount ?? 0);
         return {
           ...ch,
           lastActivityAt: receivedMsg.createdAt,
-          hasUnread: !isCurrentActive,
-          unreadCount: isCurrentActive ? 0 : currentUnread + 1,
+          hasUnread: !isSentByMe,
+          unreadCount: isSentByMe ? currentUnread : currentUnread + 1,
         };
       })
     );
 
-    queryClient.setQueryData<ChatMessage[]>(
+    queryClient.setQueryData<MessagesInfiniteData>(
       messageKeys.byChannel(receivedMsg.channelId),
-      (old = []) => {
-        const existingIndex = old.findIndex(
-          (m) =>
-            (receivedMsg.clientMessageId && m.clientMessageId === receivedMsg.clientMessageId) ||
-            m.id === receivedMsg.id
-        );
-
+      (old) => {
         const confirmed: ChatMessage = { ...receivedMsg, status: MESSAGE_STATUS.SENT };
-        if (existingIndex !== -1) {
-          const updated = [...old];
-          updated[existingIndex] = confirmed;
-          return updated;
+        if (!old || old.pages.length === 0) {
+          return {
+            pages: [{ items: [confirmed], nextCursor: null, hasMore: false }],
+            pageParams: [null],
+          };
         }
 
-        return [...old, confirmed];
+        let replaced = false;
+        const updatedPages = old.pages.map((page: MessagesPage) => {
+          const existingIndex = page.items.findIndex(
+            (m) =>
+              (receivedMsg.clientMessageId && m.clientMessageId === receivedMsg.clientMessageId) ||
+              m.id === receivedMsg.id
+          );
+
+          if (existingIndex !== -1) {
+            replaced = true;
+            const updatedItems = [...page.items];
+            updatedItems[existingIndex] = confirmed;
+            return { ...page, items: updatedItems };
+          }
+          return page;
+        });
+
+        if (replaced) {
+          return { ...old, pages: updatedPages };
+        }
+
+        // New incoming message -> append to the newest page (last page)
+        const lastIndex = updatedPages.length - 1;
+        updatedPages[lastIndex] = {
+          ...updatedPages[lastIndex],
+          items: [...updatedPages[lastIndex].items, confirmed],
+        };
+
+        return { ...old, pages: updatedPages };
       }
     );
   });
 
-  const { mutate: markChannelAsRead } = useMarkAsReadMutation();
-
+  // Close mobile sidebar sheet drawer on channel change
   React.useEffect(() => {
-    if (activeChannelId) {
-      markChannelAsRead(activeChannelId);
-    }
     setMobileSidebarOpen(false);
-  }, [activeChannelId, markChannelAsRead]);
+  }, [activeChannelId]);
 
   const handleChannelSuccess = (channel: { id: string }) => {
     closeModal();

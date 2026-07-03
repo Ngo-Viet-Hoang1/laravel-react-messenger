@@ -1,10 +1,14 @@
 import { api } from '@/shared/api';
-import type { MessageDto, SendMessagePayload } from '../model/types';
+import type { MessageDto, MessagesCursorResponse, SendMessagePayload } from '../model/types';
 
 export const messageApi = {
-  getChannelMessages: async (channelId: string, limit = 50): Promise<MessageDto[]> => {
-    return api.get<MessageDto[]>(`/Channels/${channelId}/messages`, {
-      params: { limit },
+  getChannelMessages: async (
+    channelId: string,
+    before?: string | null,
+    limit = 50
+  ): Promise<MessagesCursorResponse> => {
+    return api.get<MessagesCursorResponse>(`/Channels/${channelId}/messages`, {
+      params: { before: before || undefined, limit },
     });
   },
 

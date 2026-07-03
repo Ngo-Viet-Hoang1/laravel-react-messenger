@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { messageApi } from './messageApi';
-import { messageKeys } from './messageQueries';
+import { messageKeys, type MessagesInfiniteData, type MessagesPage } from './messageQueries';
 import { channelKeys, type ChannelSummary } from '@/entities/channel';
 import { MESSAGE_STATUS, type ChatMessage, type SendMessagePayload } from '../model/types';
 import { selectCurrentUser } from '@/entities/user';
@@ -35,10 +35,23 @@ export const useSendMessageMutation = (channelId?: string) => {
         status: MESSAGE_STATUS.SENDING,
       };
 
-      queryClient.setQueryData<ChatMessage[]>(messageKeys.byChannel(channelId), (old = []) => [
-        ...old,
-        optimisticMessage,
-      ]);
+      queryClient.setQueryData<MessagesInfiniteData>(messageKeys.byChannel(channelId), (old) => {
+        if (!old || old.pages.length === 0) {
+          return {
+            pages: [{ items: [optimisticMessage], nextCursor: null, hasMore: false }],
+            pageParams: [null],
+          };
+        }
+
+        const lastIndex = old.pages.length - 1;
+        const updatedPages = [...old.pages];
+        updatedPages[lastIndex] = {
+          ...updatedPages[lastIndex],
+          items: [...updatedPages[lastIndex].items, optimisticMessage],
+        };
+
+        return { ...old, pages: updatedPages };
+      });
 
       return { clientMsgId };
     },
@@ -46,32 +59,58 @@ export const useSendMessageMutation = (channelId?: string) => {
     onError: (_err, _newPayload, context) => {
       if (!channelId || !context) return;
 
-      queryClient.setQueryData<ChatMessage[]>(messageKeys.byChannel(channelId), (old = []) =>
-        old.map((m) =>
-          m.clientMessageId === context.clientMsgId ? { ...m, status: MESSAGE_STATUS.FAILED } : m
-        )
-      );
+      queryClient.setQueryData<MessagesInfiniteData>(messageKeys.byChannel(channelId), (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: MessagesPage) => ({
+            ...page,
+            items: page.items.map((m) =>
+              m.clientMessageId === context.clientMsgId
+                ? { ...m, status: MESSAGE_STATUS.FAILED }
+                : m
+            ),
+          })),
+        };
+      });
     },
 
     // Replace optimistic message with confirmed server message
     onSuccess: (savedMessage, _newPayload, context) => {
       if (!channelId || !context) return;
 
-      queryClient.setQueryData<ChatMessage[]>(messageKeys.byChannel(channelId), (old = []) => {
+      queryClient.setQueryData<MessagesInfiniteData>(messageKeys.byChannel(channelId), (old) => {
+        if (!old) return old;
         const confirmed: ChatMessage = { ...savedMessage, status: MESSAGE_STATUS.SENT };
-        const index = old.findIndex(
-          (m) =>
-            (context.clientMsgId && m.clientMessageId === context.clientMsgId) ||
-            m.id === context.clientMsgId
-        );
 
-        if (index !== -1) {
-          const updated = [...old];
-          updated[index] = confirmed;
-          return updated;
+        let replaced = false;
+        const updatedPages = old.pages.map((page: MessagesPage) => {
+          const index = page.items.findIndex(
+            (m) =>
+              (context.clientMsgId && m.clientMessageId === context.clientMsgId) ||
+              m.id === context.clientMsgId
+          );
+
+          if (index !== -1) {
+            replaced = true;
+            const updatedItems = [...page.items];
+            updatedItems[index] = confirmed;
+            return { ...page, items: updatedItems };
+          }
+          return page;
+        });
+
+        if (replaced) {
+          return { ...old, pages: updatedPages };
         }
 
-        return [...old, confirmed];
+        const lastIndex = updatedPages.length - 1;
+        updatedPages[lastIndex] = {
+          ...updatedPages[lastIndex],
+          items: [...updatedPages[lastIndex].items, confirmed],
+        };
+
+        return { ...old, pages: updatedPages };
       });
 
       // Update sidebar channels order/timestamp in-memory
