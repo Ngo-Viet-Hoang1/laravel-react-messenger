@@ -2,7 +2,7 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [deploy]
   pull_request:
     branches: [main]
 
@@ -14,6 +14,7 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/laravel-react-messenger
   PHP_VERSION: '8.3'
   NODE_VERSION: '22'
+  APP_DOMAIN: twiliver.dev
 
 jobs:
   test:
@@ -85,7 +86,7 @@ jobs:
     name: 🐳 Build & Push Image
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/deploy' && github.event_name == 'push'
 
     permissions:
       contents: read
@@ -134,11 +135,11 @@ jobs:
     name: 🚀 Deploy to EC2
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/deploy' && github.event_name == 'push'
 
     environment:
       name: production
-      url: https://${{ secrets.APP_DOMAIN }}
+      url: https://${{ env.APP_DOMAIN }}
 
     steps:
       - name: Deploy via SSH
@@ -158,7 +159,7 @@ jobs:
             # Note: source code không cần (baked trong image)
             # Git pull cần để lấy: compose.prod.yml mới + nginx config thay đổi
             echo "==> [1/8] Pulling latest compose configs..."
-            git pull origin main
+            git pull origin deploy
 
             # ── 2. Đăng nhập GHCR để pull image ───────────────────────────
             # Dùng GHCR_READ_TOKEN (PAT với scope read:packages only)
@@ -245,7 +246,7 @@ jobs:
               done
             '
             echo "=== Deploy completed: $(date) ==="
-            echo "✅ App is healthy at https://${{ secrets.APP_DOMAIN }}"
+            echo "✅ App is healthy at https://${{ env.APP_DOMAIN }}"
 
       # Notify Slack/Discord (optional)
       # - name: Notify success
