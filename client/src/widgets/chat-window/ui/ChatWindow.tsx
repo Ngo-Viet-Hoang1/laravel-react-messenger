@@ -1,11 +1,13 @@
 import * as React from 'react';
-import { Users, MessageSquareOff, Loader2, ArrowDown } from 'lucide-react';
+import { Users, MessageSquareOff, Loader2, ArrowDown, Info } from 'lucide-react';
 import { useChannelDetailQuery, CHANNEL_TYPE, ChannelAvatar } from '@/entities/channel';
 import { useChannelMessagesQuery, MessageBubble, DateDivider } from '@/entities/message';
 import { MessageInput } from '@/features/send-message';
 import { useAppSelector } from '@/app/store';
 import { selectCurrentUser } from '@/entities/user';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { Button } from '@/shared/ui/button';
+import { useModalStore } from '@/shared/model/useModalStore';
 import { useChatScroll } from '../lib/useChatScroll';
 
 export interface ChatWindowProps {
@@ -40,33 +42,66 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
 
   const isDirect = channel?.type === CHANNEL_TYPE.DIRECT;
   const displayName = channel?.name || 'Channel';
+  const openModal = useModalStore((state) => state.openModal);
+
+  const handleOpenDetails = () => {
+    if (channelId) {
+      openModal({ type: 'channel-details', channelId });
+    }
+  };
 
   return (
     <main className="relative flex flex-1 flex-col overflow-hidden bg-background">
       {/* Channel Header */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/95 px-4 backdrop-blur-xs select-none">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <button
+          type="button"
+          onClick={handleOpenDetails}
+          className="group flex min-w-0 items-center gap-2.5 rounded-lg p-1 text-left transition-colors hover:bg-muted/60 cursor-pointer"
+          title="View channel details & members"
+        >
           <ChannelAvatar channel={channel} size="sm" />
 
           <div className="flex min-w-0 flex-col">
             {isChannelLoading ? (
               <Skeleton className="h-4 w-32" />
             ) : (
-              <h2 className="truncate text-sm font-bold text-foreground">{displayName}</h2>
+              <h2 className="truncate text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                {displayName}
+              </h2>
             )}
 
             {channel?.description && (
               <p className="truncate text-xs text-muted-foreground">{channel.description}</p>
             )}
           </div>
-        </div>
+        </button>
 
-        {channel?.memberCount !== undefined && !isDirect && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
-            <Users className="h-3.5 w-3.5" />
-            <span>{channel.memberCount} members</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {channel?.memberCount !== undefined && !isDirect && (
+            <button
+              type="button"
+              onClick={handleOpenDetails}
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer select-none"
+              title="View members"
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>{channel.memberCount} members</span>
+            </button>
+          )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleOpenDetails}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+            title="Channel details"
+          >
+            <Info className="h-4 w-4" />
+            <span className="sr-only">Channel details</span>
+          </Button>
+        </div>
       </header>
 
       {/* Floating Loading Indicator for older messages (Slack/Discord style) */}

@@ -5,6 +5,7 @@ export const channelKeys = {
   all: ['channels'] as const,
   lists: () => [...channelKeys.all, 'list'] as const,
   detail: (id?: string) => [...channelKeys.all, 'detail', id] as const,
+  members: (id?: string) => [...channelKeys.all, 'members', id] as const,
 };
 
 export const useUserChannelsQuery = () => {
@@ -25,5 +26,16 @@ export const useChannelDetailQuery = (channelId?: string) => {
     queryFn: () => channelApi.getChannelById(channelId!),
     enabled: isValidGuid,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+};
+
+export const useChannelMembersQuery = (channelId?: string, enabled = true) => {
+  const isValidGuid = Boolean(channelId && UUID_REGEX.test(channelId));
+
+  return useQuery({
+    queryKey: channelKeys.members(channelId),
+    queryFn: () => channelApi.getChannelMembers(channelId!),
+    enabled: isValidGuid && enabled,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 };

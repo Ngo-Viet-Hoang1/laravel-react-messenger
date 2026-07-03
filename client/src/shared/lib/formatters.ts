@@ -46,3 +46,19 @@ export const formatMessageDateHeader = (dateStr?: string | null): string => {
     return '';
   }
 };
+
+export const formatFullDate = (dateStr?: string | null): string => {
+  if (!dateStr) return '—';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '—';
+
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(date);
+  } catch {
+    return '—';
+  }
+};

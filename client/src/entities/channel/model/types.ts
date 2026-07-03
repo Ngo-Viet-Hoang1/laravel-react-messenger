@@ -5,8 +5,19 @@ export type ChannelDetail = components['schemas']['ChannelDetailDto'];
 export type ChannelType = components['schemas']['ChannelType']; // 1 = Direct, 2 = Group
 export type CreateChannelPayload = components['schemas']['CreateChannelRequest'];
 
+export type ChannelMember = components['schemas']['ChannelMemberDto'];
+export type ChannelMemberRole = components['schemas']['ChannelMemberRole'];
+export type AddChannelMembersPayload = components['schemas']['AddChannelMembersRequest'];
+export type UpdateChannelPayload = components['schemas']['UpdateChannelRequest'];
+
 export const CHANNEL_TYPE = {
   DIRECT: 1,
   GROUP: 2,
+} as const;
+
+export const CHANNEL_MEMBER_ROLE = {
+  OWNER: 0,
+  ADMIN: 1,
+  MEMBER: 2,
 } as const;
 

@@ -7,6 +7,8 @@ import { Sheet, SheetContent, SheetTitle } from '@/shared/ui/sheet';
 import { useModalStore } from '@/shared/model/useModalStore';
 import { CreateChannelModal } from '@/features/create-channel';
 import { StartDirectChatModal } from '@/features/start-direct-chat';
+import { ChannelDetailsSheet } from '@/features/manage-channel';
+import { toast } from 'sonner';
 import { channelKeys, type ChannelSummary } from '@/entities/channel';
 import {
   messageKeys,
@@ -64,6 +66,28 @@ export const WorkspaceLayout: React.FC = () => {
 
   useSignalREvent('UserDisconnected', (userId: string) => {
     removeUser(userId);
+  });
+
+  useSignalREvent('ChannelUpdated', (channelId: string) => {
+    queryClient.invalidateQueries({ queryKey: channelKeys.detail(channelId) });
+    queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
+  });
+
+  useSignalREvent('ChannelMembersUpdated', (channelId: string) => {
+    queryClient.invalidateQueries({ queryKey: channelKeys.members(channelId) });
+    queryClient.invalidateQueries({ queryKey: channelKeys.detail(channelId) });
+    queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
+  });
+
+  useSignalREvent('ChannelDeleted', (channelId: string) => {
+    queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
+    queryClient.removeQueries({ queryKey: channelKeys.detail(channelId) });
+    queryClient.removeQueries({ queryKey: channelKeys.members(channelId) });
+
+    if (activeChannelId === channelId) {
+      toast.info('This channel has been deleted or you were removed.');
+      navigate('/chat');
+    }
   });
 
   useSignalREvent('ReceiveMessage', (receivedMsg: SignalRMessageDto) => {
@@ -169,6 +193,11 @@ export const WorkspaceLayout: React.FC = () => {
         open={modal?.type === 'direct-chat'}
         onOpenChange={(isOpen) => !isOpen && closeModal()}
         onChatStarted={handleChannelSuccess}
+      />
+      <ChannelDetailsSheet
+        channelId={modal?.type === 'channel-details' ? modal.channelId : undefined}
+        open={modal?.type === 'channel-details'}
+        onOpenChange={(isOpen) => !isOpen && closeModal()}
       />
     </div>
   );

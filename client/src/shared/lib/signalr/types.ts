@@ -16,5 +16,8 @@ export interface ChatClientEvents {
     count: number,
     userId: string
   ) => void;
+  ChannelUpdated: (channelId: string) => void;
+  ChannelMembersUpdated: (channelId: string) => void;
+  ChannelDeleted: (channelId: string) => void;
   HubError: (code: string, message: string) => void;
 }

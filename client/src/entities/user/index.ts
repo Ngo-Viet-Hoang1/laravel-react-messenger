@@ -6,3 +6,4 @@ export * from './api/userApi';
 export * from './api/userQueries';
 export * from './ui/UserAvatar';
 export * from './ui/UserListItem';
+export * from './ui/UserSelector';

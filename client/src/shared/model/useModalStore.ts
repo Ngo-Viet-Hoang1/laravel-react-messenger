@@ -8,7 +8,8 @@ import { create } from 'zustand';
  */
 export type ModalPayload =
   | { type: 'create-channel' }
-  | { type: 'direct-chat' };
+  | { type: 'direct-chat' }
+  | { type: 'channel-details'; channelId: string };
 
 export type ModalType = ModalPayload['type'];
 
