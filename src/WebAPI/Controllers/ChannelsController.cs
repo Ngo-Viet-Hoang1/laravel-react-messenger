@@ -9,6 +9,7 @@ using MessengerApp.Application.Messages.Commands.SendMessage;
 using MessengerApp.Application.Messages.Common;
 using MessengerApp.Application.Messages.Queries.GetChannelMessages;
 using MessengerApp.Application.Common.Interfaces;
+using MessengerApp.Application.Common.Models;
 using MessengerApp.Domain.Common;
 using MessengerApp.WebAPI.Common;
 using MessengerApp.WebAPI.Contracts.Channels;
@@ -76,16 +77,17 @@ public class ChannelsController(ISender sender) : ApiController
     }
 
     [HttpGet("{channelId:guid}/messages")]
-    [ProducesResponseType(typeof(List<MessageDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CursorPagedList<MessageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetChannelMessages(
         [FromRoute] Guid channelId,
+        [FromQuery] DateTimeOffset? before = null,
         [FromQuery] int limit = 50,
         CancellationToken ct = default)
     {
-        GetChannelMessagesQuery query = new(channelId, CurrentUserId, limit);
-        Result<List<MessageDto>> result = await sender.Send(query, ct);
+        GetChannelMessagesQuery query = new(channelId, CurrentUserId, before, limit);
+        Result<CursorPagedList<MessageDto>> result = await sender.Send(query, ct);
         return HandleResult(result);
     }
 

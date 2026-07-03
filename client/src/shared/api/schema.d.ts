@@ -639,6 +639,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    before?: string;
                     limit?: number | string;
                 };
                 header?: never;
@@ -655,9 +656,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["MessageDto"][];
-                        "application/json": components["schemas"]["MessageDto"][];
-                        "text/json": components["schemas"]["MessageDto"][];
+                        "text/plain": components["schemas"]["CursorPagedListOfMessageDto"];
+                        "application/json": components["schemas"]["CursorPagedListOfMessageDto"];
+                        "text/json": components["schemas"]["CursorPagedListOfMessageDto"];
                     };
                 };
                 /** @description Unauthorized */
@@ -902,6 +903,12 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             lastSeenAt: null | string;
+        };
+        CursorPagedListOfMessageDto: {
+            items?: components["schemas"]["MessageDto"][];
+            /** Format: date-time */
+            nextCursor?: null | string;
+            hasMore?: boolean;
         };
         GoogleLoginCommand: {
             idToken: string;
