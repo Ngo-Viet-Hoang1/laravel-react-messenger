@@ -243,7 +243,10 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
     useEffect(() => {
         const offCreated = on('message.created', handleMessageCreated);
         const offDeleted = on('message.deleted', handleMessageDeleted);
-        const offReaction = on('message.reaction.updated', handleReactionUpdated);
+        const offReaction = on(
+            'message.reaction.updated',
+            handleReactionUpdated,
+        );
 
         return () => {
             offCreated();
@@ -444,9 +447,9 @@ function Home({ selectedChannel = null, messages = null }: PageProps) {
                         channel={activeChannel}
                         currentUserId={myId}
                         online={
-                            selectedChannel.type === 'direct' &&
-                            selectedChannel.peer_user_id != null
-                                ? isOnline(selectedChannel.peer_user_id)
+                            activeChannel.type === 'direct' &&
+                            activeChannel.peer_user_id != null
+                                ? isOnline(activeChannel.peer_user_id)
                                 : false
                         }
                         onClose={() => setShowInfo(false)}
