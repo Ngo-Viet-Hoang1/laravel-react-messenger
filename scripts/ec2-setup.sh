@@ -29,15 +29,18 @@ echo "==> [4/8] Installing Git..."
 sudo dnf install -y git
 echo "  ✅ Git installed: $(git --version)"
 
-echo "==> [5/8] Installing Certbot for Let's Encrypt SSL..."
+echo "==> [5/8] Installing Certbot and Cron for Let's Encrypt SSL..."
+sudo dnf install -y cronie 2>/dev/null || echo "  ⚠️  Cron install skipped"
+sudo systemctl enable crond 2>/dev/null || true
+sudo systemctl start crond 2>/dev/null || true
+
 sudo dnf install -y python3-certbot-nginx 2>/dev/null || \
     sudo dnf install -y certbot python3-certbot-nginx 2>/dev/null || \
     pip3 install certbot certbot-nginx 2>/dev/null || \
     echo "  ⚠️  Certbot install failed. Install manually: pip3 install certbot certbot-nginx"
 echo "  ✅ Certbot ready"
 
-(crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet --nginx") | crontab -
-echo "  ✅ Auto-renewal cron added (daily at 03:00)"
+(crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet --nginx") | crontab - 2>/dev/null || echo "  ⚠️  Skipped crontab setup"
 
 echo "==> [6/8] Setting up application directory..."
 APP_DIR="/app"
