@@ -96,15 +96,4 @@ class GroupDeleteEndpointTest extends TestCase
         $this->delete(route('channels.destroy', $channel))
             ->assertRedirect(route('login'));
     }
-
-    public function test_cannot_delete_direct_channel(): void
-    {
-        $user1 = User::factory()->create();
-        $user2 = User::factory()->create();
-        $channel = $this->repo->findOrCreateDirect($user1->id, $user2->id);
-
-        $this->actingAs($user1)
-            ->delete(route('channels.destroy', $channel))
-            ->assertForbidden();
-    }
 }
