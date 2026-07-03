@@ -1,3 +1,4 @@
+#!/bin/bash
 set -e
 
 APP_ENV="${APP_ENV:-local}"
