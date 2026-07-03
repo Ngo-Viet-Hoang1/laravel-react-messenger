@@ -1,0 +1,255 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/laravel-react-messenger
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '22'
+
+jobs:
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: laravel_test
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_USER: laravel
+          MYSQL_PASSWORD: secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Setup PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_mysql, mbstring, exif, pcntl, bcmath, gd, zip, intl, redis
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --optimize-autoloader --prefer-dist --no-progress
+
+      - name: Prepare Laravel environment
+        run: |
+          # CI dùng SQLite in-memory (từ phpunit.xml), không cần .env đầy đủ
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Cache Node modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-${{ hashFiles('package-lock.json') }}
+          restore-keys: node-
+
+      - name: Install Node dependencies & build assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run PHPUnit tests
+        run: php artisan test --compact
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+
+  build:
+    name: 🐳 Build & Push Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Docker metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # Tag "latest" cho mọi push lên main
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Tag bằng git SHA ngắn (7 chars) để rollback chính xác
+            type=sha,prefix=,format=short
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  deploy:
+    name: 🚀 Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    environment:
+      name: production
+      url: https://${{ secrets.APP_DOMAIN }}
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          command_timeout: 10m
+          script: |
+            set -e
+            echo "=== Deploy started: $(date) ==="
+            cd /app  # Thư mục chứa compose.prod.yml, .env và git repo trên EC2
+
+            # ── 1. Pull code mới nhất (chỉ lấy compose files + nginx configs) ───
+            # Note: source code không cần (baked trong image)
+            # Git pull cần để lấy: compose.prod.yml mới + nginx config thay đổi
+            echo "==> [1/8] Pulling latest compose configs..."
+            git pull origin main
+
+            # ── 2. Đăng nhập GHCR để pull image ───────────────────────────
+            # Dùng GHCR_READ_TOKEN (PAT với scope read:packages only)
+            # KHÔNG dùng GITHUB_TOKEN vì:
+            #   1. GITHUB_TOKEN của workflow có packages:write (over-privileged)
+            #   2. EC2 chỉ cần quyền pull (read), không cần push
+            # Cách tạo GHCR_READ_TOKEN:
+            #   GitHub → Settings → Developer Settings → Personal Access Tokens (classic)
+            #   → Chọn scope: read:packages → Copy → Thêm vào GitHub Secrets
+            echo "==> [2/8] Logging into GHCR..."
+            echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io \
+              -u "${{ github.repository_owner }}" --password-stdin
+
+            # Export env vars cho compose.prod.yml biết pull image nào
+            # APP_IMAGE: GHCR path (đã set trong env: section của workflow)
+            # APP_TAG: git SHA ngắn từ build job output
+            export APP_IMAGE="${{ env.IMAGE_NAME }}"
+            export APP_TAG="${{ needs.build.outputs.image_tag }}"
+
+            # ── 3. Pull image mới nhất từ GHCR ──────────────────────────────────
+            # Pull tất cả services dùng app image (app, horizon, reverb, scheduler)
+            echo "==> [3/8] Pulling latest Docker images from GHCR..."
+            APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
+              docker compose -f compose.prod.yml pull app horizon reverb scheduler
+
+            # ── 4. Extract compiled frontend assets từ image vào host ───────────
+            # Tại sao cần bước này?
+            #   - Nginx mount: ./public:/var/www/public:ro (từ host)
+            #   - public/build/ trong git .gitignore → không có trên EC2 sau git pull
+            #   - Docker image CÓ public/build/ (baked bởi node-builder stage)
+            #   → Extract ra host → nginx serve được JS/CSS mới nhất
+            #
+            # docker create: tạo container tạm (không start) → chỉ để docker cp
+            # docker cp:     copy files từ container layer vào host filesystem
+            # docker rm:     dọn container tạm
+            echo "==> [4/8] Extracting built assets from image to host..."
+            TEMP_CONTAINER=$(docker create "${APP_IMAGE}:${APP_TAG}")
+            docker cp "$TEMP_CONTAINER:/var/www/public/build" ./public/
+            docker rm "$TEMP_CONTAINER"
+            echo "  public/build/ updated from image $APP_TAG"
+
+            # ── 5. Graceful Horizon shutdown (chờ jobs hiện tại xong) ─────
+            echo "==> [5/8] Graceful Horizon shutdown..."
+            APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
+              docker compose -f compose.prod.yml exec -T horizon \
+              php artisan horizon:terminate 2>/dev/null || echo "  Horizon not running, skipping"
+
+            # ── 6. Restart containers với image mới ───────────────────────
+            # --no-build: không build lại, dùng image đã pull
+            echo "==> [6/8] Restarting containers..."
+            APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
+              docker compose -f compose.prod.yml up -d --no-build --remove-orphans
+
+            # ── 7. First-deploy seeding (chỉ chạy khi DB trống) ──────────
+            # Chiến lược seeding:
+            #   - Migration: chạy tự động trong entrypoint (--isolated để tránh race)
+            #   - Seeding:   KHÔNG tự động → nguy hiểm nếu chạy mỗi deploy
+            #               (DatabaseSeeder tạo 12 users mới → dữ liệu rác)
+            #
+            # Pattern đúng: kiểm tra admin user tồn tại chưa → chỉ seed lần đầu
+            # Đây là idempotent seeding: an toàn khi deploy nhiều lần
+            echo "==> [7/8] Checking if first-deploy seed is needed..."
+            ADMIN_COUNT=$(APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
+              docker compose -f compose.prod.yml exec -T app \
+              php artisan tinker --execute="echo App\\Models\\User::where('is_admin', true)->count();" \
+              2>/dev/null | tail -1 | tr -d '\r\n')
+
+            if [ "$ADMIN_COUNT" = "0" ] || [ -z "$ADMIN_COUNT" ]; then
+              echo "  No admin found → running db:seed for initial data..."
+              APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
+                docker compose -f compose.prod.yml exec -T app \
+                php artisan db:seed --force --no-interaction
+              echo "  ✅ Seed complete."
+            else
+              echo "  Admin already exists ($ADMIN_COUNT) → skipping seed."
+            fi
+
+            # ── 8. Health check sau deploy ────────────────────────────────
+            echo "==> [8/8] Waiting for health check..."
+            timeout 60 bash -c '
+              until docker compose -f compose.prod.yml ps | grep "app" | grep "healthy"; do
+                echo "  Waiting for app to be healthy..."
+                sleep 5
+              done
+            '
+            echo "=== Deploy completed: $(date) ==="
+            echo "✅ App is healthy at https://${{ secrets.APP_DOMAIN }}"
+
+      # Notify Slack/Discord (optional)
+      # - name: Notify success
+      #   uses: sarisia/actions-status-discord@v1
+      #   with:
+      #     webhook: ${{ secrets.DISCORD_WEBHOOK }}
+      #     title: "Deploy successful"
