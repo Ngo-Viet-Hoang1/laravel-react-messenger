@@ -83,9 +83,11 @@ public static class ChannelMappingExtensions
         return new ChannelMemberDto(
             member.UserId,
             member.User?.Username ?? string.Empty,
+            member.User?.Email ?? string.Empty,
             member.User?.AvatarUrl,
             member.Role,
-            member.LastReadAt
+            member.LastReadAt,
+            member.CreatedAt
         );
     }
 }

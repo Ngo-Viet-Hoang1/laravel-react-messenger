@@ -16,5 +16,11 @@ public interface IChatClient
 
     Task MessageReactionUpdated(Guid messageId, Guid channelId, string emoji, int count, Guid userId);
 
+    Task ChannelUpdated(Guid channelId);
+
+    Task ChannelMembersUpdated(Guid channelId);
+
+    Task ChannelDeleted(Guid channelId);
+
     Task HubError(string code, string message);
 }

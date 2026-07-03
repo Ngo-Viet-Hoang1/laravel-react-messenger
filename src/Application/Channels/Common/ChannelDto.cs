@@ -29,7 +29,9 @@ public record ChannelDetailDto(
 public record ChannelMemberDto(
     Guid UserId,
     string Username,
+    string Email,
     string? AvatarUrl,
     ChannelMemberRole Role,
-    DateTimeOffset? LastReadAt
+    DateTimeOffset? LastReadAt,
+    DateTimeOffset JoinedAt
 );

@@ -51,20 +51,23 @@ public class Channel : BaseAuditableEntity, ISoftDelete
         return channel;
     }
 
-    public void AddMember(Guid userId, ChannelMemberRole role = ChannelMemberRole.Member)
+    public ChannelMember? AddMember(Guid userId, ChannelMemberRole role = ChannelMemberRole.Member)
     {
         if (_members.Any(m => m.UserId == userId))
         {
-            return;
+            return null;
         }
 
-        _members.Add(new ChannelMember
+        ChannelMember member = new()
         {
             ChannelId = Id,
             UserId = userId,
             Role = role,
             LastReadAt = DateTimeOffset.UtcNow
-        });
+        };
+
+        _members.Add(member);
+        return member;
     }
 
     public void RemoveMember(Guid userId)

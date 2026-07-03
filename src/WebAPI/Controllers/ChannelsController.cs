@@ -1,9 +1,15 @@
 using MediatR;
+using MessengerApp.Application.Channels.Commands.AddChannelMembers;
 using MessengerApp.Application.Channels.Commands.CreateChannel;
+using MessengerApp.Application.Channels.Commands.DeleteChannel;
 using MessengerApp.Application.Channels.Commands.GetOrCreateDirectChannel;
+using MessengerApp.Application.Channels.Commands.LeaveChannel;
 using MessengerApp.Application.Channels.Commands.MarkChannelAsRead;
+using MessengerApp.Application.Channels.Commands.RemoveChannelMember;
+using MessengerApp.Application.Channels.Commands.UpdateChannel;
 using MessengerApp.Application.Channels.Common;
 using MessengerApp.Application.Channels.Queries.GetChannelById;
+using MessengerApp.Application.Channels.Queries.GetChannelMembers;
 using MessengerApp.Application.Channels.Queries.GetUserChannels;
 using MessengerApp.Application.Messages.Commands.SendMessage;
 using MessengerApp.Application.Messages.Common;
@@ -124,9 +130,188 @@ public class ChannelsController(ISender sender) : ApiController
     }
 
     [HttpPost("{id:guid}/read")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> MarkAsRead([FromRoute] Guid id)
     {
         Result result = await sender.Send(new MarkChannelAsReadCommand(id, CurrentUserId));
+        return HandleNoContentResult(result);
+    }
+
+    [HttpGet("{channelId:guid}/members")]
+    [ProducesResponseType(typeof(List<ChannelMemberDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetChannelMembers([FromRoute] Guid channelId, CancellationToken ct)
+    {
+        Result<List<ChannelMemberDto>> result = await sender.Send(new GetChannelMembersQuery(channelId, CurrentUserId), ct);
+        return HandleResult(result);
+    }
+
+    [HttpPost("{channelId:guid}/members")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AddChannelMembers(
+        [FromRoute] Guid channelId,
+        [FromBody] AddChannelMembersRequest request,
+        [FromServices] IHubContext<ChatHub, IChatClient> hubContext,
+        [FromServices] IApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        AddChannelMembersCommand command = new(channelId, CurrentUserId, request.MemberIds);
+        Result<int> result = await sender.Send(command, ct);
+
+        if (result.IsSuccess && result.Value > 0)
+        {
+            List<string> memberUserIds = await dbContext.ChannelMembers
+                .AsNoTracking()
+                .Where(m => m.ChannelId == channelId)
+                .Select(m => m.UserId.ToString())
+                .ToListAsync(ct);
+
+            if (memberUserIds.Count > 0)
+            {
+                await hubContext.Clients.Users(memberUserIds).ChannelMembersUpdated(channelId);
+                await hubContext.Clients.Users(memberUserIds).ChannelUpdated(channelId);
+            }
+        }
+
+        return HandleResult(result);
+    }
+
+    [HttpPut("{channelId:guid}")]
+    [ProducesResponseType(typeof(ChannelDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateChannel(
+        [FromRoute] Guid channelId,
+        [FromBody] UpdateChannelRequest request,
+        [FromServices] IHubContext<ChatHub, IChatClient> hubContext,
+        [FromServices] IApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        UpdateChannelCommand command = new(channelId, CurrentUserId, request.Name, request.Description, request.AvatarUrl);
+        Result<ChannelDetailDto> result = await sender.Send(command, ct);
+
+        if (result.IsSuccess)
+        {
+            List<string> memberUserIds = await dbContext.ChannelMembers
+                .AsNoTracking()
+                .Where(m => m.ChannelId == channelId)
+                .Select(m => m.UserId.ToString())
+                .ToListAsync(ct);
+
+            if (memberUserIds.Count > 0)
+            {
+                await hubContext.Clients.Users(memberUserIds).ChannelUpdated(channelId);
+            }
+        }
+
+        return HandleResult(result);
+    }
+
+    [HttpDelete("{channelId:guid}/members/{userId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RemoveChannelMember(
+        [FromRoute] Guid channelId,
+        [FromRoute] Guid userId,
+        [FromServices] IHubContext<ChatHub, IChatClient> hubContext,
+        [FromServices] IApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        RemoveChannelMemberCommand command = new(channelId, CurrentUserId, userId);
+        Result result = await sender.Send(command, ct);
+
+        if (result.IsSuccess)
+        {
+            List<string> remainingMemberIds = await dbContext.ChannelMembers
+                .AsNoTracking()
+                .Where(m => m.ChannelId == channelId)
+                .Select(m => m.UserId.ToString())
+                .ToListAsync(ct);
+
+            if (remainingMemberIds.Count > 0)
+            {
+                await hubContext.Clients.Users(remainingMemberIds).ChannelMembersUpdated(channelId);
+            }
+
+            await hubContext.Clients.User(userId.ToString()).ChannelDeleted(channelId);
+        }
+
+        return HandleNoContentResult(result);
+    }
+
+    [HttpPost("{channelId:guid}/leave")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> LeaveChannel(
+        [FromRoute] Guid channelId,
+        [FromServices] IHubContext<ChatHub, IChatClient> hubContext,
+        [FromServices] IApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        LeaveChannelCommand command = new(channelId, CurrentUserId);
+        Result result = await sender.Send(command, ct);
+
+        if (result.IsSuccess)
+        {
+            List<string> remainingMemberIds = await dbContext.ChannelMembers
+                .AsNoTracking()
+                .Where(m => m.ChannelId == channelId)
+                .Select(m => m.UserId.ToString())
+                .ToListAsync(ct);
+
+            if (remainingMemberIds.Count > 0)
+            {
+                await hubContext.Clients.Users(remainingMemberIds).ChannelMembersUpdated(channelId);
+            }
+
+            await hubContext.Clients.User(CurrentUserId.ToString()).ChannelDeleted(channelId);
+        }
+
+        return HandleNoContentResult(result);
+    }
+
+    [HttpDelete("{channelId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteChannel(
+        [FromRoute] Guid channelId,
+        [FromServices] IHubContext<ChatHub, IChatClient> hubContext,
+        [FromServices] IApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        List<string> memberUserIds = await dbContext.ChannelMembers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(m => m.ChannelId == channelId)
+            .Select(m => m.UserId.ToString())
+            .ToListAsync(ct);
+
+        DeleteChannelCommand command = new(channelId, CurrentUserId);
+        Result result = await sender.Send(command, ct);
+
+        if (result.IsSuccess && memberUserIds.Count > 0)
+        {
+            await hubContext.Clients.Users(memberUserIds).ChannelDeleted(channelId);
+        }
+
         return HandleNoContentResult(result);
     }
 }
