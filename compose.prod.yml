@@ -1,7 +1,7 @@
 services:
   # ─── PHP-FPM ─────────────────────────────────────────────────────────────────
   app:
-    image: ${APP_IMAGE:-ghcr.io/OWNER/laravel-react-messenger}:${APP_TAG:-latest}
+    image: ${APP_IMAGE:-ghcr.io/ngo-viet-hoang1/laravel-react-messenger}:${APP_TAG:-latest}
     container_name: ${APP_NAME:-laravel}_app
     restart: unless-stopped
 
@@ -130,7 +130,7 @@ services:
 
   # ─── Horizon (Queue Worker) ───────────────────────────────────────────────────
   horizon:
-    image: ${APP_IMAGE:-ghcr.io/OWNER/laravel-react-messenger}:${APP_TAG:-latest}
+    image: ${APP_IMAGE:-ghcr.io/ngo-viet-hoang1/laravel-react-messenger}:${APP_TAG:-latest}
     container_name: ${APP_NAME:-laravel}_horizon
     restart: unless-stopped
     command: php artisan horizon
@@ -165,7 +165,7 @@ services:
 
   # ─── Reverb (WebSocket) ──────────────────────────────────────────────────────
   reverb:
-    image: ${APP_IMAGE:-ghcr.io/OWNER/laravel-react-messenger}:${APP_TAG:-latest}
+    image: ${APP_IMAGE:-ghcr.io/ngo-viet-hoang1/laravel-react-messenger}:${APP_TAG:-latest}
     container_name: ${APP_NAME:-laravel}_reverb
     restart: unless-stopped
     command: php artisan reverb:start --host=0.0.0.0 --port=8080
@@ -201,7 +201,7 @@ services:
 
   # ─── Scheduler ───────────────────────────────────────────────────────────────
   scheduler:
-    image: ${APP_IMAGE:-ghcr.io/OWNER/laravel-react-messenger}:${APP_TAG:-latest}
+    image: ${APP_IMAGE:-ghcr.io/ngo-viet-hoang1/laravel-react-messenger}:${APP_TAG:-latest}
     container_name: ${APP_NAME:-laravel}_scheduler
     restart: unless-stopped
     command: php artisan schedule:work
