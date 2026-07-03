@@ -24,6 +24,15 @@
         })();
         </script>
 
+        <script>
+            window.reverb = {
+                key: "{{ config('reverb.frontend.key') }}",
+                host: "{{ config('reverb.frontend.host') }}",
+                port: "{{ config('reverb.frontend.port') }}",
+                scheme: "{{ config('reverb.frontend.scheme') }}"
+            };
+        </script>
+
         <!-- Scripts -->
         @routes
         @viteReactRefresh
