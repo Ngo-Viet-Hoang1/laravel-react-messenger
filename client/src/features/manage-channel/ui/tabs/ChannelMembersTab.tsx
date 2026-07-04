@@ -4,10 +4,7 @@ import { Input } from '@/shared/ui/input';
 import { Badge } from '@/shared/ui/badge';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { UserAvatar } from '@/entities/user';
-import {
-  CHANNEL_MEMBER_ROLE,
-  type ChannelMember,
-} from '@/entities/channel';
+import { CHANNEL_MEMBER_ROLE, type ChannelMember } from '@/entities/channel';
 import { UserPlus, Search, UserX, Crown, Shield } from 'lucide-react';
 
 export interface ChannelMembersTabProps {
@@ -37,9 +34,7 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
     const q = memberSearch.trim().toLowerCase();
     if (!q) return members;
     return members.filter(
-      (m) =>
-        m.username.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q)
+      (m) => m.username.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
     );
   }, [members, memberSearch]);
 
@@ -63,7 +58,7 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
             variant="outline"
             size="sm"
             onClick={onAddMemberClick}
-            className="h-8 text-xs gap-1.5 font-medium border-border hover:bg-accent/40"
+            className="h-8 gap-1.5 border-border text-xs font-medium text-primary hover:bg-accent/40"
           >
             <UserPlus className="h-3.5 w-3.5 text-primary" />
             Add people
@@ -74,12 +69,12 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
       {/* Search Filter */}
       {members.length > 5 && (
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Find a member..."
             value={memberSearch}
             onChange={(e) => setMemberSearch(e.target.value)}
-            className="h-8 pl-8 text-xs bg-background border-border"
+            className="h-8 border-border bg-background pl-8 text-xs"
           />
         </div>
       )}
@@ -87,10 +82,10 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
       {/* Members List */}
       <div className="space-y-1 divide-y divide-border/40 rounded-lg border border-border bg-card p-1">
         {isLoading ? (
-          <div className="p-3 space-y-3">
+          <div className="space-y-3 p-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="flex items-center gap-2.5">
-                <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
                 <div className="flex-1 space-y-1.5">
                   <Skeleton className="h-3.5 w-24" />
                   <Skeleton className="h-2.5 w-36" />
@@ -110,9 +105,9 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
             return (
               <div
                 key={member.userId}
-                className="group flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted/40 transition-colors"
+                className="group flex items-center justify-between gap-3 rounded-md p-2 transition-colors hover:bg-muted/40"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <UserAvatar
                     user={{ username: member.username, avatarUrl: member.avatarUrl }}
                     size="sm"
@@ -123,20 +118,18 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
                         {member.username}
                       </span>
                       {isSelf && (
-                        <span className="text-[10px] text-muted-foreground font-medium">
-                          (You)
-                        </span>
+                        <span className="text-[10px] font-medium text-muted-foreground">(You)</span>
                       )}
                     </div>
                     <p className="truncate text-[11px] text-muted-foreground">{member.email}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex shrink-0 items-center gap-1.5">
                   {member.role === CHANNEL_MEMBER_ROLE.OWNER ? (
                     <Badge
                       variant="secondary"
-                      className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 text-[10px] gap-1 px-1.5 py-0.5 font-semibold"
+                      className="gap-1 border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400"
                     >
                       <Crown className="h-3 w-3" />
                       Owner
@@ -144,13 +137,13 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
                   ) : member.role === CHANNEL_MEMBER_ROLE.ADMIN ? (
                     <Badge
                       variant="secondary"
-                      className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20 text-[10px] gap-1 px-1.5 py-0.5 font-semibold"
+                      className="gap-1 border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400"
                     >
                       <Shield className="h-3 w-3" />
                       Admin
                     </Badge>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground px-1 font-medium">
+                    <span className="px-1 text-[10px] font-medium text-muted-foreground">
                       Member
                     </span>
                   )}
@@ -161,7 +154,7 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => onRemoveMemberClick(member)}
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+                      className="h-7 w-7 text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
                       title={`Remove ${member.username} from channel`}
                     >
                       <UserX className="h-3.5 w-3.5" />

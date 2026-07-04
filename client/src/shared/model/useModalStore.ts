@@ -9,7 +9,8 @@ import { create } from 'zustand';
 export type ModalPayload =
   | { type: 'create-channel' }
   | { type: 'direct-chat' }
-  | { type: 'channel-details'; channelId: string };
+  | { type: 'channel-details'; channelId: string }
+  | { type: 'profile-settings' };
 
 export type ModalType = ModalPayload['type'];
 

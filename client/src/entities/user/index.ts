@@ -4,6 +4,7 @@ export * from './model/useUserSearch';
 export * from './model/usePresenceStore';
 export * from './api/userApi';
 export * from './api/userQueries';
+export * from './api/userMutations';
 export * from './ui/UserAvatar';
 export * from './ui/UserListItem';
 export * from './ui/UserSelector';

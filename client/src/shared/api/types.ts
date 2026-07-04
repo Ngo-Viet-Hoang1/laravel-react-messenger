@@ -63,6 +63,11 @@ export interface PaginatedList<T> {
   hasNextPage: boolean;
 }
 
+export interface MutationCallbacks<TData = void, TError = unknown> {
+  onSuccess?: (data: TData) => void;
+  onError?: (error: TError) => void;
+}
+
 export class ApiError extends Error {
   public readonly status: number;
   public readonly title: string;

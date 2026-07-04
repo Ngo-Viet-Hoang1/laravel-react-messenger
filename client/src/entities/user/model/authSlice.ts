@@ -35,6 +35,12 @@ export const authSlice = createSlice({
       state.isInitialLoading = action.payload;
     },
 
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
+
     clearAuth: (state) => {
       state.user = null;
       state.accessToken = null;
@@ -51,7 +57,7 @@ export const authSlice = createSlice({
   },
 });
 
-export const { setAuth, setAccessToken, setInitialLoading, clearAuth } = authSlice.actions;
+export const { setAuth, setAccessToken, setInitialLoading, updateUser, clearAuth } = authSlice.actions;
 
 export const {
   selectCurrentUser,

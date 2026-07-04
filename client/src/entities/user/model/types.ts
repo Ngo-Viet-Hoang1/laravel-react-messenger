@@ -3,6 +3,8 @@ import type { components, paths } from '@/shared/api';
 export type AuthResponse = components['schemas']['AuthResponse'];
 export type CurrentUserResponse = components['schemas']['CurrentUserResponse'];
 export type UserDto = components['schemas']['UserDto'];
+export type UpdateProfileRequest = components['schemas']['UpdateProfileRequest'];
+export type ChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
 export type PaginatedUsersResponse = components['schemas']['PaginatedListOfUserDto'];
 export type SearchUsersParams = NonNullable<paths['/api/Users']['get']['parameters']['query']>;
 

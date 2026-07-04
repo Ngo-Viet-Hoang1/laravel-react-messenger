@@ -5,12 +5,10 @@ import { useAppDispatch } from '@/app/store';
 import { setAuth, clearAuth, usePresenceStore } from '@/entities/user';
 import { sessionHint } from '@/shared/lib/sessionHint';
 import { stopSignalRConnection } from '@/shared/lib/signalr';
+import type { MutationCallbacks } from '@/shared/api';
 import { toast } from 'sonner';
 
-export const useLoginMutation = (options?: {
-  onSuccess?: () => void;
-  onError?: (err: unknown) => void;
-}) => {
+export const useLoginMutation = (options?: MutationCallbacks) => {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
 
@@ -32,10 +30,7 @@ export const useLoginMutation = (options?: {
   });
 };
 
-export const useGoogleLoginMutation = (options?: {
-  onSuccess?: () => void;
-  onError?: (err: unknown) => void;
-}) => {
+export const useGoogleLoginMutation = (options?: MutationCallbacks) => {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
 
@@ -57,10 +52,7 @@ export const useGoogleLoginMutation = (options?: {
   });
 };
 
-export const useRegisterMutation = (options?: {
-  onSuccess?: () => void;
-  onError?: (err: unknown) => void;
-}) => {
+export const useRegisterMutation = (options?: MutationCallbacks) => {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
 

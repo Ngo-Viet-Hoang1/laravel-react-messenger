@@ -12,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu';
-import { Menu, LogOut } from 'lucide-react';
+import { useModalStore } from '@/shared/model/useModalStore';
+import { Menu, LogOut, Settings } from 'lucide-react';
 
 export interface WorkspaceHeaderProps {
   onOpenMobileSidebar?: () => void;
@@ -21,6 +22,7 @@ export interface WorkspaceHeaderProps {
 export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({ onOpenMobileSidebar }) => {
   const currentUser = useAppSelector(selectCurrentUser);
   const logoutMutation = useLogoutMutation();
+  const openModal = useModalStore((state) => state.openModal);
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-3 select-none sm:px-4">
@@ -68,6 +70,16 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({ onOpenMobileSi
                 </p>
               </div>
             </DropdownMenuLabel>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onClick={() => openModal({ type: 'profile-settings' })}
+              className="cursor-pointer gap-2 text-foreground focus:bg-accent/40"
+            >
+              <Settings className="h-4 w-4 text-muted-foreground" />
+              <span>Profile & Settings</span>
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
 
