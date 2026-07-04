@@ -3,32 +3,77 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Badge } from '@/shared/ui/badge';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { UserAvatar } from '@/entities/user';
-import { CHANNEL_MEMBER_ROLE, type ChannelMember } from '@/entities/channel';
-import { UserPlus, Search, UserX, Crown, Shield } from 'lucide-react';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/shared/ui/dropdown-menu';
+import { UserAvatar, selectCurrentUser } from '@/entities/user';
+import {
+  useChannelMembersQuery,
+  useChannelDetailQuery,
+  useUpdateChannelMemberRoleMutation,
+  useTransferChannelOwnershipMutation,
+  useRemoveChannelMemberMutation,
+  CHANNEL_MEMBER_ROLE,
+  CHANNEL_TYPE,
+  type ChannelMember,
+  type ChannelMemberRole,
+} from '@/entities/channel';
+import { useAppSelector } from '@/app/store';
+import { AddMemberModal } from '../AddMemberModal';
+import { UserPlus, Search, MoreVertical, Loader2 } from 'lucide-react';
 
 export interface ChannelMembersTabProps {
-  members: ChannelMember[];
-  isLoading: boolean;
-  isDirect: boolean;
-  currentUserId?: string;
-  isManager: boolean;
-  isAdmin: boolean;
-  onAddMemberClick: () => void;
-  onRemoveMemberClick: (member: ChannelMember) => void;
+  channelId: string;
 }
 
-export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
-  members,
-  isLoading,
-  isDirect,
-  currentUserId,
-  isManager,
-  isAdmin,
-  onAddMemberClick,
-  onRemoveMemberClick,
-}) => {
+export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({ channelId }) => {
+  const currentUser = useAppSelector(selectCurrentUser);
+
   const [memberSearch, setMemberSearch] = React.useState('');
+  const [isAddMemberOpen, setIsAddMemberOpen] = React.useState(false);
+  const [updatingUserId, setUpdatingUserId] = React.useState<string | null>(null);
+
+  const [confirmAction, setConfirmAction] = React.useState<
+    | { type: 'remove'; member: ChannelMember }
+    | { type: 'transfer'; member: ChannelMember }
+    | null
+  >(null);
+
+  // Co-located server queries (deduplicated by TanStack Query cache)
+  const { data: members = [], isLoading } = useChannelMembersQuery(channelId);
+  const { data: channel } = useChannelDetailQuery(channelId);
+
+  const isDirect = channel?.type === CHANNEL_TYPE.DIRECT;
+
+  // Resolve current viewer's role
+  const myMembership = React.useMemo(
+    () => members.find((m) => m.userId === currentUser?.id),
+    [members, currentUser]
+  );
+
+  const isOwner = myMembership?.role === CHANNEL_MEMBER_ROLE.OWNER;
+  const isAdmin = myMembership?.role === CHANNEL_MEMBER_ROLE.ADMIN;
+
+  // Co-located mutations
+  const updateRoleMutation = useUpdateChannelMemberRoleMutation(channelId, {
+    onSuccess: () => setUpdatingUserId(null),
+    onError: () => setUpdatingUserId(null),
+  });
+
+  const transferOwnershipMutation = useTransferChannelOwnershipMutation(channelId, {
+    onSuccess: () => setConfirmAction(null),
+    onError: () => setConfirmAction(null),
+  });
+
+  const removeMemberMutation = useRemoveChannelMemberMutation(channelId, {
+    onSuccess: () => setConfirmAction(null),
+    onError: () => setConfirmAction(null),
+  });
 
   const filteredMembers = React.useMemo(() => {
     const q = memberSearch.trim().toLowerCase();
@@ -38,12 +83,31 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
     );
   }, [members, memberSearch]);
 
-  const canRemoveMember = (target: ChannelMember): boolean => {
-    if (!isManager || target.userId === currentUserId) return false;
+  const canManageMember = (target: ChannelMember): boolean => {
+    if (target.userId === currentUser?.id) return false;
     if (target.role === CHANNEL_MEMBER_ROLE.OWNER) return false;
-    if (isAdmin && target.role === CHANNEL_MEMBER_ROLE.ADMIN) return false;
-    return true;
+    if (isOwner) return true;
+    if (isAdmin && target.role === CHANNEL_MEMBER_ROLE.MEMBER) return true;
+    return false;
   };
+
+  const handleRoleChange = (member: ChannelMember, newRole: ChannelMemberRole) => {
+    setUpdatingUserId(member.userId);
+    updateRoleMutation.mutate({ userId: member.userId, role: newRole });
+  };
+
+  const executeConfirmedAction = () => {
+    if (!confirmAction) return;
+
+    if (confirmAction.type === 'remove') {
+      removeMemberMutation.mutate(confirmAction.member.userId);
+    } else if (confirmAction.type === 'transfer') {
+      transferOwnershipMutation.mutate(confirmAction.member.userId);
+    }
+  };
+
+  const isPendingConfirmation =
+    removeMemberMutation.isPending || transferOwnershipMutation.isPending;
 
   return (
     <div className="space-y-4">
@@ -51,16 +115,16 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
       {!isDirect && (
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-semibold text-foreground">
-            Channel Members ({members.length})
+            Members ({members.length})
           </span>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={onAddMemberClick}
-            className="h-8 gap-1.5 border-border text-xs font-medium text-primary hover:bg-accent/40"
+            onClick={() => setIsAddMemberOpen(true)}
+            className="h-8 gap-1.5 border-border text-xs font-medium text-primary hover:bg-accent/40 cursor-pointer"
           >
-            <UserPlus className="h-3.5 w-3.5 text-primary" />
+            <UserPlus className="h-3.5 w-3.5" />
             Add people
           </Button>
         </div>
@@ -99,8 +163,9 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
           </div>
         ) : (
           filteredMembers.map((member) => {
-            const isSelf = member.userId === currentUserId;
-            const canRemove = canRemoveMember(member);
+            const isSelf = member.userId === currentUser?.id;
+            const hasActions = canManageMember(member);
+            const isUpdating = updatingUserId === member.userId;
 
             return (
               <div
@@ -125,41 +190,89 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-2">
+                  {/* Clean Role Badges (No icon clutter) */}
                   {member.role === CHANNEL_MEMBER_ROLE.OWNER ? (
                     <Badge
                       variant="secondary"
-                      className="gap-1 border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400"
+                      className="border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400"
                     >
-                      <Crown className="h-3 w-3" />
                       Owner
                     </Badge>
                   ) : member.role === CHANNEL_MEMBER_ROLE.ADMIN ? (
                     <Badge
                       variant="secondary"
-                      className="gap-1 border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400"
+                      className="border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400"
                     >
-                      <Shield className="h-3 w-3" />
                       Admin
                     </Badge>
                   ) : (
-                    <span className="px-1 text-[10px] font-medium text-muted-foreground">
-                      Member
-                    </span>
+                    <span className="px-1 text-[11px] text-muted-foreground">Member</span>
                   )}
 
-                  {canRemove && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onRemoveMemberClick(member)}
-                      className="h-7 w-7 text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-                      title={`Remove ${member.username} from channel`}
-                    >
-                      <UserX className="h-3.5 w-3.5" />
-                      <span className="sr-only">Remove {member.username}</span>
-                    </Button>
+                  {/* Actions Dropdown for Authorized Managers */}
+                  {hasActions && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={isUpdating}
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                          aria-label={`Manage ${member.username}`}
+                        >
+                          {isUpdating ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        {isOwner && member.role === CHANNEL_MEMBER_ROLE.MEMBER && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleRoleChange(member, CHANNEL_MEMBER_ROLE.ADMIN)
+                            }
+                            className="text-xs cursor-pointer"
+                          >
+                            Promote to Admin
+                          </DropdownMenuItem>
+                        )}
+
+                        {isOwner && member.role === CHANNEL_MEMBER_ROLE.ADMIN && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleRoleChange(member, CHANNEL_MEMBER_ROLE.MEMBER)
+                            }
+                            className="text-xs cursor-pointer"
+                          >
+                            Demote to Member
+                          </DropdownMenuItem>
+                        )}
+
+                        {isOwner && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              setConfirmAction({ type: 'transfer', member })
+                            }
+                            className="text-xs text-amber-600 dark:text-amber-400 focus:text-amber-600 cursor-pointer"
+                          >
+                            Transfer Ownership
+                          </DropdownMenuItem>
+                        )}
+
+                        {isOwner && <DropdownMenuSeparator />}
+
+                        <DropdownMenuItem
+                          onClick={() => setConfirmAction({ type: 'remove', member })}
+                          className="text-xs text-destructive focus:text-destructive cursor-pointer"
+                        >
+                          Remove from channel
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
               </div>
@@ -167,6 +280,46 @@ export const ChannelMembersTab: React.FC<ChannelMembersTabProps> = ({
           })
         )}
       </div>
+
+      {/* Local Modals & Dialogs */}
+      <AddMemberModal
+        channelId={channelId}
+        open={isAddMemberOpen}
+        onOpenChange={setIsAddMemberOpen}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmAction)}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+        variant={confirmAction?.type === 'remove' ? 'destructive' : 'default'}
+        isPending={isPendingConfirmation}
+        title={
+          confirmAction?.type === 'remove'
+            ? 'Remove Member?'
+            : 'Transfer Channel Ownership?'
+        }
+        description={
+          confirmAction?.type === 'remove' ? (
+            <>
+              Are you sure you want to remove{' '}
+              <strong className="text-foreground">{confirmAction.member.username}</strong> from{' '}
+              <strong className="text-foreground">{channel?.name}</strong>? They can be re-invited
+              later.
+            </>
+          ) : (
+            <>
+              Are you sure you want to transfer ownership of{' '}
+              <strong className="text-foreground">{channel?.name}</strong> to{' '}
+              <strong className="text-foreground">{confirmAction?.member.username}</strong>? You
+              will become an Administrator and they will have full owner privileges.
+            </>
+          )
+        }
+        confirmText={
+          confirmAction?.type === 'remove' ? 'Remove Member' : 'Transfer Ownership'
+        }
+        onConfirm={executeConfirmedAction}
+      />
     </div>
   );
 };

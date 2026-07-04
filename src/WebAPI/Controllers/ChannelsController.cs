@@ -7,6 +7,8 @@ using MessengerApp.Application.Channels.Commands.LeaveChannel;
 using MessengerApp.Application.Channels.Commands.MarkChannelAsRead;
 using MessengerApp.Application.Channels.Commands.RemoveChannelMember;
 using MessengerApp.Application.Channels.Commands.UpdateChannel;
+using MessengerApp.Application.Channels.Commands.UpdateChannelMemberRole;
+using MessengerApp.Application.Channels.Commands.TransferChannelOwnership;
 using MessengerApp.Application.Channels.Common;
 using MessengerApp.Application.Channels.Queries.GetChannelById;
 using MessengerApp.Application.Channels.Queries.GetChannelMembers;
@@ -246,6 +248,73 @@ public class ChannelsController(ISender sender) : ApiController
             }
 
             await hubContext.Clients.User(userId.ToString()).ChannelDeleted(channelId);
+        }
+
+        return HandleNoContentResult(result);
+    }
+
+    [HttpPut("{channelId:guid}/members/{userId:guid}/role")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateChannelMemberRole(
+        [FromRoute] Guid channelId,
+        [FromRoute] Guid userId,
+        [FromBody] UpdateChannelMemberRoleRequest request,
+        [FromServices] IHubContext<ChatHub, IChatClient> hubContext,
+        [FromServices] IApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        UpdateChannelMemberRoleCommand command = new(channelId, CurrentUserId, userId, request.Role);
+        Result result = await sender.Send(command, ct);
+
+        if (result.IsSuccess)
+        {
+            List<string> memberIds = await dbContext.ChannelMembers
+                .AsNoTracking()
+                .Where(m => m.ChannelId == channelId)
+                .Select(m => m.UserId.ToString())
+                .ToListAsync(ct);
+
+            if (memberIds.Count > 0)
+            {
+                await hubContext.Clients.Users(memberIds).ChannelMembersUpdated(channelId);
+            }
+        }
+
+        return HandleNoContentResult(result);
+    }
+
+    [HttpPost("{channelId:guid}/transfer-ownership")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> TransferChannelOwnership(
+        [FromRoute] Guid channelId,
+        [FromBody] TransferChannelOwnershipRequest request,
+        [FromServices] IHubContext<ChatHub, IChatClient> hubContext,
+        [FromServices] IApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        TransferChannelOwnershipCommand command = new(channelId, CurrentUserId, request.NewOwnerId);
+        Result result = await sender.Send(command, ct);
+
+        if (result.IsSuccess)
+        {
+            List<string> memberIds = await dbContext.ChannelMembers
+                .AsNoTracking()
+                .Where(m => m.ChannelId == channelId)
+                .Select(m => m.UserId.ToString())
+                .ToListAsync(ct);
+
+            if (memberIds.Count > 0)
+            {
+                await hubContext.Clients.Users(memberIds).ChannelMembersUpdated(channelId);
+            }
         }
 
         return HandleNoContentResult(result);

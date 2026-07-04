@@ -2,18 +2,24 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { channelApi } from './channelApi';
 import { channelKeys } from './channelQueries';
-import type { ChannelDetail, ChannelSummary, CreateChannelPayload } from '../model/types';
+import type {
+  ChannelDetail,
+  ChannelMemberRole,
+  ChannelSummary,
+  CreateChannelPayload,
+} from '../model/types';
+import type { MutationCallbacks } from '@/shared/api';
 
-export interface UseCreateChannelMutationOptions {
-  onSuccess?: (channel: ChannelDetail) => void;
-  onError?: (error: unknown) => void;
-}
+export type UseCreateChannelMutationOptions = MutationCallbacks<ChannelDetail>;
 
 export const useCreateChannelMutation = (options?: UseCreateChannelMutationOptions) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (payload: CreateChannelPayload) => channelApi.createChannel(payload),
+    meta: {
+      errorMessage: 'Failed to create channel.',
+    },
     onSuccess: (createdChannel) => {
       queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
       toast.success(`Channel #${createdChannel.name} created successfully!`);
@@ -25,16 +31,16 @@ export const useCreateChannelMutation = (options?: UseCreateChannelMutationOptio
   });
 };
 
-export interface UseStartDirectChatMutationOptions {
-  onSuccess?: (channel: ChannelDetail) => void;
-  onError?: (error: unknown) => void;
-}
+export type UseStartDirectChatMutationOptions = MutationCallbacks<ChannelDetail>;
 
 export const useStartDirectChatMutation = (options?: UseStartDirectChatMutationOptions) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (targetUserId: string) => channelApi.getOrCreateDirectChannel(targetUserId),
+    meta: {
+      errorMessage: 'Failed to start direct conversation.',
+    },
     onSuccess: (channel) => {
       queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
       toast.success(`Direct conversation opened with ${channel.name}!`);
@@ -64,10 +70,7 @@ export const useMarkAsReadMutation = () => {
   });
 };
 
-export interface UseAddChannelMembersMutationOptions {
-  onSuccess?: (addedCount: number) => void;
-  onError?: (error: unknown) => void;
-}
+export type UseAddChannelMembersMutationOptions = MutationCallbacks<number>;
 
 export const useAddChannelMembersMutation = (
   channelId: string,
@@ -77,6 +80,9 @@ export const useAddChannelMembersMutation = (
 
   return useMutation({
     mutationFn: (memberIds: string[]) => channelApi.addChannelMembers(channelId, memberIds),
+    meta: {
+      errorMessage: 'Failed to add members to channel.',
+    },
     onSuccess: (addedCount) => {
       queryClient.invalidateQueries({ queryKey: channelKeys.members(channelId) });
       queryClient.invalidateQueries({ queryKey: channelKeys.detail(channelId) });
@@ -91,10 +97,7 @@ export const useAddChannelMembersMutation = (
   });
 };
 
-export interface UseUpdateChannelMutationOptions {
-  onSuccess?: (channel: ChannelDetail) => void;
-  onError?: (error: unknown) => void;
-}
+export type UseUpdateChannelMutationOptions = MutationCallbacks<ChannelDetail>;
 
 export const useUpdateChannelMutation = (
   channelId: string,
@@ -105,6 +108,9 @@ export const useUpdateChannelMutation = (
   return useMutation({
     mutationFn: (payload: { name: string; description?: string | null; avatarUrl?: string | null }) =>
       channelApi.updateChannel(channelId, payload),
+    meta: {
+      errorMessage: 'Failed to update channel details.',
+    },
     onSuccess: (updatedChannel) => {
       queryClient.invalidateQueries({ queryKey: channelKeys.detail(channelId) });
       queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
@@ -117,10 +123,57 @@ export const useUpdateChannelMutation = (
   });
 };
 
-export interface UseRemoveChannelMemberMutationOptions {
-  onSuccess?: () => void;
-  onError?: (error: unknown) => void;
-}
+export type UseUpdateChannelMemberRoleMutationOptions = MutationCallbacks;
+
+export const useUpdateChannelMemberRoleMutation = (
+  channelId: string,
+  options?: UseUpdateChannelMemberRoleMutationOptions
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: ChannelMemberRole }) =>
+      channelApi.updateChannelMemberRole(channelId, userId, role),
+    meta: {
+      errorMessage: 'Failed to update member role.',
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: channelKeys.members(channelId) });
+      toast.success('Member role updated successfully!');
+      options?.onSuccess?.();
+    },
+    onError: (error) => {
+      options?.onError?.(error);
+    },
+  });
+};
+
+export type UseTransferChannelOwnershipMutationOptions = MutationCallbacks;
+
+export const useTransferChannelOwnershipMutation = (
+  channelId: string,
+  options?: UseTransferChannelOwnershipMutationOptions
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (newOwnerId: string) => channelApi.transferOwnership(channelId, newOwnerId),
+    meta: {
+      errorMessage: 'Failed to transfer channel ownership.',
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: channelKeys.members(channelId) });
+      queryClient.invalidateQueries({ queryKey: channelKeys.detail(channelId) });
+      toast.success('Channel ownership transferred successfully!');
+      options?.onSuccess?.();
+    },
+    onError: (error) => {
+      options?.onError?.(error);
+    },
+  });
+};
+
+export type UseRemoveChannelMemberMutationOptions = MutationCallbacks;
 
 export const useRemoveChannelMemberMutation = (
   channelId: string,
@@ -130,6 +183,9 @@ export const useRemoveChannelMemberMutation = (
 
   return useMutation({
     mutationFn: (userId: string) => channelApi.removeChannelMember(channelId, userId),
+    meta: {
+      errorMessage: 'Failed to remove member.',
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: channelKeys.members(channelId) });
       queryClient.invalidateQueries({ queryKey: channelKeys.detail(channelId) });
@@ -142,10 +198,7 @@ export const useRemoveChannelMemberMutation = (
   });
 };
 
-export interface UseLeaveChannelMutationOptions {
-  onSuccess?: () => void;
-  onError?: (error: unknown) => void;
-}
+export type UseLeaveChannelMutationOptions = MutationCallbacks;
 
 export const useLeaveChannelMutation = (
   channelId: string,
@@ -155,6 +208,9 @@ export const useLeaveChannelMutation = (
 
   return useMutation({
     mutationFn: () => channelApi.leaveChannel(channelId),
+    meta: {
+      errorMessage: 'Failed to leave channel.',
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
       queryClient.removeQueries({ queryKey: channelKeys.detail(channelId) });
@@ -167,10 +223,7 @@ export const useLeaveChannelMutation = (
   });
 };
 
-export interface UseDeleteChannelMutationOptions {
-  onSuccess?: () => void;
-  onError?: (error: unknown) => void;
-}
+export type UseDeleteChannelMutationOptions = MutationCallbacks;
 
 export const useDeleteChannelMutation = (
   channelId: string,
@@ -180,6 +233,9 @@ export const useDeleteChannelMutation = (
 
   return useMutation({
     mutationFn: () => channelApi.deleteChannel(channelId),
+    meta: {
+      errorMessage: 'Failed to delete channel.',
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
       queryClient.removeQueries({ queryKey: channelKeys.detail(channelId) });
@@ -191,4 +247,3 @@ export const useDeleteChannelMutation = (
     },
   });
 };
-

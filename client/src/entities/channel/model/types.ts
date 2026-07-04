@@ -9,6 +9,7 @@ export type ChannelMember = components['schemas']['ChannelMemberDto'];
 export type ChannelMemberRole = components['schemas']['ChannelMemberRole'];
 export type AddChannelMembersPayload = components['schemas']['AddChannelMembersRequest'];
 export type UpdateChannelPayload = components['schemas']['UpdateChannelRequest'];
+export type UpdateChannelMemberRolePayload = components['schemas']['UpdateChannelMemberRoleRequest'];
 
 export const CHANNEL_TYPE = {
   DIRECT: 1,
@@ -16,8 +17,7 @@ export const CHANNEL_TYPE = {
 } as const;
 
 export const CHANNEL_MEMBER_ROLE = {
-  OWNER: 0,
-  ADMIN: 1,
-  MEMBER: 2,
+  OWNER: 1,
+  ADMIN: 2,
+  MEMBER: 3,
 } as const;
-
