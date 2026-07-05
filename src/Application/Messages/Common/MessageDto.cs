@@ -8,5 +8,6 @@ public record MessageDto(
     string? SenderAvatarUrl,
     string Content,
     string? ClientMessageId,
-    DateTimeOffset CreatedAt
+    DateTimeOffset CreatedAt,
+    List<ReactionGroupDto>? Reactions = null
 );

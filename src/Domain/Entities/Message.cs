@@ -18,6 +18,8 @@ public class Message : BaseAuditableEntity, ISoftDelete
     public DateTimeOffset? DeletedAt { get; set; }
     public string? DeletedBy { get; set; }
 
+    public ICollection<MessageReaction> Reactions { get; set; } = new List<MessageReaction>();
+
     public Message() { }
 
     private Message(Guid channelId, Guid senderId, string content, string? clientMessageId = null)

@@ -1412,6 +1412,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Messages/{messageId}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    messageId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ToggleReactionRequest"];
+                    "text/json": components["schemas"]["ToggleReactionRequest"];
+                    "application/*+json": components["schemas"]["ToggleReactionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ToggleReactionResponse"];
+                        "application/json": components["schemas"]["ToggleReactionResponse"];
+                        "text/json": components["schemas"]["ToggleReactionResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Users": {
         parameters: {
             query?: never;
@@ -1712,6 +1801,7 @@ export interface components {
             clientMessageId: null | string;
             /** Format: date-time */
             createdAt: string;
+            reactions?: null | components["schemas"]["ReactionGroupDto"][];
         };
         PaginatedListOfUserDto: {
             items: components["schemas"]["UserDto"][];
@@ -1732,6 +1822,12 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        ReactionGroupDto: {
+            emoji: string;
+            /** Format: int32 */
+            count: number | string;
+            userIds: string[];
+        };
         RefreshTokenCommand: {
             refreshToken: null | string;
         };
@@ -1744,6 +1840,16 @@ export interface components {
         SendMessageRequest: {
             content: string;
             clientMessageId?: null | string;
+        };
+        ToggleReactionRequest: {
+            emoji: string;
+        };
+        ToggleReactionResponse: {
+            /** Format: uuid */
+            messageId: string;
+            /** Format: uuid */
+            channelId: string;
+            reactions: components["schemas"]["ReactionGroupDto"][];
         };
         TransferChannelOwnershipRequest: {
             /** Format: uuid */

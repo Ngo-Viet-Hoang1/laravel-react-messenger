@@ -164,6 +164,38 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                     b.ToTable("Messages", (string)null);
                 });
 
+            modelBuilder.Entity("MessengerApp.Domain.Entities.MessageReaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MessageId", "UserId", "Emoji")
+                        .IsUnique();
+
+                    b.ToTable("MessageReactions", (string)null);
+                });
+
             modelBuilder.Entity("MessengerApp.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -288,9 +320,33 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                     b.Navigation("Sender");
                 });
 
+            modelBuilder.Entity("MessengerApp.Domain.Entities.MessageReaction", b =>
+                {
+                    b.HasOne("MessengerApp.Domain.Entities.Message", "Message")
+                        .WithMany("Reactions")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MessengerApp.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MessengerApp.Domain.Entities.Channel", b =>
                 {
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("MessengerApp.Domain.Entities.Message", b =>
+                {
+                    b.Navigation("Reactions");
                 });
 #pragma warning restore 612, 618
         }

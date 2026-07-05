@@ -1,3 +1,5 @@
+using MessengerApp.Application.Messages.Common;
+
 namespace MessengerApp.WebAPI.Hubs;
 
 public interface IChatClient
@@ -14,7 +16,7 @@ public interface IChatClient
 
     Task UserStoppedTyping(Guid channelId, Guid userId);
 
-    Task MessageReactionUpdated(Guid messageId, Guid channelId, string emoji, int count, Guid userId);
+    Task MessageReactionUpdated(Guid messageId, Guid channelId, IReadOnlyList<ReactionGroupDto> reactions);
 
     Task ChannelUpdated(Guid channelId);
 

@@ -43,6 +43,7 @@ public class GetChannelMessagesQueryHandler(IApplicationDbContext context)
         var query = context.Messages
             .AsNoTracking()
             .Include(m => m.Sender)
+            .Include(m => m.Reactions)
             .Where(m => m.ChannelId == request.ChannelId);
 
         if (request.Before.HasValue)
