@@ -8,6 +8,8 @@ import { selectCurrentUser } from '@/entities/user';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Button } from '@/shared/ui/button';
 import { useModalStore } from '@/shared/model/useModalStore';
+import { getSignalRConnection, HubConnectionState } from '@/shared/lib/signalr';
+import { TypingIndicator } from '@/features/typing-indicator';
 import { useChatScroll } from '../lib/useChatScroll';
 
 export interface ChatWindowProps {
@@ -49,6 +51,29 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
       openModal({ type: 'channel-details', channelId });
     }
   };
+
+  React.useEffect(() => {
+    if (!channelId) return;
+
+    const connection = getSignalRConnection();
+    const join = async () => {
+      try {
+        if (connection.state === HubConnectionState.Connected) {
+          await connection.invoke('JoinChannel', channelId);
+        }
+      } catch (err) {
+        console.warn('[SignalR] Failed to join channel group:', err);
+      }
+    };
+
+    join();
+
+    return () => {
+      if (connection.state === HubConnectionState.Connected) {
+        connection.invoke('LeaveChannelGroup', channelId).catch(() => {});
+      }
+    };
+  }, [channelId]);
 
   return (
     <main className="relative flex flex-1 flex-col overflow-hidden bg-background">
@@ -169,6 +194,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
           </span>
         </button>
       )}
+
+      <TypingIndicator channelId={channelId} />
 
       <MessageInput
         channelId={channelId}

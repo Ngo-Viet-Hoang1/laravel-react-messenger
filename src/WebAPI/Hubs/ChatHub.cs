@@ -28,6 +28,16 @@ public class ChatHub(
         }
     }
 
+    protected string CurrentUsername
+    {
+        get
+        {
+            return Context.User?.FindFirst(ClaimTypes.Name)?.Value
+                ?? Context.User?.FindFirst("name")?.Value
+                ?? "Someone";
+        }
+    }
+
     public override async Task OnConnectedAsync()
     {
         Guid userId = CurrentUserId;
@@ -145,5 +155,52 @@ public class ChatHub(
         {
             await Clients.Users(memberUserIds).ReceiveMessage(message);
         }
+    }
+
+    public static string GetChannelGroupName(Guid channelId) => $"channel:{channelId}";
+
+    public async Task JoinChannel(Guid channelId)
+    {
+        Guid userId = CurrentUserId;
+        if (userId == Guid.Empty || channelId == Guid.Empty)
+        {
+            throw new HubException("Invalid authentication or channel identifier.");
+        }
+
+        // BOLA / Group Poisoning Defense: verify membership and channel active status
+        bool isMember = await dbContext.ChannelMembers
+            .AsNoTracking()
+            .AnyAsync(m => m.ChannelId == channelId && m.UserId == userId && !m.Channel.IsDeleted, Context.ConnectionAborted);
+
+        if (!isMember)
+        {
+            logger.LogWarning("Security violation: User {UserId} attempted unauthorized join to channel {ChannelId}", userId, channelId);
+            await Clients.Caller.HubError("FORBIDDEN_CHANNEL_ACCESS", "You are not a member of this channel.");
+            throw new HubException("Access denied: You are not authorized to join this channel.");
+        }
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, GetChannelGroupName(channelId));
+    }
+
+    public async Task LeaveChannelGroup(Guid channelId)
+    {
+        if (channelId == Guid.Empty) return;
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GetChannelGroupName(channelId));
+    }
+
+    public async Task SendTyping(Guid channelId)
+    {
+        Guid userId = CurrentUserId;
+        if (userId == Guid.Empty || channelId == Guid.Empty) return;
+
+        await Clients.OthersInGroup(GetChannelGroupName(channelId)).UserTyping(channelId, userId, CurrentUsername);
+    }
+
+    public async Task SendStoppedTyping(Guid channelId)
+    {
+        Guid userId = CurrentUserId;
+        if (userId == Guid.Empty || channelId == Guid.Empty) return;
+
+        await Clients.OthersInGroup(GetChannelGroupName(channelId)).UserStoppedTyping(channelId, userId);
     }
 }

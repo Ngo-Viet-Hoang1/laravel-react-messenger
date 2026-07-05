@@ -2,6 +2,7 @@ import * as React from 'react';
 import { SendHorizontal } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { useSendMessageMutation } from '@/entities/message';
+import { useTypingPublisher } from '@/features/typing-indicator';
 import { cn } from '@/shared/lib/utils';
 
 export interface MessageInputProps {
@@ -22,6 +23,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [content, setContent] = React.useState('');
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const { mutate: sendMessage } = useSendMessageMutation(channelId);
+  const { handleTyping, handleStoppedTyping } = useTypingPublisher(channelId);
 
   const placeholderText = isDirect ? `Message ${channelName}...` : `Message in ${channelName}...`;
 
@@ -34,13 +36,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       clientMessageId: crypto.randomUUID(),
     });
 
+    handleStoppedTyping();
     setContent('');
 
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.focus();
     }
-  }, [content, channelId, disabled, sendMessage]);
+  }, [content, channelId, disabled, sendMessage, handleStoppedTyping]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -50,7 +53,15 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
+    const val = e.target.value;
+    setContent(val);
+
+    if (val.trim()) {
+      handleTyping();
+    } else {
+      handleStoppedTyping();
+    }
+
     const target = e.target;
     target.style.height = 'auto';
     target.style.height = `${Math.min(target.scrollHeight, 160)}px`;
