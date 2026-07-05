@@ -1,5 +1,8 @@
 import { api } from '@/shared/api';
+import type { components } from '@/shared/api';
 import type { MessageDto, MessagesCursorResponse, SendMessagePayload } from '../model/types';
+
+export type ToggleReactionResponse = components['schemas']['ToggleReactionResponse'];
 
 export const messageApi = {
   getChannelMessages: async (
@@ -14,5 +17,9 @@ export const messageApi = {
 
   sendMessage: async (channelId: string, payload: SendMessagePayload): Promise<MessageDto> => {
     return api.post<MessageDto>(`/Channels/${channelId}/messages`, payload);
+  },
+
+  toggleReaction: async (messageId: string, emoji: string): Promise<ToggleReactionResponse> => {
+    return api.post<ToggleReactionResponse>(`/Messages/${messageId}/reactions`, { emoji });
   },
 };

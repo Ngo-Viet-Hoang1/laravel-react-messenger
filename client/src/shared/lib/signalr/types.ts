@@ -12,9 +12,7 @@ export interface ChatClientEvents {
   MessageReactionUpdated: (
     messageId: string,
     channelId: string,
-    emoji: string,
-    count: number,
-    userId: string
+    reactions: components['schemas']['ReactionGroupDto'][]
   ) => void;
   ChannelUpdated: (channelId: string) => void;
   ChannelMembersUpdated: (channelId: string) => void;

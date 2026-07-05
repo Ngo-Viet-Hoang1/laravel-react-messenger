@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Users, MessageSquareOff, Loader2, ArrowDown, Info } from 'lucide-react';
 import { useChannelDetailQuery, CHANNEL_TYPE, ChannelAvatar } from '@/entities/channel';
-import { useChannelMessagesQuery, MessageBubble, DateDivider } from '@/entities/message';
+import { useChannelMessagesQuery, MessageBubble, DateDivider, MESSAGE_STATUS } from '@/entities/message';
 import { MessageInput } from '@/features/send-message';
 import { useAppSelector } from '@/app/store';
 import { selectCurrentUser } from '@/entities/user';
@@ -10,6 +10,7 @@ import { Button } from '@/shared/ui/button';
 import { useModalStore } from '@/shared/model/useModalStore';
 import { getSignalRConnection, HubConnectionState } from '@/shared/lib/signalr';
 import { TypingIndicator } from '@/features/typing-indicator';
+import { MessageActionsBar, ReactionBadges } from '@/features/toggle-reaction';
 import { useChatScroll } from '../lib/useChatScroll';
 
 export interface ChatWindowProps {
@@ -170,6 +171,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
                   <MessageBubble
                     message={message}
                     isCurrentUser={currentUser?.id === message.senderId}
+                    actions={
+                      (!message.status || message.status === MESSAGE_STATUS.SENT) && channelId ? (
+                        <MessageActionsBar
+                          messageId={message.id}
+                          channelId={channelId}
+                          reactions={message.reactions}
+                        />
+                      ) : null
+                    }
+                    reactions={
+                      channelId ? (
+                        <ReactionBadges
+                          messageId={message.id}
+                          channelId={channelId}
+                          reactions={message.reactions}
+                        />
+                      ) : null
+                    }
                   />
                 </React.Fragment>
               );

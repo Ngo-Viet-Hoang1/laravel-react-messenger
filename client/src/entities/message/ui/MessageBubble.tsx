@@ -9,12 +9,16 @@ export interface MessageBubbleProps {
   message: ChatMessage;
   isCurrentUser: boolean;
   className?: string;
+  actions?: React.ReactNode;
+  reactions?: React.ReactNode;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   isCurrentUser,
   className,
+  actions,
+  reactions,
 }) => {
   const isOptimistic = message.status === MESSAGE_STATUS.SENDING;
   const isFailed = message.status === MESSAGE_STATUS.FAILED;
@@ -72,7 +76,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div className="mt-0.5 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap text-foreground/90 select-text">
           {message.content}
         </div>
+
+        {reactions}
       </div>
+
+      {actions && (
+        <div className="absolute -top-3 right-4 flex items-center rounded-lg border border-border/60 bg-background/95 px-1 py-0.5 shadow-xs backdrop-blur-md transition-opacity duration-150 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto">
+          {actions}
+        </div>
+      )}
     </div>
   );
 };

@@ -122,3 +122,99 @@ export const useSendMessageMutation = (channelId?: string) => {
     },
   });
 };
+
+export const useToggleReactionMutation = (channelId?: string) => {
+  const queryClient = useQueryClient();
+  const currentUser = useAppSelector(selectCurrentUser);
+
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
+      messageApi.toggleReaction(messageId, emoji),
+
+    onMutate: async ({ messageId, emoji }) => {
+      if (!channelId || !currentUser?.id) return;
+
+      await queryClient.cancelQueries({ queryKey: messageKeys.byChannel(channelId) });
+      const previousData = queryClient.getQueryData<MessagesInfiniteData>(
+        messageKeys.byChannel(channelId)
+      );
+
+      queryClient.setQueryData<MessagesInfiniteData>(messageKeys.byChannel(channelId), (old) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          pages: old.pages.map((page: MessagesPage) => ({
+            ...page,
+            items: page.items.map((m) => {
+              if (m.id !== messageId) return m;
+
+              const reactions = [...(m.reactions || [])];
+              const existingGroupIndex = reactions.findIndex((g) => g.emoji === emoji);
+
+              if (existingGroupIndex !== -1) {
+                const group = reactions[existingGroupIndex];
+                const hasReacted = group.userIds.includes(currentUser.id);
+
+                if (hasReacted) {
+                  const updatedUserIds = group.userIds.filter((id) => id !== currentUser.id);
+                  const newCount = Number(group.count) - 1;
+                  if (newCount <= 0) {
+                    reactions.splice(existingGroupIndex, 1);
+                  } else {
+                    reactions[existingGroupIndex] = {
+                      ...group,
+                      count: newCount,
+                      userIds: updatedUserIds,
+                    };
+                  }
+                } else {
+                  reactions[existingGroupIndex] = {
+                    ...group,
+                    count: Number(group.count) + 1,
+                    userIds: [...group.userIds, currentUser.id],
+                  };
+                }
+              } else {
+                reactions.push({
+                  emoji,
+                  count: 1,
+                  userIds: [currentUser.id],
+                });
+              }
+
+              return { ...m, reactions };
+            }),
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+
+    onError: (_err, _variables, context) => {
+      if (channelId && context?.previousData) {
+        queryClient.setQueryData(messageKeys.byChannel(channelId), context.previousData);
+      }
+    },
+
+    onSuccess: (response) => {
+      if (!channelId) return;
+
+      queryClient.setQueryData<MessagesInfiniteData>(messageKeys.byChannel(channelId), (old) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          pages: old.pages.map((page: MessagesPage) => ({
+            ...page,
+            items: page.items.map((m) =>
+              m.id === response.messageId ? { ...m, reactions: response.reactions } : m
+            ),
+          })),
+        };
+      });
+    },
+  });
+};
+

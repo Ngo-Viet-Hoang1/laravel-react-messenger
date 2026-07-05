@@ -151,6 +151,25 @@ export const WorkspaceLayout: React.FC = () => {
     );
   });
 
+  useSignalREvent('MessageReactionUpdated', (messageId, channelId, reactions) => {
+    queryClient.setQueryData<MessagesInfiniteData>(
+      messageKeys.byChannel(channelId),
+      (old) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          pages: old.pages.map((page: MessagesPage) => ({
+            ...page,
+            items: page.items.map((m) =>
+              m.id === messageId ? { ...m, reactions } : m
+            ),
+          })),
+        };
+      }
+    );
+  });
+
   // Close mobile sidebar sheet drawer on channel change
   React.useEffect(() => {
     setMobileSidebarOpen(false);
