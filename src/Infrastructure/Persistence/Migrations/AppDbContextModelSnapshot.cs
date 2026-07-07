@@ -150,8 +150,18 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text");
 
+                    b.Property<string>("Reactions")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
                     b.Property<Guid>("SenderId")
                         .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -323,7 +333,7 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("MessengerApp.Domain.Entities.MessageReaction", b =>
                 {
                     b.HasOne("MessengerApp.Domain.Entities.Message", "Message")
-                        .WithMany("Reactions")
+                        .WithMany()
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -342,11 +352,6 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("MessengerApp.Domain.Entities.Channel", b =>
                 {
                     b.Navigation("Members");
-                });
-
-            modelBuilder.Entity("MessengerApp.Domain.Entities.Message", b =>
-                {
-                    b.Navigation("Reactions");
                 });
 #pragma warning restore 612, 618
         }

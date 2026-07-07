@@ -23,16 +23,15 @@ public static partial class MessageMappingExtensions
     [MapProperty(nameof(Message.Reactions), nameof(MessageDto.Reactions), Use = nameof(MapReactions))]
     public static partial MessageDto ToDto(this Message message);
 
-    public static List<ReactionGroupDto> MapReactions(ICollection<MessageReaction>? reactions)
+    public static List<ReactionGroupDto> MapReactions(IEnumerable<MessageReactionItem>? reactions)
     {
-        if (reactions == null || reactions.Count == 0)
+        if (reactions == null)
         {
             return [];
         }
 
         return reactions
-            .GroupBy(r => r.Emoji)
-            .Select(g => new ReactionGroupDto(g.Key, g.Count(), g.Select(r => r.UserId).ToList()))
+            .Select(r => new ReactionGroupDto(r.Emoji, r.Count, r.UserIds))
             .ToList();
     }
 }

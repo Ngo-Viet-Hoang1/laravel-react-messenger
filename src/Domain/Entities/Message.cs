@@ -18,7 +18,7 @@ public class Message : BaseAuditableEntity, ISoftDelete
     public DateTimeOffset? DeletedAt { get; set; }
     public string? DeletedBy { get; set; }
 
-    public ICollection<MessageReaction> Reactions { get; set; } = new List<MessageReaction>();
+    public List<MessageReactionItem> Reactions { get; set; } = [];
 
     public Message() { }
 
@@ -38,5 +38,42 @@ public class Message : BaseAuditableEntity, ISoftDelete
         if (senderId == Guid.Empty) throw new ArgumentException("SenderId cannot be empty.", nameof(senderId));
 
         return new Message(channelId, senderId, content.Trim(), clientMessageId?.Trim());
+    }
+
+    public bool ToggleReaction(Guid userId, string emoji)
+    {
+        var updatedList = Reactions.Select(r => new MessageReactionItem(r.Emoji, r.Count, [.. r.UserIds])).ToList();
+        var group = updatedList.FirstOrDefault(r => r.Emoji == emoji);
+
+        bool added;
+        if (group != null)
+        {
+            if (group.UserIds.Contains(userId))
+            {
+                group.UserIds.Remove(userId);
+                group.Count = group.UserIds.Count;
+
+                if (group.Count <= 0)
+                {
+                    updatedList.Remove(group);
+                }
+
+                added = false;
+            }
+            else
+            {
+                group.UserIds.Add(userId);
+                group.Count = group.UserIds.Count;
+                added = true;
+            }
+        }
+        else
+        {
+            updatedList.Add(new MessageReactionItem(emoji, 1, [userId]));
+            added = true;
+        }
+
+        Reactions = updatedList;
+        return added;
     }
 }

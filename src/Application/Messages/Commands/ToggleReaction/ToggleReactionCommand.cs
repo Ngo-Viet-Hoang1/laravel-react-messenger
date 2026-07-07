@@ -35,55 +35,62 @@ public class ToggleReactionCommandValidator : AbstractValidator<ToggleReactionCo
 public class ToggleReactionCommandHandler(IApplicationDbContext context)
     : IRequestHandler<ToggleReactionCommand, Result<ToggleReactionResponse>>
 {
+    private const int MaxConcurrencyRetries = 3;
+
     public async Task<Result<ToggleReactionResponse>> Handle(ToggleReactionCommand cmd, CancellationToken ct)
     {
         string emoji = cmd.Emoji.Trim();
 
-        Message? message = await context.Messages
-            .Include(m => m.Channel)
-            .FirstOrDefaultAsync(m => m.Id == cmd.MessageId, ct);
-
-        if (message == null || message.IsDeleted || message.Channel.IsDeleted)
+        for (int attempt = 1; attempt <= MaxConcurrencyRetries; attempt++)
         {
-            return Result.Failure<ToggleReactionResponse>(
-                Error.NotFound("Message.NotFound", "The message was not found or has been deleted."));
+            try
+            {
+                Message? message = await context.Messages
+                    .Include(m => m.Channel)
+                    .FirstOrDefaultAsync(m => m.Id == cmd.MessageId, ct);
+
+                if (message == null || message.IsDeleted || message.Channel.IsDeleted)
+                {
+                    return Result.Failure<ToggleReactionResponse>(
+                        Error.NotFound("Message.NotFound", "The message was not found or has been deleted."));
+                }
+
+                bool isMember = await context.ChannelMembers
+                    .AsNoTracking()
+                    .AnyAsync(m => m.ChannelId == message.ChannelId && m.UserId == cmd.UserId, ct);
+
+                if (!isMember)
+                {
+                    return Result.Failure<ToggleReactionResponse>(
+                        Error.Forbidden("Channel.NotMember", "You are not a member of this channel."));
+                }
+
+                message.ToggleReaction(cmd.UserId, emoji);
+
+                // Saves changes: EF Core validates xmin concurrency token against PostgreSQL row version
+                await context.SaveChangesAsync(ct);
+
+                List<ReactionGroupDto> groups = message.Reactions
+                    .Select(r => new ReactionGroupDto(r.Emoji, r.Count, r.UserIds))
+                    .ToList();
+
+                return Result.Success(new ToggleReactionResponse(message.Id, message.ChannelId, groups));
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < MaxConcurrencyRetries)
+            {
+                // Concurrency conflict detected! Another concurrent request modified the Message row.
+                // Clear ChangeTracker so the next iteration re-queries fresh state from DB.
+                if (context is DbContext dbContext)
+                {
+                    dbContext.ChangeTracker.Clear();
+                }
+
+                // Exponential jitter delay
+                await Task.Delay(10 * attempt, ct);
+            }
         }
 
-        bool isMember = await context.ChannelMembers
-            .AsNoTracking()
-            .AnyAsync(m => m.ChannelId == message.ChannelId && m.UserId == cmd.UserId, ct);
-
-        if (!isMember)
-        {
-            return Result.Failure<ToggleReactionResponse>(
-                Error.Forbidden("Channel.NotMember", "You are not a member of this channel."));
-        }
-
-        MessageReaction? existing = await context.MessageReactions
-            .FirstOrDefaultAsync(r => r.MessageId == message.Id && r.UserId == cmd.UserId && r.Emoji == emoji, ct);
-
-        if (existing != null)
-        {
-            context.MessageReactions.Remove(existing);
-        }
-        else
-        {
-            MessageReaction reaction = MessageReaction.Create(message.Id, cmd.UserId, emoji);
-            context.MessageReactions.Add(reaction);
-        }
-
-        await context.SaveChangesAsync(ct);
-
-        List<ReactionGroupDto> groups = await context.MessageReactions
-            .AsNoTracking()
-            .Where(r => r.MessageId == message.Id)
-            .GroupBy(r => r.Emoji)
-            .Select(g => new ReactionGroupDto(
-                g.Key,
-                g.Count(),
-                g.Select(r => r.UserId).ToList()))
-            .ToListAsync(ct);
-
-        return Result.Success(new ToggleReactionResponse(message.Id, message.ChannelId, groups));
+        return Result.Failure<ToggleReactionResponse>(
+            Error.Conflict("Message.ConcurrencyConflict", "Could not complete reaction update due to concurrent modifications. Please try again."));
     }
 }

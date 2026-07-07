@@ -17,7 +17,7 @@ public class MessageReactionConfiguration : IEntityTypeConfiguration<MessageReac
             .HasMaxLength(32);
 
         builder.HasOne(r => r.Message)
-            .WithMany(m => m.Reactions)
+            .WithMany()
             .HasForeignKey(r => r.MessageId)
             .OnDelete(DeleteBehavior.Cascade);
 

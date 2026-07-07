@@ -85,10 +85,8 @@ public class ToggleReactionCommandHandlerTests
         _context.Channels.Add(channel);
 
         Message message = Message.Create(channel.Id, user.Id, "Hello world");
+        message.ToggleReaction(user.Id, "❤️");
         _context.Messages.Add(message);
-
-        MessageReaction existing = MessageReaction.Create(message.Id, user.Id, "❤️");
-        _context.MessageReactions.Add(existing);
         await _context.SaveChangesAsync();
 
         ToggleReactionCommand cmd = new(user.Id, message.Id, "❤️");
@@ -110,10 +108,8 @@ public class ToggleReactionCommandHandlerTests
         _context.Channels.Add(channel);
 
         Message message = Message.Create(channel.Id, user1.Id, "Multiple reactions");
+        message.ToggleReaction(user1.Id, "🔥");
         _context.Messages.Add(message);
-
-        MessageReaction r1 = MessageReaction.Create(message.Id, user1.Id, "🔥");
-        _context.MessageReactions.Add(r1);
         await _context.SaveChangesAsync();
 
         // user2 also reacts with "🔥"
