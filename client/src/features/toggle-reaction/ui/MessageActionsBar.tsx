@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Reply } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useAppSelector } from '@/app/store';
 import { selectCurrentUser } from '@/entities/user';
@@ -11,17 +12,15 @@ export interface MessageActionsBarProps {
   channelId: string;
   reactions?: ReactionGroupDto[] | null;
   className?: string;
+  onReply?: () => void;
 }
 
-/**
- * Lightweight Slack-style action bar displayed on message hover.
- * Allows 1-click toggling for common reaction emojis.
- */
 export const MessageActionsBar: React.FC<MessageActionsBarProps> = ({
   messageId,
   channelId,
   reactions,
   className,
+  onReply,
 }) => {
   const currentUser = useAppSelector(selectCurrentUser);
   const { mutate: toggleReaction } = useToggleReactionMutation(channelId);
@@ -48,10 +47,10 @@ export const MessageActionsBar: React.FC<MessageActionsBarProps> = ({
             type="button"
             onClick={(e) => handleToggle(e, emoji)}
             className={cn(
-              'flex h-7 w-7 items-center justify-center rounded-md text-sm transition-all duration-150 select-none cursor-pointer',
+              'flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-sm transition-all duration-150 select-none',
               active
-                ? 'bg-primary/15 text-primary ring-1 ring-primary/30 font-medium'
-                : 'text-muted-foreground/80 hover:bg-muted hover:text-foreground hover:scale-115 active:scale-95'
+                ? 'bg-primary/15 font-medium text-primary ring-1 ring-primary/30'
+                : 'text-muted-foreground/80 hover:scale-115 hover:bg-muted hover:text-foreground active:scale-95'
             )}
             title={active ? `Remove ${emoji}` : `React with ${emoji}`}
             aria-label={active ? `Remove ${emoji}` : `React with ${emoji}`}
@@ -60,6 +59,24 @@ export const MessageActionsBar: React.FC<MessageActionsBarProps> = ({
           </button>
         );
       })}
+
+      {onReply && (
+        <>
+          <div className="mx-0.5 h-3.5 w-px bg-border/60" />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReply();
+            }}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground/80 transition-all duration-150 select-none hover:scale-115 hover:bg-muted hover:text-foreground active:scale-95"
+            title="Reply"
+            aria-label="Reply to message"
+          >
+            <Reply className="h-3.5 w-3.5" />
+          </button>
+        </>
+      )}
     </div>
   );
 };

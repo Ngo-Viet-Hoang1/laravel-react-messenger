@@ -1,6 +1,7 @@
 import type { components } from '@/shared/api';
 
 export type MessageDto = components['schemas']['MessageDto'];
+export type ReplyToMessageDto = components['schemas']['ReplyToMessageDto'];
 export type ReactionGroupDto = components['schemas']['ReactionGroupDto'];
 export type CursorPagedListOfMessageDto = components['schemas']['CursorPagedListOfMessageDto'];
 export type MessagesCursorResponse = CursorPagedListOfMessageDto;

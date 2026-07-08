@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { toast } from 'sonner';
 import type { ChatMessage } from '@/entities/message';
 import { useMarkAsReadMutation } from '@/entities/channel';
 
@@ -17,10 +18,11 @@ export interface UseChatScrollReturn {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   handleScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   scrollToBottom: () => void;
+  scrollToMessage: (messageId: string) => void;
   unreadBelowCount: number;
 }
 
-const AT_BOTTOM_THRESHOLD_PX = 35;
+const AT_BOTTOM_THRESHOLD_PX = 45;
 const FETCH_OLDER_THRESHOLD_PX = 80;
 
 export const useChatScroll = ({
@@ -39,18 +41,28 @@ export const useChatScroll = ({
   const isAtBottomRef = React.useRef(true);
   const scrollHeightBeforeUpdateRef = React.useRef<number | null>(null);
   const scrollTopBeforeUpdateRef = React.useRef<number | null>(null);
-  const prevMessagesLengthRef = React.useRef(messages.length);
+
+  // Track specific boundary message IDs instead of array length to distinguish top prepend from bottom append
+  const prevFirstMessageIdRef = React.useRef<string | null>(null);
+  const prevLastMessageIdRef = React.useRef<string | null>(null);
 
   const [unreadBelowCount, setUnreadBelowCount] = React.useState(0);
   const { mutate: markChannelAsRead } = useMarkAsReadMutation();
 
-  // Reset state when channel switches
+  // Reset state and mark as read when channel switches
   React.useEffect(() => {
     isInitialLoadRef.current = true;
     isAtBottomRef.current = true;
     setUnreadBelowCount(0);
-    prevMessagesLengthRef.current = 0;
-  }, [channelId]);
+    prevFirstMessageIdRef.current = null;
+    prevLastMessageIdRef.current = null;
+    scrollHeightBeforeUpdateRef.current = null;
+    scrollTopBeforeUpdateRef.current = null;
+
+    if (channelId) {
+      markChannelAsRead(channelId);
+    }
+  }, [channelId, markChannelAsRead]);
 
   // Initial scroll to bottom on first load of the channel
   React.useLayoutEffect(() => {
@@ -58,13 +70,16 @@ export const useChatScroll = ({
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
       isInitialLoadRef.current = false;
       isAtBottomRef.current = true;
+      prevFirstMessageIdRef.current = messages[0]?.id || messages[0]?.clientMessageId || null;
+      prevLastMessageIdRef.current = messages[messages.length - 1]?.id || messages[messages.length - 1]?.clientMessageId || null;
+
       if (channelId) {
         markChannelAsRead(channelId);
       }
     }
-  }, [isMessagesLoading, messages.length, channelId, markChannelAsRead]);
+  }, [isMessagesLoading, messages, channelId, markChannelAsRead]);
 
-  // Synchronous scroll restoration on older messages prepend (runs BEFORE paint -> 0px flicker)
+  // Synchronous scroll restoration on older messages prepend (runs BEFORE paint -> 0px jump/flicker)
   React.useLayoutEffect(() => {
     if (scrollHeightBeforeUpdateRef.current !== null && scrollContainerRef.current) {
       const container = scrollContainerRef.current;
@@ -77,11 +92,33 @@ export const useChatScroll = ({
     }
   }, [messages]);
 
-  // Smart scroll behavior on new incoming message
+  // Smart scroll behavior: ONLY trigger when a NEW message arrives at the bottom
   React.useEffect(() => {
-    if (!isInitialLoadRef.current && messages.length > prevMessagesLengthRef.current) {
-      const latestMessage = messages[messages.length - 1];
-      const isSentByMe = Boolean(latestMessage && currentUserId === latestMessage.senderId);
+    if (isInitialLoadRef.current || messages.length === 0) return;
+
+    const currentFirstMessage = messages[0];
+    const currentLastMessage = messages[messages.length - 1];
+    const currentFirstId = currentFirstMessage?.id || currentFirstMessage?.clientMessageId || null;
+    const currentLastId = currentLastMessage?.id || currentLastMessage?.clientMessageId || null;
+
+    const prevFirstId = prevFirstMessageIdRef.current;
+    const prevLastId = prevLastMessageIdRef.current;
+
+    const isNewMessageAtBottom = Boolean(currentLastId && prevLastId && currentLastId !== prevLastId);
+    const isOlderMessagesPrepended = Boolean(currentFirstId && prevFirstId && currentFirstId !== prevFirstId && currentLastId === prevLastId);
+
+    // Update boundary refs
+    prevFirstMessageIdRef.current = currentFirstId;
+    prevLastMessageIdRef.current = currentLastId;
+
+    // If older messages were prepended at top, NEVER scroll to bottom!
+    if (isOlderMessagesPrepended) {
+      return;
+    }
+
+    // Only scroll if a NEW message was appended to the bottom of the list
+    if (isNewMessageAtBottom) {
+      const isSentByMe = Boolean(currentLastMessage && currentUserId === currentLastMessage.senderId);
 
       if (isSentByMe) {
         // Sent by current user -> always smooth scroll to bottom
@@ -89,19 +126,18 @@ export const useChatScroll = ({
         isAtBottomRef.current = true;
         setUnreadBelowCount(0);
       } else if (isAtBottomRef.current) {
-        // Sent by others AND user is actively viewing bottom -> smooth scroll and mark as read
+        // Sent by others AND user is actively viewing the bottom -> smooth scroll and acknowledge read
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         setUnreadBelowCount(0);
         if (channelId) {
           markChannelAsRead(channelId);
         }
       } else {
-        // Sent by others AND user is scrolled up reading old messages -> do NOT disturb reading position
+        // Sent by others AND user is scrolled up reading old messages -> do NOT pull down
         setUnreadBelowCount((prev) => prev + 1);
       }
     }
-    prevMessagesLengthRef.current = messages.length;
-  }, [messages.length, messages, currentUserId, channelId, markChannelAsRead]);
+  }, [messages, currentUserId, channelId, markChannelAsRead]);
 
   // Scroll event listener
   const handleScroll = React.useCallback(
@@ -150,11 +186,23 @@ export const useChatScroll = ({
     }
   }, [channelId, markChannelAsRead]);
 
+  // Smooth scroll to a specific message (e.g. clicking quoted reply banner)
+  const scrollToMessage = React.useCallback((messageId: string) => {
+    const element = document.getElementById(`msg-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    toast.info('Original message is in older history. Please scroll up.');
+  }, []);
+
   return {
     scrollContainerRef,
     messagesEndRef,
     handleScroll,
     scrollToBottom,
+    scrollToMessage,
     unreadBelowCount,
   };
 };

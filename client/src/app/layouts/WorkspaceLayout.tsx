@@ -93,16 +93,19 @@ export const WorkspaceLayout: React.FC = () => {
 
   useSignalREvent('ReceiveMessage', (receivedMsg: SignalRMessageDto) => {
     const isSentByMe = Boolean(currentUser?.id && currentUser.id === receivedMsg.senderId);
+    const isCurrentlyActive = activeChannelId === receivedMsg.channelId;
 
     queryClient.setQueryData<ChannelSummary[]>(channelKeys.lists(), (old = []) =>
       old.map((ch) => {
         if (ch.id !== receivedMsg.channelId) return ch;
         const currentUnread = Number(ch.unreadCount ?? 0);
+        const shouldMarkUnread = !isSentByMe && !isCurrentlyActive;
+
         return {
           ...ch,
           lastActivityAt: receivedMsg.createdAt,
-          hasUnread: !isSentByMe,
-          unreadCount: isSentByMe ? currentUnread : currentUnread + 1,
+          hasUnread: shouldMarkUnread,
+          unreadCount: shouldMarkUnread ? currentUnread + 1 : 0,
         };
       })
     );

@@ -1,7 +1,13 @@
 import * as React from 'react';
 import { Users, MessageSquareOff, Loader2, ArrowDown, Info } from 'lucide-react';
 import { useChannelDetailQuery, CHANNEL_TYPE, ChannelAvatar } from '@/entities/channel';
-import { useChannelMessagesQuery, MessageBubble, DateDivider, MESSAGE_STATUS } from '@/entities/message';
+import {
+  useChannelMessagesQuery,
+  MessageBubble,
+  DateDivider,
+  MESSAGE_STATUS,
+  type ChatMessage,
+} from '@/entities/message';
 import { MessageInput } from '@/features/send-message';
 import { useAppSelector } from '@/app/store';
 import { selectCurrentUser } from '@/entities/user';
@@ -32,20 +38,32 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
     return messagesData?.pages.flatMap((page) => page.items) ?? [];
   }, [messagesData]);
 
-  const { scrollContainerRef, messagesEndRef, handleScroll, scrollToBottom, unreadBelowCount } =
-    useChatScroll({
-      messages,
-      channelId,
-      currentUserId: currentUser?.id,
-      hasPreviousPage,
-      isFetchingPreviousPage,
-      fetchPreviousPage,
-      isMessagesLoading,
-    });
+  const {
+    scrollContainerRef,
+    messagesEndRef,
+    handleScroll,
+    scrollToBottom,
+    scrollToMessage,
+    unreadBelowCount,
+  } = useChatScroll({
+    messages,
+    channelId,
+    currentUserId: currentUser?.id,
+    hasPreviousPage,
+    isFetchingPreviousPage,
+    fetchPreviousPage,
+    isMessagesLoading,
+  });
 
   const isDirect = channel?.type === CHANNEL_TYPE.DIRECT;
   const displayName = channel?.name || 'Channel';
   const openModal = useModalStore((state) => state.openModal);
+
+  const [replyingToMessage, setReplyingToMessage] = React.useState<ChatMessage | null>(null);
+
+  React.useEffect(() => {
+    setReplyingToMessage(null);
+  }, [channelId]);
 
   const handleOpenDetails = () => {
     if (channelId) {
@@ -83,7 +101,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
         <button
           type="button"
           onClick={handleOpenDetails}
-          className="group flex min-w-0 items-center gap-2.5 rounded-lg p-1 text-left transition-colors hover:bg-muted/60 cursor-pointer"
+          className="group flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg p-1 text-left transition-colors hover:bg-muted/60"
           title="View channel details & members"
         >
           <ChannelAvatar channel={channel} size="sm" />
@@ -92,7 +110,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
             {isChannelLoading ? (
               <Skeleton className="h-4 w-32" />
             ) : (
-              <h2 className="truncate text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+              <h2 className="truncate text-sm font-bold text-foreground transition-colors group-hover:text-primary">
                 {displayName}
               </h2>
             )}
@@ -108,7 +126,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
             <button
               type="button"
               onClick={handleOpenDetails}
-              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer select-none"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors select-none hover:bg-muted hover:text-foreground"
               title="View members"
             >
               <Users className="h-3.5 w-3.5" />
@@ -121,7 +139,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
             variant="ghost"
             size="icon"
             onClick={handleOpenDetails}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+            className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-foreground"
             title="Channel details"
           >
             <Info className="h-4 w-4" />
@@ -171,12 +189,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
                   <MessageBubble
                     message={message}
                     isCurrentUser={currentUser?.id === message.senderId}
+                    onScrollToMessage={scrollToMessage}
                     actions={
                       (!message.status || message.status === MESSAGE_STATUS.SENT) && channelId ? (
                         <MessageActionsBar
                           messageId={message.id}
                           channelId={channelId}
                           reactions={message.reactions}
+                          onReply={() => setReplyingToMessage(message)}
                         />
                       ) : null
                     }
@@ -221,6 +241,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
         channelName={displayName}
         isDirect={isDirect}
         disabled={isChannelLoading}
+        replyingTo={replyingToMessage}
+        onCancelReply={() => setReplyingToMessage(null)}
       />
     </main>
   );

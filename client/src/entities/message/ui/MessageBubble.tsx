@@ -11,6 +11,7 @@ export interface MessageBubbleProps {
   className?: string;
   actions?: React.ReactNode;
   reactions?: React.ReactNode;
+  onScrollToMessage?: (messageId: string) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -19,6 +20,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   className,
   actions,
   reactions,
+  onScrollToMessage,
 }) => {
   const isOptimistic = message.status === MESSAGE_STATUS.SENDING;
   const isFailed = message.status === MESSAGE_STATUS.FAILED;
@@ -29,6 +31,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div
+      id={`msg-${message.id}`}
       className={cn(
         'group relative flex w-full gap-3 px-4 py-2 transition-colors duration-100 hover:bg-muted/40',
         isOptimistic && 'opacity-65',
@@ -47,6 +50,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {message.replyTo && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onScrollToMessage?.(message.replyTo!.id);
+            }}
+            className="mb-1 flex max-w-lg cursor-pointer items-center gap-1.5 rounded-md border-l-2 border-primary/70 bg-muted/40 px-2 py-0.5 text-left text-xs text-muted-foreground transition-colors select-none hover:bg-muted/70"
+            title="Jump to quoted message"
+          >
+            <span className="shrink-0 font-semibold text-primary">
+              {message.replyTo.senderUsername}
+            </span>
+            <span className="truncate">{message.replyTo.content}</span>
+          </button>
+        )}
+
         <div className="flex items-baseline gap-2">
           <span className="cursor-pointer truncate text-sm font-bold text-foreground hover:underline">
             {message.senderUsername}
@@ -81,7 +101,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       </div>
 
       {actions && (
-        <div className="absolute -top-3 right-4 flex items-center rounded-lg border border-border/60 bg-background/95 px-1 py-0.5 shadow-xs backdrop-blur-md transition-opacity duration-150 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto">
+        <div className="pointer-events-none absolute -top-3 right-4 flex items-center rounded-lg border border-border/60 bg-background/95 px-1 py-0.5 opacity-0 shadow-xs backdrop-blur-md transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100">
           {actions}
         </div>
       )}

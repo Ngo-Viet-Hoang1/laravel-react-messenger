@@ -8,7 +8,7 @@ export const messageApi = {
   getChannelMessages: async (
     channelId: string,
     before?: string | null,
-    limit = 50
+    limit = 20
   ): Promise<MessagesCursorResponse> => {
     return api.get<MessagesCursorResponse>(`/Channels/${channelId}/messages`, {
       params: { before: before || undefined, limit },

@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { messageApi } from './messageApi';
 import { messageKeys, type MessagesInfiniteData, type MessagesPage } from './messageQueries';
 import { channelKeys, type ChannelSummary } from '@/entities/channel';
-import { MESSAGE_STATUS, type ChatMessage, type SendMessagePayload } from '../model/types';
+import { MESSAGE_STATUS, type ChatMessage, type SendMessagePayload, type ReplyToMessageDto } from '../model/types';
 import { selectCurrentUser } from '@/entities/user';
 import { useAppSelector } from '@/app/store';
 
@@ -23,6 +23,21 @@ export const useSendMessageMutation = (channelId?: string) => {
       await queryClient.cancelQueries({ queryKey: messageKeys.byChannel(channelId) });
 
       const clientMsgId = newPayload.clientMessageId || crypto.randomUUID();
+
+      let replyTo: ReplyToMessageDto | null = null;
+      if (newPayload.parentMessageId) {
+        const cached = queryClient.getQueryData<MessagesInfiniteData>(messageKeys.byChannel(channelId));
+        const parent = cached?.pages.flatMap((p) => p.items).find((m) => m.id === newPayload.parentMessageId);
+        if (parent) {
+          replyTo = {
+            id: parent.id,
+            senderId: parent.senderId,
+            senderUsername: parent.senderUsername,
+            content: parent.content,
+          };
+        }
+      }
+
       const optimisticMessage: ChatMessage = {
         id: clientMsgId,
         channelId,
@@ -32,6 +47,7 @@ export const useSendMessageMutation = (channelId?: string) => {
         content: newPayload.content,
         clientMessageId: clientMsgId,
         createdAt: new Date().toISOString(),
+        replyTo,
         status: MESSAGE_STATUS.SENDING,
       };
 
