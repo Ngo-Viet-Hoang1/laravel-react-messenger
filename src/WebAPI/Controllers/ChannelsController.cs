@@ -111,7 +111,7 @@ public class ChannelsController(ISender sender) : ApiController
         [FromServices] IApplicationDbContext dbContext,
         CancellationToken ct)
     {
-        SendMessageCommand command = new(CurrentUserId, channelId, request.Content, request.ClientMessageId);
+        SendMessageCommand command = new(CurrentUserId, channelId, request.Content, request.ClientMessageId, request.ParentMessageId);
         Result<MessageDto> result = await sender.Send(command, ct);
 
         if (result.IsSuccess)

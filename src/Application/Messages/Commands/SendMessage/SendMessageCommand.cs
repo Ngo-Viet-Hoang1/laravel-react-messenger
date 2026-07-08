@@ -12,7 +12,8 @@ public record SendMessageCommand(
     Guid SenderId,
     Guid ChannelId,
     string Content,
-    string? ClientMessageId = null
+    string? ClientMessageId = null,
+    Guid? ParentMessageId = null
 ) : IRequest<Result<MessageDto>>;
 
 public class SendMessageCommandValidator : AbstractValidator<SendMessageCommand>
@@ -49,10 +50,32 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
                 Error.Forbidden("Channel.NotMember", "You are not authorized to send messages to this channel."));
         }
 
+        Message? parentMessage = null;
+        if (cmd.ParentMessageId.HasValue)
+        {
+            parentMessage = await context.Messages
+                .Include(m => m.Sender)
+                .FirstOrDefaultAsync(m => m.Id == cmd.ParentMessageId.Value, ct);
+
+            if (parentMessage == null || parentMessage.IsDeleted)
+            {
+                return Result.Failure<MessageDto>(
+                    Error.NotFound("Message.ParentNotFound", "The message you are replying to was not found or has been deleted."));
+            }
+
+            if (parentMessage.ChannelId != cmd.ChannelId)
+            {
+                return Result.Failure<MessageDto>(
+                    Error.Forbidden("Message.CrossChannelReplyForbidden", "Cannot reply to a message from a different channel."));
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(cmd.ClientMessageId))
         {
             Message? existing = await context.Messages
                 .Include(m => m.Sender)
+                .Include(m => m.ParentMessage)
+                    .ThenInclude(p => p!.Sender)
                 .FirstOrDefaultAsync(
                     m => m.ChannelId == cmd.ChannelId &&
                          m.SenderId == cmd.SenderId &&
@@ -75,7 +98,7 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
                 Error.NotFound("User.NotFound", "Sender user was not found."));
         }
 
-        Message message = Message.Create(cmd.ChannelId, cmd.SenderId, cmd.Content, cmd.ClientMessageId);
+        Message message = Message.Create(cmd.ChannelId, cmd.SenderId, cmd.Content, cmd.ClientMessageId, cmd.ParentMessageId);
         context.Messages.Add(message);
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -85,6 +108,6 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
 
         await context.SaveChangesAsync(ct);
 
-        return Result.Success(message.ToDto(sender));
+        return Result.Success(message.ToDto(sender, parentMessage));
     }
 }

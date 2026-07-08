@@ -50,9 +50,16 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
             .HasForeignKey(m => m.SenderId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Self-referencing relationship for reply/thread parent message
+        builder.HasOne(m => m.ParentMessage)
+            .WithMany()
+            .HasForeignKey(m => m.ParentMessageId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasQueryFilter(m => !m.IsDeleted && !m.Channel.IsDeleted);
 
         builder.HasIndex(m => new { m.ChannelId, m.CreatedAt });
         builder.HasIndex(m => new { m.ChannelId, m.SenderId, m.ClientMessageId });
+        builder.HasIndex(m => m.ParentMessageId);
     }
 }

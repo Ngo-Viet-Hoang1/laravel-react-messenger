@@ -9,5 +9,6 @@ public record MessageDto(
     string Content,
     string? ClientMessageId,
     DateTimeOffset CreatedAt,
-    List<ReactionGroupDto>? Reactions = null
+    List<ReactionGroupDto>? Reactions = null,
+    ReplyToMessageDto? ReplyTo = null
 );

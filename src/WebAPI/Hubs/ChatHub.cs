@@ -124,7 +124,7 @@ public class ChatHub(
     }
 
 
-    public async Task SendMessage(Guid channelId, string content, string? clientMessageId = null)
+    public async Task SendMessage(Guid channelId, string content, string? clientMessageId = null, Guid? parentMessageId = null)
     {
         Guid userId = CurrentUserId;
         if (userId == Guid.Empty || channelId == Guid.Empty)
@@ -132,7 +132,7 @@ public class ChatHub(
             throw new HubException("Invalid authentication or channel identifier.");
         }
 
-        SendMessageCommand command = new(userId, channelId, content, clientMessageId);
+        SendMessageCommand command = new(userId, channelId, content, clientMessageId, parentMessageId);
         Result<MessageDto> result = await sender.Send(command);
 
         if (result.IsFailure)

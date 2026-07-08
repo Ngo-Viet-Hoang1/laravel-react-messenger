@@ -150,6 +150,9 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("ParentMessageId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Reactions")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -164,6 +167,8 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                         .HasColumnName("xmin");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ParentMessageId");
 
                     b.HasIndex("SenderId");
 
@@ -319,6 +324,11 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MessengerApp.Domain.Entities.Message", "ParentMessage")
+                        .WithMany()
+                        .HasForeignKey("ParentMessageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MessengerApp.Domain.Entities.User", "Sender")
                         .WithMany()
                         .HasForeignKey("SenderId")
@@ -326,6 +336,8 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Channel");
+
+                    b.Navigation("ParentMessage");
 
                     b.Navigation("Sender");
                 });

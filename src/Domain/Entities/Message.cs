@@ -18,26 +18,30 @@ public class Message : BaseAuditableEntity, ISoftDelete
     public DateTimeOffset? DeletedAt { get; set; }
     public string? DeletedBy { get; set; }
 
+    public Guid? ParentMessageId { get; set; }
+    public Message? ParentMessage { get; set; }
+
     public List<MessageReactionItem> Reactions { get; set; } = [];
 
     public Message() { }
 
-    private Message(Guid channelId, Guid senderId, string content, string? clientMessageId = null)
+    private Message(Guid channelId, Guid senderId, string content, string? clientMessageId = null, Guid? parentMessageId = null)
     {
         ChannelId = channelId;
         SenderId = senderId;
         Content = content;
         ClientMessageId = clientMessageId;
+        ParentMessageId = parentMessageId;
         IsDeleted = false;
     }
 
-    public static Message Create(Guid channelId, Guid senderId, string content, string? clientMessageId = null)
+    public static Message Create(Guid channelId, Guid senderId, string content, string? clientMessageId = null, Guid? parentMessageId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
         if (channelId == Guid.Empty) throw new ArgumentException("ChannelId cannot be empty.", nameof(channelId));
         if (senderId == Guid.Empty) throw new ArgumentException("SenderId cannot be empty.", nameof(senderId));
 
-        return new Message(channelId, senderId, content.Trim(), clientMessageId?.Trim());
+        return new Message(channelId, senderId, content.Trim(), clientMessageId?.Trim(), parentMessageId);
     }
 
     public bool ToggleReaction(Guid userId, string emoji)

@@ -1802,6 +1802,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             reactions?: null | components["schemas"]["ReactionGroupDto"][];
+            replyTo?: null | components["schemas"]["ReplyToMessageDto"];
         };
         PaginatedListOfUserDto: {
             items: components["schemas"]["UserDto"][];
@@ -1837,9 +1838,19 @@ export interface components {
             password: string;
             avatarUrl?: null | string;
         };
+        ReplyToMessageDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            senderId: string;
+            senderUsername: string;
+            content: string;
+        };
         SendMessageRequest: {
             content: string;
             clientMessageId?: null | string;
+            /** Format: uuid */
+            parentMessageId?: null | string;
         };
         ToggleReactionRequest: {
             emoji: string;
