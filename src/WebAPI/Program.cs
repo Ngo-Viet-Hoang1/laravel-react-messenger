@@ -108,6 +108,7 @@ if (app.Environment.IsDevelopment())
     {
         var logger = loggerFactory.CreateLogger("DbInitializer");
         await DbInitializer.SeedAsync(db, hasher, logger);
+        await MessageSeeder.SeedAsync(db, logger, force: true);
         return Results.Ok(new { message = "Database successfully seeded with realistic sample data." });
     })
     .WithName("SeedDatabase");
@@ -119,6 +120,7 @@ if (app.Environment.IsDevelopment())
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
         var logger = scope.ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger("DbInitializer");
         await DbInitializer.SeedAsync(db, hasher, logger);
+        await MessageSeeder.SeedAsync(db, logger);
     }
 }
 
