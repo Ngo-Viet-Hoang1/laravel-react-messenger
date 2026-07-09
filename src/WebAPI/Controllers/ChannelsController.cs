@@ -16,6 +16,7 @@ using MessengerApp.Application.Channels.Queries.GetUserChannels;
 using MessengerApp.Application.Messages.Commands.SendMessage;
 using MessengerApp.Application.Messages.Common;
 using MessengerApp.Application.Messages.Queries.GetChannelMessages;
+using MessengerApp.Application.Messages.Queries.GetMessageContext;
 using MessengerApp.Application.Messages.Queries.SearchMessages;
 using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Application.Common.Models;
@@ -97,6 +98,23 @@ public class ChannelsController(ISender sender) : ApiController
     {
         GetChannelMessagesQuery query = new(channelId, CurrentUserId, before, limit);
         Result<CursorPagedList<MessageDto>> result = await sender.Send(query, ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("{channelId:guid}/messages/{messageId:guid}/context")]
+    [ProducesResponseType(typeof(MessageContextDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetChannelMessageContext(
+        [FromRoute] Guid channelId,
+        [FromRoute] Guid messageId,
+        [FromQuery] int limit = 40,
+        CancellationToken ct = default)
+    {
+        GetMessageContextQuery query = new(channelId, messageId, CurrentUserId, limit);
+        Result<MessageContextDto> result = await sender.Send(query, ct);
         return HandleResult(result);
     }
 
