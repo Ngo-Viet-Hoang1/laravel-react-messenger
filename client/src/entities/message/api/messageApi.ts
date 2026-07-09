@@ -1,6 +1,6 @@
 import { api } from '@/shared/api';
 import type { components } from '@/shared/api';
-import type { MessageDto, MessagesCursorResponse, SendMessagePayload } from '../model/types';
+import type { MessageDto, MessagesCursorResponse, SendMessagePayload, SearchMessagesResponse } from '../model/types';
 
 export type ToggleReactionResponse = components['schemas']['ToggleReactionResponse'];
 
@@ -12,6 +12,19 @@ export const messageApi = {
   ): Promise<MessagesCursorResponse> => {
     return api.get<MessagesCursorResponse>(`/Channels/${channelId}/messages`, {
       params: { before: before || undefined, limit },
+    });
+  },
+
+  searchChannelMessages: async (
+    channelId: string,
+    query: string,
+    page = 1,
+    pageSize = 20,
+    signal?: AbortSignal
+  ): Promise<SearchMessagesResponse> => {
+    return api.get<SearchMessagesResponse>(`/Channels/${channelId}/messages/search`, {
+      params: { query, page, pageSize },
+      signal,
     });
   },
 

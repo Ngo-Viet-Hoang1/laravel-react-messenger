@@ -5,6 +5,8 @@ import { MESSAGE_STATUS, type ChatMessage } from '../model/types';
 export const messageKeys = {
   all: ['messages'] as const,
   byChannel: (channelId?: string) => [...messageKeys.all, channelId] as const,
+  search: (channelId?: string, query?: string) =>
+    [...messageKeys.all, 'search', channelId, query] as const,
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -36,5 +38,34 @@ export const useChannelMessagesQuery = (channelId?: string) => {
     enabled: isValidGuid,
     staleTime: 0,
     refetchOnWindowFocus: true,
+  });
+};
+
+export const useInfiniteSearchChannelMessagesQuery = (
+  channelId?: string,
+  query = '',
+  pageSize = 20,
+  enabled = true
+) => {
+  const isValidGuid = Boolean(channelId && UUID_REGEX.test(channelId));
+  const hasQuery = query.trim().length > 0;
+
+  return useInfiniteQuery({
+    queryKey: messageKeys.search(channelId, query.trim()),
+    queryFn: async ({ pageParam = 1, signal }) => {
+      return messageApi.searchChannelMessages(
+        channelId!,
+        query.trim(),
+        pageParam,
+        pageSize,
+        signal
+      );
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      return lastPage.hasNextPage ? Number(lastPage.pageNumber ?? 1) + 1 : undefined;
+    },
+    enabled: isValidGuid && hasQuery && enabled,
+    staleTime: 30_000,
   });
 };

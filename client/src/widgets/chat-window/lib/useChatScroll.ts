@@ -20,6 +20,7 @@ export interface UseChatScrollReturn {
   scrollToBottom: () => void;
   scrollToMessage: (messageId: string) => void;
   unreadBelowCount: number;
+  highlightedMessageId: string | null;
 }
 
 const AT_BOTTOM_THRESHOLD_PX = 45;
@@ -47,7 +48,17 @@ export const useChatScroll = ({
   const prevLastMessageIdRef = React.useRef<string | null>(null);
 
   const [unreadBelowCount, setUnreadBelowCount] = React.useState(0);
+  const [highlightedMessageId, setHighlightedMessageId] = React.useState<string | null>(null);
+  const highlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const { mutate: markChannelAsRead } = useMarkAsReadMutation();
+
+  React.useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Reset state and mark as read when channel switches
   React.useEffect(() => {
@@ -71,7 +82,8 @@ export const useChatScroll = ({
       isInitialLoadRef.current = false;
       isAtBottomRef.current = true;
       prevFirstMessageIdRef.current = messages[0]?.id || messages[0]?.clientMessageId || null;
-      prevLastMessageIdRef.current = messages[messages.length - 1]?.id || messages[messages.length - 1]?.clientMessageId || null;
+      prevLastMessageIdRef.current =
+        messages[messages.length - 1]?.id || messages[messages.length - 1]?.clientMessageId || null;
 
       if (channelId) {
         markChannelAsRead(channelId);
@@ -104,8 +116,15 @@ export const useChatScroll = ({
     const prevFirstId = prevFirstMessageIdRef.current;
     const prevLastId = prevLastMessageIdRef.current;
 
-    const isNewMessageAtBottom = Boolean(currentLastId && prevLastId && currentLastId !== prevLastId);
-    const isOlderMessagesPrepended = Boolean(currentFirstId && prevFirstId && currentFirstId !== prevFirstId && currentLastId === prevLastId);
+    const isNewMessageAtBottom = Boolean(
+      currentLastId && prevLastId && currentLastId !== prevLastId
+    );
+    const isOlderMessagesPrepended = Boolean(
+      currentFirstId &&
+      prevFirstId &&
+      currentFirstId !== prevFirstId &&
+      currentLastId === prevLastId
+    );
 
     // Update boundary refs
     prevFirstMessageIdRef.current = currentFirstId;
@@ -118,7 +137,9 @@ export const useChatScroll = ({
 
     // Only scroll if a NEW message was appended to the bottom of the list
     if (isNewMessageAtBottom) {
-      const isSentByMe = Boolean(currentLastMessage && currentUserId === currentLastMessage.senderId);
+      const isSentByMe = Boolean(
+        currentLastMessage && currentUserId === currentLastMessage.senderId
+      );
 
       if (isSentByMe) {
         // Sent by current user -> always smooth scroll to bottom
@@ -186,15 +207,23 @@ export const useChatScroll = ({
     }
   }, [channelId, markChannelAsRead]);
 
-  // Smooth scroll to a specific message (e.g. clicking quoted reply banner)
+  // Smooth scroll to a specific message (e.g. clicking search result or quoted reply banner)
   const scrollToMessage = React.useCallback((messageId: string) => {
     const element = document.getElementById(`msg-${messageId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMessageId(messageId);
+
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      highlightTimeoutRef.current = setTimeout(() => {
+        setHighlightedMessageId(null);
+      }, 1500);
       return;
     }
 
-    toast.info('Original message is in older history. Please scroll up.');
+    toast.info('Message is in older history. Full text is visible in the panel.');
   }, []);
 
   return {
@@ -204,5 +233,6 @@ export const useChatScroll = ({
     scrollToBottom,
     scrollToMessage,
     unreadBelowCount,
+    highlightedMessageId,
   };
 };

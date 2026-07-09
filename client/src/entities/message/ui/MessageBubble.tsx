@@ -9,6 +9,7 @@ export interface MessageBubbleProps {
   message: ChatMessage;
   isCurrentUser: boolean;
   className?: string;
+  isHighlighted?: boolean;
   actions?: React.ReactNode;
   reactions?: React.ReactNode;
   onScrollToMessage?: (messageId: string) => void;
@@ -18,6 +19,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   isCurrentUser,
   className,
+  isHighlighted,
   actions,
   reactions,
   onScrollToMessage,
@@ -33,7 +35,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     <div
       id={`msg-${message.id}`}
       className={cn(
-        'group relative flex w-full gap-3 px-4 py-2 transition-colors duration-100 hover:bg-muted/40',
+        'group relative flex w-full gap-3 px-4 py-2 transition-colors duration-700 hover:bg-muted/40',
+        isHighlighted && 'bg-primary/8',
         isOptimistic && 'opacity-65',
         isFailed && 'bg-destructive/5 hover:bg-destructive/10',
         className

@@ -47,6 +47,33 @@ export const formatMessageDateHeader = (dateStr?: string | null): string => {
   }
 };
 
+export const formatSearchDateTime = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+
+    const now = new Date();
+    const isThisYear = date.getFullYear() === now.getFullYear();
+
+    const dateFormatted = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(isThisYear ? {} : { year: 'numeric' }),
+    }).format(date);
+
+    const timeFormatted = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date);
+
+    return `${dateFormatted}, ${timeFormatted}`;
+  } catch {
+    return '';
+  }
+};
+
 export const formatFullDate = (dateStr?: string | null): string => {
   if (!dateStr) return '—';
   try {

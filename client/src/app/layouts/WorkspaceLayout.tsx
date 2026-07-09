@@ -7,7 +7,6 @@ import { Sheet, SheetContent, SheetTitle } from '@/shared/ui/sheet';
 import { useModalStore } from '@/shared/model/useModalStore';
 import { CreateChannelModal } from '@/features/create-channel';
 import { StartDirectChatModal } from '@/features/start-direct-chat';
-import { ChannelDetailsSheet } from '@/features/manage-channel';
 import { ProfileSettingsModal } from '@/features/user-profile';
 import { toast } from 'sonner';
 import { channelKeys, type ChannelSummary } from '@/entities/channel';
@@ -216,11 +215,6 @@ export const WorkspaceLayout: React.FC = () => {
         open={modal?.type === 'direct-chat'}
         onOpenChange={(isOpen) => !isOpen && closeModal()}
         onChatStarted={handleChannelSuccess}
-      />
-      <ChannelDetailsSheet
-        channelId={modal?.type === 'channel-details' ? modal.channelId : undefined}
-        open={modal?.type === 'channel-details'}
-        onOpenChange={(isOpen) => !isOpen && closeModal()}
       />
       <ProfileSettingsModal
         open={modal?.type === 'profile-settings'}

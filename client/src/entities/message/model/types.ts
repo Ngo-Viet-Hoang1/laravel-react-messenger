@@ -5,6 +5,8 @@ export type ReplyToMessageDto = components['schemas']['ReplyToMessageDto'];
 export type ReactionGroupDto = components['schemas']['ReactionGroupDto'];
 export type CursorPagedListOfMessageDto = components['schemas']['CursorPagedListOfMessageDto'];
 export type MessagesCursorResponse = CursorPagedListOfMessageDto;
+export type PaginatedListOfMessageDto = components['schemas']['PaginatedListOfMessageDto'];
+export type SearchMessagesResponse = PaginatedListOfMessageDto;
 export type SendMessagePayload = components['schemas']['SendMessageRequest'];
 
 export const MESSAGE_STATUS = {
