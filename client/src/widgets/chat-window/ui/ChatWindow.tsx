@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Users, MessageSquareOff, Loader2, ArrowDown, Info, Search } from 'lucide-react';
 import { useChannelDetailQuery, CHANNEL_TYPE, ChannelAvatar } from '@/entities/channel';
 import {
@@ -39,12 +40,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
     return messagesData?.pages.flatMap((page) => page.items) ?? [];
   }, [messagesData]);
 
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // TanStack Virtualizer for high-performance 60fps rendering of thousands of messages
+  const rowVirtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 76,
+    overscan: 12,
+  });
+
   const {
-    scrollContainerRef,
     messagesEndRef,
     handleScroll,
     scrollToBottom,
     scrollToMessage,
+    isViewingHistory,
     unreadBelowCount,
     highlightedMessageId,
   } = useChatScroll({
@@ -55,6 +66,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
     isFetchingPreviousPage,
     fetchPreviousPage,
     isMessagesLoading,
+    scrollContainerRef,
+    scrollToVirtualIndex: (idx) => {
+      rowVirtualizer.scrollToIndex(idx, { align: 'center', behavior: 'smooth' });
+    },
   });
 
   const isDirect = channel?.type === CHANNEL_TYPE.DIRECT;
@@ -195,17 +210,32 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
             </div>
           )}
 
-          {/* Message List */}
+          {/* Virtualized Message List */}
           {!isMessagesLoading && messages.length > 0 && (
-            <div className="flex flex-col">
-              {messages.map((message, index) => {
+            <div
+              className="relative w-full"
+              style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                const index = virtualItem.index;
+                const message = messages[index];
+                if (!message) return null;
+
                 const prevDate =
                   index > 0 ? new Date(messages[index - 1].createdAt).toDateString() : null;
                 const currDate = new Date(message.createdAt).toDateString();
                 const isNewDay = !prevDate || prevDate !== currDate;
 
                 return (
-                  <React.Fragment key={message.id || message.clientMessageId}>
+                  <div
+                    key={virtualItem.key}
+                    data-index={virtualItem.index}
+                    ref={rowVirtualizer.measureElement}
+                    className="absolute top-0 left-0 w-full"
+                    style={{
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
                     {isNewDay && <DateDivider date={message.createdAt} />}
                     <MessageBubble
                       message={message}
@@ -232,16 +262,32 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
                         ) : null
                       }
                     />
-                  </React.Fragment>
+                  </div>
                 );
               })}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="absolute bottom-0 h-px w-full" />
             </div>
           )}
         </div>
 
-        {/* Floating Pill: New messages below */}
-        {unreadBelowCount > 0 && (
+        {/* Jump to present button when viewing historical context */}
+        {isViewingHistory && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-20 left-1/2 z-20 flex -translate-x-1/2 cursor-pointer items-center gap-2 rounded-full border border-primary/20 bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-lg backdrop-blur-md transition-all select-none hover:scale-105 hover:bg-primary/90 active:scale-95"
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+            <span>
+              {unreadBelowCount > 0
+                ? `Jump to present (${unreadBelowCount} new) ↓`
+                : 'Jump to present ↓'}
+            </span>
+          </button>
+        )}
+
+        {/* New messages pill when scrolled up in normal feed */}
+        {!isViewingHistory && unreadBelowCount > 0 && (
           <button
             type="button"
             onClick={scrollToBottom}

@@ -7,6 +7,7 @@ export type CursorPagedListOfMessageDto = components['schemas']['CursorPagedList
 export type MessagesCursorResponse = CursorPagedListOfMessageDto;
 export type PaginatedListOfMessageDto = components['schemas']['PaginatedListOfMessageDto'];
 export type SearchMessagesResponse = PaginatedListOfMessageDto;
+export type MessageContextDto = components['schemas']['MessageContextDto'];
 export type SendMessagePayload = components['schemas']['SendMessageRequest'];
 
 export const MESSAGE_STATUS = {

@@ -1,10 +1,20 @@
 import { api } from '@/shared/api';
 import type { components } from '@/shared/api';
-import type { MessageDto, MessagesCursorResponse, SendMessagePayload, SearchMessagesResponse } from '../model/types';
+import type { MessageDto, MessagesCursorResponse, SendMessagePayload, SearchMessagesResponse, MessageContextDto } from '../model/types';
 
 export type ToggleReactionResponse = components['schemas']['ToggleReactionResponse'];
 
 export const messageApi = {
+  getMessageContext: async (
+    channelId: string,
+    messageId: string,
+    limit = 40
+  ): Promise<MessageContextDto> => {
+    return api.get<MessageContextDto>(`/Channels/${channelId}/messages/${messageId}/context`, {
+      params: { limit },
+    });
+  },
+
   getChannelMessages: async (
     channelId: string,
     before?: string | null,

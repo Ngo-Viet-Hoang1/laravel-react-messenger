@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { toast } from 'sonner';
-import type { ChatMessage } from '@/entities/message';
+import { useQueryClient } from '@tanstack/react-query';
+import { messageApi, messageKeys, type ChatMessage, type MessagesInfiniteData } from '@/entities/message';
 import { useMarkAsReadMutation } from '@/entities/channel';
 
 export interface UseChatScrollProps {
@@ -11,6 +12,8 @@ export interface UseChatScrollProps {
   isFetchingPreviousPage?: boolean;
   fetchPreviousPage: () => Promise<unknown>;
   isMessagesLoading?: boolean;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  scrollToVirtualIndex?: (index: number) => void;
 }
 
 export interface UseChatScrollReturn {
@@ -18,7 +21,8 @@ export interface UseChatScrollReturn {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   handleScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   scrollToBottom: () => void;
-  scrollToMessage: (messageId: string) => void;
+  scrollToMessage: (messageId: string) => Promise<void>;
+  isViewingHistory: boolean;
   unreadBelowCount: number;
   highlightedMessageId: string | null;
 }
@@ -34,8 +38,12 @@ export const useChatScroll = ({
   isFetchingPreviousPage,
   fetchPreviousPage,
   isMessagesLoading,
+  scrollContainerRef: externalScrollRef,
+  scrollToVirtualIndex,
 }: UseChatScrollProps): UseChatScrollReturn => {
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const internalScrollRef = React.useRef<HTMLDivElement>(null);
+  const scrollContainerRef = externalScrollRef ?? internalScrollRef;
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const isInitialLoadRef = React.useRef(true);
@@ -48,6 +56,7 @@ export const useChatScroll = ({
   const prevLastMessageIdRef = React.useRef<string | null>(null);
 
   const [unreadBelowCount, setUnreadBelowCount] = React.useState(0);
+  const [isViewingHistory, setIsViewingHistory] = React.useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = React.useState<string | null>(null);
   const highlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const { mutate: markChannelAsRead } = useMarkAsReadMutation();
@@ -65,6 +74,7 @@ export const useChatScroll = ({
     isInitialLoadRef.current = true;
     isAtBottomRef.current = true;
     setUnreadBelowCount(0);
+    setIsViewingHistory(false);
     prevFirstMessageIdRef.current = null;
     prevLastMessageIdRef.current = null;
     scrollHeightBeforeUpdateRef.current = null;
@@ -88,7 +98,7 @@ export const useChatScroll = ({
       prevLastMessageIdRef.current =
         messages[messages.length - 1]?.id || messages[messages.length - 1]?.clientMessageId || null;
     }
-  }, [isMessagesLoading, messages]);
+  }, [isMessagesLoading, messages, scrollContainerRef]);
 
   // Synchronous scroll restoration on older messages prepend (runs BEFORE paint -> 0px jump/flicker)
   React.useLayoutEffect(() => {
@@ -101,7 +111,7 @@ export const useChatScroll = ({
       scrollHeightBeforeUpdateRef.current = null;
       scrollTopBeforeUpdateRef.current = null;
     }
-  }, [messages]);
+  }, [messages, scrollContainerRef]);
 
   // Smart scroll behavior: ONLY trigger when a NEW message arrives at the bottom
   React.useEffect(() => {
@@ -196,34 +206,110 @@ export const useChatScroll = ({
     ]
   );
 
-  // Explicit scroll to bottom (e.g. clicking the "New messages below" floating pill)
-  const scrollToBottom = React.useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    isAtBottomRef.current = true;
-    setUnreadBelowCount(0);
-    if (channelId) {
-      markChannelAsRead(channelId);
-    }
-  }, [channelId, markChannelAsRead]);
-
-  // Smooth scroll to a specific message (e.g. clicking search result or quoted reply banner)
-  const scrollToMessage = React.useCallback((messageId: string) => {
-    const element = document.getElementById(`msg-${messageId}`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setHighlightedMessageId(messageId);
-
-      if (highlightTimeoutRef.current) {
-        clearTimeout(highlightTimeoutRef.current);
+  const scrollToBottom = React.useCallback(async () => {
+    const wasViewingHistory = isViewingHistory;
+    if (wasViewingHistory) {
+      setIsViewingHistory(false);
+      if (channelId) {
+        await queryClient.resetQueries({ queryKey: messageKeys.byChannel(channelId) });
       }
-      highlightTimeoutRef.current = setTimeout(() => {
-        setHighlightedMessageId(null);
-      }, 1500);
-      return;
     }
 
-    toast.info('Message is in older history. Full text is visible in the panel.');
-  }, []);
+    setTimeout(
+      () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: 'smooth',
+          });
+        }
+        isAtBottomRef.current = true;
+        setUnreadBelowCount(0);
+        if (channelId) {
+          markChannelAsRead(channelId);
+        }
+      },
+      wasViewingHistory ? 50 : 0
+    );
+  }, [channelId, isViewingHistory, markChannelAsRead, queryClient, scrollContainerRef]);
+
+  const scrollToMessage = React.useCallback(
+    async (messageId: string) => {
+      const targetIndex = messages.findIndex(
+        (m) => m.id === messageId || m.clientMessageId === messageId
+      );
+
+      if (targetIndex !== -1) {
+        if (scrollToVirtualIndex) {
+          scrollToVirtualIndex(targetIndex);
+        } else {
+          const element = document.getElementById(`msg-${messageId}`);
+          element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        setHighlightedMessageId(messageId);
+        if (highlightTimeoutRef.current) {
+          clearTimeout(highlightTimeoutRef.current);
+        }
+        highlightTimeoutRef.current = setTimeout(() => {
+          setHighlightedMessageId(null);
+        }, 1500);
+        return;
+      }
+
+      if (!channelId) return;
+
+      try {
+        toast.loading('Loading conversation context...', { id: 'jump-context' });
+        const contextData = await messageApi.getMessageContext(channelId, messageId, 40);
+
+        if (contextData && contextData.messages.length > 0) {
+          setIsViewingHistory(Boolean(contextData.hasNewer));
+
+          queryClient.setQueryData<MessagesInfiniteData>(
+            messageKeys.byChannel(channelId),
+            {
+              pages: [
+                {
+                  items: contextData.messages.map((m) => ({ ...m, status: 'sent' })),
+                  nextCursor: contextData.oldestCursor ?? null,
+                  hasMore: contextData.hasOlder,
+                },
+              ],
+              pageParams: [null],
+            }
+          );
+
+          toast.dismiss('jump-context');
+
+          setTimeout(() => {
+            const newIndex = contextData.messages.findIndex(
+              (m) => m.id === messageId || m.clientMessageId === messageId
+            );
+            if (newIndex !== -1 && scrollToVirtualIndex) {
+              scrollToVirtualIndex(newIndex);
+            } else {
+              const targetEl = document.getElementById(`msg-${messageId}`);
+              targetEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            setHighlightedMessageId(messageId);
+            if (highlightTimeoutRef.current) {
+              clearTimeout(highlightTimeoutRef.current);
+            }
+            highlightTimeoutRef.current = setTimeout(() => {
+              setHighlightedMessageId(null);
+            }, 1500);
+          }, 80);
+        }
+      } catch (err) {
+        console.error('[JumpContext] Failed to load message context:', err);
+        toast.error('Failed to load message context.', { id: 'jump-context' });
+      }
+    },
+    [channelId, messages, queryClient, scrollToVirtualIndex]
+  );
 
   return {
     scrollContainerRef,
@@ -231,6 +317,7 @@ export const useChatScroll = ({
     handleScroll,
     scrollToBottom,
     scrollToMessage,
+    isViewingHistory,
     unreadBelowCount,
     highlightedMessageId,
   };
