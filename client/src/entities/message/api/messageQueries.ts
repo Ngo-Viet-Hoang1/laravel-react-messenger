@@ -36,8 +36,9 @@ export const useChannelMessagesQuery = (channelId?: string) => {
     getPreviousPageParam: (firstPage) => (firstPage.hasMore ? firstPage.nextCursor : null),
     getNextPageParam: () => null,
     enabled: isValidGuid,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 60_000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 };
 

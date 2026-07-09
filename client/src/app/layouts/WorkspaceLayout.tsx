@@ -112,13 +112,12 @@ export const WorkspaceLayout: React.FC = () => {
     queryClient.setQueryData<MessagesInfiniteData>(
       messageKeys.byChannel(receivedMsg.channelId),
       (old) => {
-        const confirmed: ChatMessage = { ...receivedMsg, status: MESSAGE_STATUS.SENT };
         if (!old || old.pages.length === 0) {
-          return {
-            pages: [{ items: [confirmed], nextCursor: null, hasMore: false }],
-            pageParams: [null],
-          };
+          // Channel is not loaded or not in cache -> ignore. When user opens channel, it will fetch fresh messages from server.
+          return old;
         }
+
+        const confirmed: ChatMessage = { ...receivedMsg, status: MESSAGE_STATUS.SENT };
 
         let replaced = false;
         const updatedPages = old.pages.map((page: MessagesPage) => {
@@ -154,22 +153,17 @@ export const WorkspaceLayout: React.FC = () => {
   });
 
   useSignalREvent('MessageReactionUpdated', (messageId, channelId, reactions) => {
-    queryClient.setQueryData<MessagesInfiniteData>(
-      messageKeys.byChannel(channelId),
-      (old) => {
-        if (!old) return old;
+    queryClient.setQueryData<MessagesInfiniteData>(messageKeys.byChannel(channelId), (old) => {
+      if (!old) return old;
 
-        return {
-          ...old,
-          pages: old.pages.map((page: MessagesPage) => ({
-            ...page,
-            items: page.items.map((m) =>
-              m.id === messageId ? { ...m, reactions } : m
-            ),
-          })),
-        };
-      }
-    );
+      return {
+        ...old,
+        pages: old.pages.map((page: MessagesPage) => ({
+          ...page,
+          items: page.items.map((m) => (m.id === messageId ? { ...m, reactions } : m)),
+        })),
+      };
+    });
   });
 
   // Close mobile sidebar sheet drawer on channel change

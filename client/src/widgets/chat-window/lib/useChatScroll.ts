@@ -78,18 +78,17 @@ export const useChatScroll = ({
   // Initial scroll to bottom on first load of the channel
   React.useLayoutEffect(() => {
     if (!isMessagesLoading && messages.length > 0 && isInitialLoadRef.current) {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
       isInitialLoadRef.current = false;
       isAtBottomRef.current = true;
       prevFirstMessageIdRef.current = messages[0]?.id || messages[0]?.clientMessageId || null;
       prevLastMessageIdRef.current =
         messages[messages.length - 1]?.id || messages[messages.length - 1]?.clientMessageId || null;
-
-      if (channelId) {
-        markChannelAsRead(channelId);
-      }
     }
-  }, [isMessagesLoading, messages, channelId, markChannelAsRead]);
+  }, [isMessagesLoading, messages]);
 
   // Synchronous scroll restoration on older messages prepend (runs BEFORE paint -> 0px jump/flicker)
   React.useLayoutEffect(() => {

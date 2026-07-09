@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { channelApi } from './channelApi';
@@ -54,9 +55,23 @@ export const useStartDirectChatMutation = (options?: UseStartDirectChatMutationO
 
 export const useMarkAsReadMutation = () => {
   const queryClient = useQueryClient();
+  const lastMarkedChannelIdRef = React.useRef<string | null>(null);
 
   return useMutation({
-    mutationFn: (channelId: string) => channelApi.markAsRead(channelId),
+    mutationFn: (channelId: string) => {
+      // Guard: Check if the channel actually has unread messages before triggering HTTP POST
+      const channels = queryClient.getQueryData<ChannelSummary[]>(channelKeys.lists());
+      const channel = channels?.find((c) => c.id === channelId);
+      const hasUnread = channel && (Number(channel.unreadCount ?? 0) > 0 || Boolean(channel.hasUnread));
+
+      // Skip redundant network call if channel has 0 unread messages AND was already marked
+      if (!hasUnread && lastMarkedChannelIdRef.current === channelId) {
+        return Promise.resolve();
+      }
+
+      lastMarkedChannelIdRef.current = channelId;
+      return channelApi.markAsRead(channelId);
+    },
     onMutate: async (channelId: string) => {
       queryClient.setQueryData<ChannelSummary[]>(channelKeys.lists(), (old = []) =>
         old.map((ch) =>
