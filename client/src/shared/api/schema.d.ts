@@ -891,6 +891,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Channels/{channelId}/messages/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    query?: string;
+                    page?: number | string;
+                    pageSize?: number | string;
+                };
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PaginatedListOfMessageDto"];
+                        "application/json": components["schemas"]["PaginatedListOfMessageDto"];
+                        "text/json": components["schemas"]["PaginatedListOfMessageDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Channels/{id}/read": {
         parameters: {
             query?: never;
@@ -1803,6 +1879,17 @@ export interface components {
             createdAt: string;
             reactions?: null | components["schemas"]["ReactionGroupDto"][];
             replyTo?: null | components["schemas"]["ReplyToMessageDto"];
+        };
+        PaginatedListOfMessageDto: {
+            items: components["schemas"]["MessageDto"][];
+            /** Format: int32 */
+            pageNumber: number | string;
+            /** Format: int32 */
+            totalPages?: number | string;
+            /** Format: int32 */
+            totalCount?: number | string;
+            hasPreviousPage?: boolean;
+            hasNextPage?: boolean;
         };
         PaginatedListOfUserDto: {
             items: components["schemas"]["UserDto"][];

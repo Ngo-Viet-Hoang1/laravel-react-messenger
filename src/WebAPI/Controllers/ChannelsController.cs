@@ -16,6 +16,7 @@ using MessengerApp.Application.Channels.Queries.GetUserChannels;
 using MessengerApp.Application.Messages.Commands.SendMessage;
 using MessengerApp.Application.Messages.Common;
 using MessengerApp.Application.Messages.Queries.GetChannelMessages;
+using MessengerApp.Application.Messages.Queries.SearchMessages;
 using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Application.Common.Models;
 using MessengerApp.Domain.Common;
@@ -96,6 +97,23 @@ public class ChannelsController(ISender sender) : ApiController
     {
         GetChannelMessagesQuery query = new(channelId, CurrentUserId, before, limit);
         Result<CursorPagedList<MessageDto>> result = await sender.Send(query, ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("{channelId:guid}/messages/search")]
+    [ProducesResponseType(typeof(PaginatedList<MessageDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SearchChannelMessages(
+        [FromRoute] Guid channelId,
+        [FromQuery] string query,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        SearchMessagesQuery searchQuery = new(CurrentUserId, query, channelId, page, pageSize);
+        Result<PaginatedList<MessageDto>> result = await sender.Send(searchQuery, ct);
         return HandleResult(result);
     }
 
