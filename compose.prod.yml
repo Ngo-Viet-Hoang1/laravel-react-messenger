@@ -63,7 +63,7 @@ services:
   # public/build assets are baked into the image at build time → no bind mount needed.
   # Only stateful data (storage, SSL certs) is mounted from host.
   nginx:
-    image: ${NGINX_IMAGE:-ghcr.io/ngo-viet-hoang1/laravel-react-messenger-nginx}:${APP_TAG:-latest}
+    image: ${NGINX_IMAGE:-ghcr.io/ngo-viet-hoang1/laravel-react-messenger-nginx}:${NGINX_TAG:-latest}
     container_name: ${APP_NAME:-laravel}_nginx
     restart: unless-stopped
     ports:
@@ -157,12 +157,16 @@ services:
     <<: *app-base
     container_name: ${APP_NAME:-laravel}_reverb
     command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    depends_on:
+      app: { condition: service_healthy }
 
   # ─── Scheduler ───────────────────────────────────────────────────────────────
   scheduler:
     <<: *app-base
     container_name: ${APP_NAME:-laravel}_scheduler
     command: php artisan schedule:work
+    depends_on:
+      app: { condition: service_healthy }
 
 networks:
   laravel:
