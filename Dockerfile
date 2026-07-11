@@ -122,3 +122,23 @@ RUN composer install \
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["php-fpm"]
+
+# ─── Stage 5: Nginx production image ─────────────────────────────────────────
+# Bakes compiled frontend assets (public/build) directly into the Nginx image.
+# This eliminates the need for:
+#   - bind mount ./public:/var/www/public (fragile, requires docker cp on deploy)
+#   - docker create/cp/rm trick in CI/CD pipeline
+#
+# Nginx serves:
+#   - public/build/  → baked from node-builder (immutable, versioned with image)
+#   - /storage/      → served via volume mount (user uploads, stateful)
+FROM nginx:1.27-alpine AS nginx-production
+
+# Copy compiled frontend assets from node-builder stage
+COPY --from=node-builder /app/public/build /var/www/public/build
+
+# Copy Nginx global config (rate limits, gzip, resolver)
+COPY docker/nginx/prod/nginx.conf /etc/nginx/nginx.conf
+
+# Copy virtual host configs
+COPY docker/nginx/prod/default.conf /etc/nginx/conf.d/default.conf

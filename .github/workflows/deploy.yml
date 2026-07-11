@@ -12,6 +12,7 @@ concurrency:
 
 env:
   IMAGE_NAME: ghcr.io/ngo-viet-hoang1/laravel-react-messenger
+  NGINX_IMAGE_NAME: ghcr.io/ngo-viet-hoang1/laravel-react-messenger-nginx
   PHP_VERSION: '8.3'
   NODE_VERSION: '22'
   APP_DOMAIN: twiliver.dev
@@ -94,6 +95,7 @@ jobs:
 
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
+      nginx_tag: ${{ steps.nginx-meta.outputs.version }}
 
     steps:
       - name: Checkout code
@@ -120,7 +122,16 @@ jobs:
             # Tag bằng git SHA ngắn (7 chars) để rollback chính xác
             type=sha,prefix=,format=short
 
-      - name: Build and push Docker image
+      - name: Extract Nginx image metadata
+        id: nginx-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.NGINX_IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=,format=short
+
+      - name: Build and push PHP app image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -129,6 +140,18 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Nginx image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: nginx-production
+          push: true
+          tags: ${{ steps.nginx-meta.outputs.tags }}
+          labels: ${{ steps.nginx-meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
   deploy:
@@ -178,28 +201,20 @@ jobs:
             # APP_TAG: git SHA ngắn từ build job output
             export APP_IMAGE="${{ env.IMAGE_NAME }}"
             export APP_TAG="${{ needs.build.outputs.image_tag }}"
+            export NGINX_IMAGE="${{ env.NGINX_IMAGE_NAME }}"
+            export NGINX_TAG="${{ needs.build.outputs.nginx_tag }}"
 
             # ── 3. Pull image mới nhất từ GHCR ──────────────────────────────────
-            # Pull tất cả services dùng app image (app, horizon, reverb, scheduler)
+            # Pull PHP app image (app, horizon, reverb, scheduler) + Nginx image.
+            # public/build assets are now baked into the Nginx image — no docker cp needed.
             echo "==> [3/8] Pulling latest Docker images from GHCR..."
             APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
               docker compose -f compose.prod.yml pull app horizon reverb scheduler
 
-            # ── 4. Extract compiled frontend assets từ image vào host ───────────
-            # Tại sao cần bước này?
-            #   - Nginx mount: ./public:/var/www/public:ro (từ host)
-            #   - public/build/ trong git .gitignore → không có trên EC2 sau git pull
-            #   - Docker image CÓ public/build/ (baked bởi node-builder stage)
-            #   → Extract ra host → nginx serve được JS/CSS mới nhất
-            #
-            # docker create: tạo container tạm (không start) → chỉ để docker cp
-            # docker cp:     copy files từ container layer vào host filesystem
-            # docker rm:     dọn container tạm
-            echo "==> [4/8] Extracting built assets from image to host..."
-            TEMP_CONTAINER=$(docker create "${APP_IMAGE}:${APP_TAG}")
-            docker cp "$TEMP_CONTAINER:/var/www/public/build" ./public/
-            docker rm "$TEMP_CONTAINER"
-            echo "  public/build/ updated from image $APP_TAG"
+            # Pull Nginx image separately (uses different image name)
+            docker pull "${NGINX_IMAGE}:${NGINX_TAG}"
+            docker tag  "${NGINX_IMAGE}:${NGINX_TAG}" "${NGINX_IMAGE}:latest"
+            echo "  ✅ All images pulled (app: $APP_TAG, nginx: $NGINX_TAG)"
 
             # ── 5. Graceful Horizon shutdown (chờ jobs hiện tại xong) ─────
             echo "==> [5/8] Graceful Horizon shutdown..."
@@ -211,12 +226,11 @@ jobs:
             # --no-build: không build lại, dùng image đã pull
             echo "==> [6/8] Restarting containers..."
             APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
+            NGINX_IMAGE="$NGINX_IMAGE" NGINX_TAG="$NGINX_TAG" \
               docker compose -f compose.prod.yml up -d --no-build --remove-orphans
 
-            # Flush Nginx DNS Cache to pick up new Reverb container IP
-            echo "==> Reloading Nginx to flush DNS Cache..."
-            APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
-              docker compose -f compose.prod.yml exec -T nginx nginx -s reload || true
+            # Nginx DNS cache is handled automatically via resolver 127.0.0.11 in nginx.conf
+            # (re-resolves container IPs every 10s) — no manual reload needed after deploy.
 
             # ── 7. First-deploy seeding (chỉ chạy khi DB trống) ──────────
             # Chiến lược seeding:
