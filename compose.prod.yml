@@ -74,6 +74,11 @@ services:
       - storage_data:/var/www/storage:ro
       # SSL certificates from host Certbot (read-only — Certbot writes, Nginx reads)
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      # ACME challenge directory for Certbot webroot validation.
+      # Certbot writes to /app/public/.well-known/ on the host;
+      # Nginx must serve it from /var/www/public/.well-known/ inside the container.
+      # Without this mount, certbot --webroot cannot verify domain ownership.
+      - ./public/.well-known:/var/www/public/.well-known:ro
     networks:
       - laravel
     depends_on:

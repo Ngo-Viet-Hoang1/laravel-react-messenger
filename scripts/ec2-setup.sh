@@ -87,6 +87,14 @@ else
     echo "  ✅ Repository already exists at $APP_DIR"
 fi
 
+# Create .well-known directory for Certbot webroot ACME challenge.
+# Nginx container bind-mounts ./public/.well-known:/var/www/public/.well-known.
+# The directory must exist on the host BEFORE docker compose up — Docker would
+# otherwise create it as root:root (owned by daemon, not ec2-user).
+# mkdir -p is idempotent: safe to run on every setup re-run.
+# This is server infrastructure, intentionally NOT tracked in git.
+mkdir -p "$APP_DIR/public/.well-known"
+
 cd "$APP_DIR"
 
 echo "==> [8/9] Setting up production .env..."

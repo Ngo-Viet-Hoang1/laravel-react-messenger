@@ -181,7 +181,7 @@ jobs:
             # ── 1. Pull code mới nhất (chỉ lấy compose files + nginx configs) ───
             # Note: source code không cần (baked trong image)
             # Git pull cần để lấy: compose.prod.yml mới + nginx config thay đổi
-            echo "==> [1/8] Pulling latest compose configs..."
+            echo "==> [1/7] Pulling latest compose configs..."
             git pull origin deploy
 
             # ── 2. Đăng nhập GHCR để pull image ───────────────────────────
@@ -192,7 +192,7 @@ jobs:
             # Cách tạo GHCR_READ_TOKEN:
             #   GitHub → Settings → Developer Settings → Personal Access Tokens (classic)
             #   → Chọn scope: read:packages → Copy → Thêm vào GitHub Secrets
-            echo "==> [2/8] Logging into GHCR..."
+            echo "==> [2/7] Logging into GHCR..."
             echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io \
               -u "${{ github.repository_owner }}" --password-stdin
 
@@ -207,7 +207,7 @@ jobs:
             # ── 3. Pull image mới nhất từ GHCR ──────────────────────────────────
             # Pull PHP app image (app, horizon, reverb, scheduler) + Nginx image.
             # public/build assets are now baked into the Nginx image — no docker cp needed.
-            echo "==> [3/8] Pulling latest Docker images from GHCR..."
+            echo "==> [3/7] Pulling latest Docker images from GHCR..."
             APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
               docker compose -f compose.prod.yml pull app horizon reverb scheduler
 
@@ -216,15 +216,15 @@ jobs:
             docker tag  "${NGINX_IMAGE}:${NGINX_TAG}" "${NGINX_IMAGE}:latest"
             echo "  ✅ All images pulled (app: $APP_TAG, nginx: $NGINX_TAG)"
 
-            # ── 5. Graceful Horizon shutdown (chờ jobs hiện tại xong) ─────
-            echo "==> [5/8] Graceful Horizon shutdown..."
+            # ── 4. Graceful Horizon shutdown (chờ jobs hiện tại xong) ─────
+            echo "==> [4/7] Graceful Horizon shutdown..."
             APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
               docker compose -f compose.prod.yml exec -T horizon \
               php artisan horizon:terminate 2>/dev/null || echo "  Horizon not running, skipping"
 
-            # ── 6. Restart containers với image mới ───────────────────────
+            # ── 5. Restart containers với image mới ───────────────────────
             # --no-build: không build lại, dùng image đã pull
-            echo "==> [6/8] Restarting containers..."
+            echo "==> [5/7] Restarting containers..."
             APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
             NGINX_IMAGE="$NGINX_IMAGE" NGINX_TAG="$NGINX_TAG" \
               docker compose -f compose.prod.yml up -d --no-build --remove-orphans
@@ -240,7 +240,7 @@ jobs:
             #
             # Pattern đúng: kiểm tra admin user tồn tại chưa → chỉ seed lần đầu
             # Đây là idempotent seeding: an toàn khi deploy nhiều lần
-            echo "==> [7/8] Checking if first-deploy seed is needed..."
+            echo "==> [6/7] Checking if first-deploy seed is needed..."
             ADMIN_COUNT=$(APP_IMAGE="$APP_IMAGE" APP_TAG="$APP_TAG" \
               docker compose -f compose.prod.yml exec -T app \
               php artisan tinker --execute="echo App\\Models\\User::where('is_admin', true)->count();" \
@@ -256,8 +256,8 @@ jobs:
               echo "  Admin already exists ($ADMIN_COUNT) → skipping seed."
             fi
 
-            # ── 8. Health check sau deploy ────────────────────────────────
-            echo "==> [8/8] Waiting for health check..."
+            # ── 7. Health check sau deploy ────────────────────────────────
+            echo "==> [7/7] Waiting for health check..."
             timeout 60 bash -c '
               until docker compose -f compose.prod.yml ps | grep "app" | grep "healthy"; do
                 echo "  Waiting for app to be healthy..."
