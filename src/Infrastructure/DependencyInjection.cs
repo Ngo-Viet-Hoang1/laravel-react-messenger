@@ -1,12 +1,16 @@
+using Amazon.Runtime;
+using Amazon.S3;
 using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Infrastructure.Persistence;
 using MessengerApp.Infrastructure.Persistence.Interceptors;
 using MessengerApp.Infrastructure.Presence;
 using MessengerApp.Infrastructure.Security;
 using MessengerApp.Infrastructure.Services;
+using MessengerApp.Infrastructure.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace MessengerApp.Infrastructure;
 
@@ -45,6 +49,21 @@ public static class DependencyInjection
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
         services.AddSingleton<IPresenceTracker, PresenceTracker>();
+
+        services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
+        services.AddSingleton<IAmazonS3>(sp =>
+        {
+            var storageOptions = sp.GetRequiredService<IOptions<StorageOptions>>().Value;
+            var config = new AmazonS3Config
+            {
+                ServiceURL = storageOptions.ServiceUrl,
+                ForcePathStyle = storageOptions.ForcePathStyle,
+                UseHttp = storageOptions.ServiceUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            };
+            var credentials = new BasicAWSCredentials(storageOptions.AccessKey, storageOptions.SecretKey);
+            return new AmazonS3Client(credentials, config);
+        });
+        services.AddScoped<IObjectStorageService, S3ObjectStorageService>();
 
         return services;
     }

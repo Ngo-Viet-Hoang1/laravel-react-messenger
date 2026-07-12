@@ -38,3 +38,7 @@ client/dist/
 # Archive
 archive/legacy-laravel/vendor/
 archive/legacy-laravel/node_modules/
+
+# Local Database Dumps
+scripts/backup*.sql
+*.dump
