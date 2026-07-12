@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using MessengerApp.Application.Attachments.Common;
 using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Application.Messages.Common;
 using MessengerApp.Domain.Common;
@@ -11,9 +12,10 @@ namespace MessengerApp.Application.Messages.Commands.SendMessage;
 public record SendMessageCommand(
     Guid SenderId,
     Guid ChannelId,
-    string Content,
+    string? Content = null,
     string? ClientMessageId = null,
-    Guid? ParentMessageId = null
+    Guid? ParentMessageId = null,
+    List<Guid>? AttachmentIds = null
 ) : IRequest<Result<MessageDto>>;
 
 public class SendMessageCommandValidator : AbstractValidator<SendMessageCommand>
@@ -27,15 +29,23 @@ public class SendMessageCommandValidator : AbstractValidator<SendMessageCommand>
             .NotEmpty().WithMessage("Channel ID is required.");
 
         RuleFor(x => x.Content)
-            .NotEmpty().WithMessage("Message content cannot be empty.")
+            .NotEmpty()
+            .When(x => x.AttachmentIds == null || x.AttachmentIds.Count == 0)
+            .WithMessage("Message content cannot be empty when there are no attachments.")
             .MaximumLength(5000).WithMessage("Message content cannot exceed 5000 characters.");
 
         RuleFor(x => x.ClientMessageId)
             .MaximumLength(64).WithMessage("Client message ID cannot exceed 64 characters.");
+
+        RuleFor(x => x.AttachmentIds)
+            .Must(ids => ids == null || ids.Count <= 10)
+            .WithMessage("Cannot attach more than 10 files per message.");
     }
 }
 
-public class SendMessageCommandHandler(IApplicationDbContext context)
+public class SendMessageCommandHandler(
+    IApplicationDbContext context,
+    IObjectStorageService storage)
     : IRequestHandler<SendMessageCommand, Result<MessageDto>>
 {
     public async Task<Result<MessageDto>> Handle(SendMessageCommand cmd, CancellationToken ct)
@@ -76,6 +86,7 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
                 .Include(m => m.Sender)
                 .Include(m => m.ParentMessage)
                     .ThenInclude(p => p!.Sender)
+                .Include(m => m.Attachments)
                 .FirstOrDefaultAsync(
                     m => m.ChannelId == cmd.ChannelId &&
                          m.SenderId == cmd.SenderId &&
@@ -84,7 +95,7 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
 
             if (existing != null)
             {
-                return Result.Success(existing.ToDto());
+                return Result.Success(existing.ToDto(storage));
             }
         }
 
@@ -98,8 +109,30 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
                 Error.NotFound("User.NotFound", "Sender user was not found."));
         }
 
+        List<MessageAttachment> validAttachments = [];
+        if (cmd.AttachmentIds != null && cmd.AttachmentIds.Count > 0)
+        {
+            validAttachments = await context.MessageAttachments
+                .Where(a => cmd.AttachmentIds.Contains(a.Id) &&
+                            a.ChannelId == cmd.ChannelId &&
+                            a.IsUploadCompleted &&
+                            a.MessageId == null)
+                .ToListAsync(ct);
+
+            if (validAttachments.Count != cmd.AttachmentIds.Count)
+            {
+                return Result.Failure<MessageDto>(
+                    Error.Validation("Message.InvalidAttachments", "One or more attachments are invalid, not completed, or already linked."));
+            }
+        }
+
         Message message = Message.Create(cmd.ChannelId, cmd.SenderId, cmd.Content, cmd.ClientMessageId, cmd.ParentMessageId);
         context.Messages.Add(message);
+
+        foreach (var att in validAttachments)
+        {
+            att.AssignToMessage(message.Id);
+        }
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
         channel.LastModifiedAt = now;
@@ -108,6 +141,6 @@ public class SendMessageCommandHandler(IApplicationDbContext context)
 
         await context.SaveChangesAsync(ct);
 
-        return Result.Success(message.ToDto(sender, parentMessage));
+        return Result.Success(message.ToDto(sender, storage, parentMessage, validAttachments));
     }
 }

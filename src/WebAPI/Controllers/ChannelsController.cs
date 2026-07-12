@@ -1,4 +1,11 @@
 using MediatR;
+using MessengerApp.Application.Attachments.Commands.AbortUpload;
+using MessengerApp.Application.Attachments.Commands.CompleteUpload;
+using MessengerApp.Application.Attachments.Commands.CreatePresignedUpload;
+using MessengerApp.Application.Attachments.Common;
+using MessengerApp.Application.Attachments.Queries.GetAttachmentStreamUrl;
+using MessengerApp.Application.Attachments.Queries.GetUploadedParts;
+using MessengerApp.WebAPI.Contracts.Attachments;
 using MessengerApp.Application.Channels.Commands.AddChannelMembers;
 using MessengerApp.Application.Channels.Commands.CreateChannel;
 using MessengerApp.Application.Channels.Commands.DeleteChannel;
@@ -147,7 +154,7 @@ public class ChannelsController(ISender sender) : ApiController
         [FromServices] IApplicationDbContext dbContext,
         CancellationToken ct)
     {
-        SendMessageCommand command = new(CurrentUserId, channelId, request.Content, request.ClientMessageId, request.ParentMessageId);
+        SendMessageCommand command = new(CurrentUserId, channelId, request.Content, request.ClientMessageId, request.ParentMessageId, request.AttachmentIds);
         Result<MessageDto> result = await sender.Send(command, ct);
 
         if (result.IsSuccess)
@@ -165,6 +172,94 @@ public class ChannelsController(ISender sender) : ApiController
         }
 
         return HandleCreatedResult(result);
+    }
+
+
+    [HttpPost("{channelId:guid}/attachments/presign")]
+    [ProducesResponseType(typeof(PresignedUploadResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CreatePresignedUpload(
+        [FromRoute] Guid channelId,
+        [FromBody] CreatePresignedUploadRequest request,
+        CancellationToken ct)
+    {
+        CreatePresignedUploadCommand command = new(
+            channelId,
+            CurrentUserId,
+            request.FileName,
+            request.ContentType,
+            request.FileSizeBytes,
+            request.Width,
+            request.Height,
+            request.DurationSeconds,
+            request.HasThumbnail);
+
+        Result<PresignedUploadResultDto> result = await sender.Send(command, ct);
+        return HandleResult(result);
+    }
+
+    [HttpPost("{channelId:guid}/attachments/{attachmentId:guid}/complete")]
+    [ProducesResponseType(typeof(MessageAttachmentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CompleteUpload(
+        [FromRoute] Guid channelId,
+        [FromRoute] Guid attachmentId,
+        [FromBody] CompleteUploadRequest request,
+        CancellationToken ct)
+    {
+        CompleteUploadCommand command = new(channelId, attachmentId, CurrentUserId, request.Parts);
+        Result<MessageAttachmentDto> result = await sender.Send(command, ct);
+        return HandleResult(result);
+    }
+
+    [HttpPost("{channelId:guid}/attachments/{attachmentId:guid}/abort")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AbortUpload(
+        [FromRoute] Guid channelId,
+        [FromRoute] Guid attachmentId,
+        CancellationToken ct)
+    {
+        AbortUploadCommand command = new(channelId, attachmentId, CurrentUserId);
+        Result result = await sender.Send(command, ct);
+        return HandleNoContentResult(result);
+    }
+
+    [HttpGet("{channelId:guid}/attachments/{attachmentId:guid}/stream-url")]
+    [ProducesResponseType(typeof(AttachmentStreamUrlDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetAttachmentStreamUrl(
+        [FromRoute] Guid channelId,
+        [FromRoute] Guid attachmentId,
+        CancellationToken ct)
+    {
+        GetAttachmentStreamUrlQuery query = new(channelId, attachmentId, CurrentUserId);
+        Result<AttachmentStreamUrlDto> result = await sender.Send(query, ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("{channelId:guid}/attachments/{attachmentId:guid}/parts")]
+    [ProducesResponseType(typeof(List<StoragePartDetail>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetUploadedParts(
+        [FromRoute] Guid channelId,
+        [FromRoute] Guid attachmentId,
+        CancellationToken ct)
+    {
+        GetUploadedPartsQuery query = new(channelId, attachmentId, CurrentUserId);
+        Result<List<StoragePartDetail>> result = await sender.Send(query, ct);
+        return HandleResult(result);
     }
 
     [HttpPost("{id:guid}/read")]

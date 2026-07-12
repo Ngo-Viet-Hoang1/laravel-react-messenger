@@ -121,6 +121,16 @@ if (app.Environment.IsDevelopment())
         var logger = scope.ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger("DbInitializer");
         await DbInitializer.SeedAsync(db, hasher, logger);
         await MessageSeeder.SeedAsync(db, logger);
+
+        try
+        {
+            var storageService = scope.ServiceProvider.GetRequiredService<IObjectStorageService>();
+            await storageService.EnsureBucketExistsAsync();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Could not initialize object storage bucket on startup.");
+        }
     }
 }
 
