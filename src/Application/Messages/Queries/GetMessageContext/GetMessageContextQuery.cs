@@ -25,7 +25,9 @@ public class GetMessageContextQueryValidator : AbstractValidator<GetMessageConte
     }
 }
 
-public class GetMessageContextQueryHandler(IApplicationDbContext context)
+public class GetMessageContextQueryHandler(
+    IApplicationDbContext context,
+    IObjectStorageService storage)
     : IRequestHandler<GetMessageContextQuery, Result<MessageContextDto>>
 {
     public async Task<Result<MessageContextDto>> Handle(GetMessageContextQuery request, CancellationToken ct)
@@ -42,6 +44,7 @@ public class GetMessageContextQueryHandler(IApplicationDbContext context)
         var baseQuery = context.Messages.AsNoTracking()
             .Include(m => m.Sender)
             .Include(m => m.ParentMessage).ThenInclude(p => p!.Sender)
+            .Include(m => m.Attachments)
             .Where(m => m.ChannelId == request.ChannelId && !m.IsDeleted);
 
         var target = await baseQuery.FirstOrDefaultAsync(m => m.Id == request.MessageId, ct);
@@ -72,7 +75,7 @@ public class GetMessageContextQueryHandler(IApplicationDbContext context)
         if (hasNewer) newer.RemoveAt(newer.Count - 1);
         older.Reverse();
 
-        var messages = older.Concat([target]).Concat(newer).Select(m => m.ToDto()).ToList();
+        var messages = older.Concat([target]).Concat(newer).Select(m => m.ToDto(storage)).ToList();
 
         return Result.Success(new MessageContextDto(
             messages,

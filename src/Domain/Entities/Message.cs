@@ -22,6 +22,7 @@ public class Message : BaseAuditableEntity, ISoftDelete
     public Message? ParentMessage { get; set; }
 
     public List<MessageReactionItem> Reactions { get; set; } = [];
+    public List<MessageAttachment> Attachments { get; set; } = [];
 
     public Message() { }
 
@@ -35,9 +36,9 @@ public class Message : BaseAuditableEntity, ISoftDelete
         IsDeleted = false;
     }
 
-    public static Message Create(Guid channelId, Guid senderId, string content, string? clientMessageId = null, Guid? parentMessageId = null)
+    public static Message Create(Guid channelId, Guid senderId, string? content = null, string? clientMessageId = null, Guid? parentMessageId = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(content);
+        content ??= string.Empty;
         if (channelId == Guid.Empty) throw new ArgumentException("ChannelId cannot be empty.", nameof(channelId));
         if (senderId == Guid.Empty) throw new ArgumentException("SenderId cannot be empty.", nameof(senderId));
 

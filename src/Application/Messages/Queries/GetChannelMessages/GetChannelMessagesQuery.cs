@@ -25,7 +25,9 @@ public class GetChannelMessagesQueryValidator : AbstractValidator<GetChannelMess
     }
 }
 
-public class GetChannelMessagesQueryHandler(IApplicationDbContext context)
+public class GetChannelMessagesQueryHandler(
+    IApplicationDbContext context,
+    IObjectStorageService storage)
     : IRequestHandler<GetChannelMessagesQuery, Result<CursorPagedList<MessageDto>>>
 {
     public async Task<Result<CursorPagedList<MessageDto>>> Handle(GetChannelMessagesQuery request, CancellationToken ct)
@@ -45,6 +47,7 @@ public class GetChannelMessagesQueryHandler(IApplicationDbContext context)
             .Include(m => m.Sender)
             .Include(m => m.ParentMessage)
                 .ThenInclude(p => p!.Sender)
+            .Include(m => m.Attachments)
             .Where(m => m.ChannelId == request.ChannelId);
 
         if (request.Before.HasValue)
@@ -71,7 +74,7 @@ public class GetChannelMessagesQueryHandler(IApplicationDbContext context)
         // Return chronological order (oldest to newest)
         messages.Reverse();
 
-        List<MessageDto> dtos = messages.Select(m => m.ToDto()).ToList();
+        List<MessageDto> dtos = messages.Select(m => m.ToDto(storage)).ToList();
         return Result.Success(new CursorPagedList<MessageDto>(dtos, nextCursor, hasMore));
     }
 }

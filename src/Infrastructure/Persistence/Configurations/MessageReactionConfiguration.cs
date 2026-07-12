@@ -30,5 +30,7 @@ public class MessageReactionConfiguration : IEntityTypeConfiguration<MessageReac
             .IsUnique();
 
         builder.HasIndex(r => r.MessageId);
+
+        builder.HasQueryFilter(r => !r.Message.IsDeleted && !r.Message.Channel.IsDeleted);
     }
 }

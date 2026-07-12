@@ -1,10 +1,12 @@
 using FluentAssertions;
+using MessengerApp.Application.Common.Interfaces;
 using MessengerApp.Application.Common.Models;
 using MessengerApp.Application.Messages.Common;
 using MessengerApp.Application.Messages.Queries.GetChannelMessages;
 using MessengerApp.Application.UnitTests.Common;
 using MessengerApp.Domain.Common;
 using MessengerApp.Domain.Entities;
+using NSubstitute;
 using Xunit;
 
 namespace MessengerApp.Application.UnitTests.Messages;
@@ -12,11 +14,12 @@ namespace MessengerApp.Application.UnitTests.Messages;
 public class GetChannelMessagesQueryHandlerTests
 {
     private readonly TestDbContext _context = TestDbContext.Create();
+    private readonly IObjectStorageService _storage = Substitute.For<IObjectStorageService>();
     private readonly GetChannelMessagesQueryHandler _handler;
 
     public GetChannelMessagesQueryHandlerTests()
     {
-        _handler = new GetChannelMessagesQueryHandler(_context);
+        _handler = new GetChannelMessagesQueryHandler(_context, _storage);
     }
 
     [Fact]

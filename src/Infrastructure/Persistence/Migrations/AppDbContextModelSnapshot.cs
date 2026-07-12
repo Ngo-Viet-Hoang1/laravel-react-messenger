@@ -179,6 +179,82 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                     b.ToTable("Messages", (string)null);
                 });
 
+            modelBuilder.Entity("MessengerApp.Domain.Entities.MessageAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsUploadCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("S3UploadId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ThumbnailStorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelId");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique();
+
+                    b.HasIndex("IsUploadCompleted", "CreatedAt");
+
+                    b.ToTable("MessageAttachments", (string)null);
+                });
+
             modelBuilder.Entity("MessengerApp.Domain.Entities.MessageReaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -342,6 +418,24 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
                     b.Navigation("Sender");
                 });
 
+            modelBuilder.Entity("MessengerApp.Domain.Entities.MessageAttachment", b =>
+                {
+                    b.HasOne("MessengerApp.Domain.Entities.Channel", "Channel")
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MessengerApp.Domain.Entities.Message", "Message")
+                        .WithMany("Attachments")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Channel");
+
+                    b.Navigation("Message");
+                });
+
             modelBuilder.Entity("MessengerApp.Domain.Entities.MessageReaction", b =>
                 {
                     b.HasOne("MessengerApp.Domain.Entities.Message", "Message")
@@ -364,6 +458,11 @@ namespace MessengerApp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("MessengerApp.Domain.Entities.Channel", b =>
                 {
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("MessengerApp.Domain.Entities.Message", b =>
+                {
+                    b.Navigation("Attachments");
                 });
 #pragma warning restore 612, 618
         }

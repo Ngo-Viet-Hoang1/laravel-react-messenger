@@ -30,7 +30,9 @@ public class SearchMessagesQueryValidator : AbstractValidator<SearchMessagesQuer
     }
 }
 
-public class SearchMessagesQueryHandler(IApplicationDbContext context)
+public class SearchMessagesQueryHandler(
+    IApplicationDbContext context,
+    IObjectStorageService storage)
     : IRequestHandler<SearchMessagesQuery, Result<PaginatedList<MessageDto>>>
 {
     public async Task<Result<PaginatedList<MessageDto>>> Handle(SearchMessagesQuery request, CancellationToken ct)
@@ -55,6 +57,7 @@ public class SearchMessagesQueryHandler(IApplicationDbContext context)
             .Include(m => m.Sender)
             .Include(m => m.ParentMessage)
                 .ThenInclude(p => p!.Sender)
+            .Include(m => m.Attachments)
             .Where(m => !m.IsDeleted && !m.Channel.IsDeleted);
 
         if (request.ChannelId.HasValue)
@@ -72,7 +75,7 @@ public class SearchMessagesQueryHandler(IApplicationDbContext context)
             .OrderByDescending(m => m.CreatedAt)
             .ToPaginatedListAsync(request.Page, request.PageSize, ct);
 
-        List<MessageDto> dtos = paginatedMessages.Items.Select(m => m.ToDto()).ToList();
+        List<MessageDto> dtos = paginatedMessages.Items.Select(m => m.ToDto(storage)).ToList();
 
         return Result.Success(new PaginatedList<MessageDto>(
             dtos,

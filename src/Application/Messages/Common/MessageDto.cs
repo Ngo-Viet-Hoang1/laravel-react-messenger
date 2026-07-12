@@ -1,3 +1,5 @@
+using MessengerApp.Application.Attachments.Common;
+
 namespace MessengerApp.Application.Messages.Common;
 
 public record MessageDto(
@@ -10,5 +12,6 @@ public record MessageDto(
     string? ClientMessageId,
     DateTimeOffset CreatedAt,
     List<ReactionGroupDto>? Reactions = null,
-    ReplyToMessageDto? ReplyTo = null
+    ReplyToMessageDto? ReplyTo = null,
+    List<MessageAttachmentDto>? Attachments = null
 );
