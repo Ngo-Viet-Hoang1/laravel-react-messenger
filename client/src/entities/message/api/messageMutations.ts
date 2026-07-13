@@ -33,7 +33,7 @@ export const useSendMessageMutation = (channelId?: string) => {
             id: parent.id,
             senderId: parent.senderId,
             senderUsername: parent.senderUsername,
-            content: parent.content,
+            content: parent.content || (parent.attachments && parent.attachments.length > 0 ? '[Attachment]' : ''),
           };
         }
       }
@@ -48,6 +48,7 @@ export const useSendMessageMutation = (channelId?: string) => {
         clientMessageId: clientMsgId,
         createdAt: new Date().toISOString(),
         replyTo,
+        attachments: newPayload.optimisticAttachments,
         status: MESSAGE_STATUS.SENDING,
       };
 

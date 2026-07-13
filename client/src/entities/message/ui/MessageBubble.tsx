@@ -4,6 +4,7 @@ import { Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { formatMessageTime } from '@/shared/lib/formatters';
 import { MESSAGE_STATUS, type ChatMessage } from '../model/types';
+import { MessageAttachments } from './MessageAttachments';
 
 export interface MessageBubbleProps {
   message: ChatMessage;
@@ -66,7 +67,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <span className="shrink-0 font-semibold text-primary">
               {message.replyTo.senderUsername}
             </span>
-            <span className="truncate">{message.replyTo.content}</span>
+            <span className="truncate">{message.replyTo.content || '[Attachment]'}</span>
           </button>
         )}
 
@@ -96,9 +97,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           )}
         </div>
 
-        <div className="mt-0.5 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap text-foreground/90 select-text">
-          {message.content}
-        </div>
+        {message.content && (
+          <div className="mt-0.5 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap text-foreground/90 select-text">
+            {message.content}
+          </div>
+        )}
+
+        <MessageAttachments attachments={message.attachments} />
 
         {reactions}
       </div>

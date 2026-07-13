@@ -1053,6 +1053,389 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Channels/{channelId}/attachments/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreatePresignedUploadRequest"];
+                    "text/json": components["schemas"]["CreatePresignedUploadRequest"];
+                    "application/*+json": components["schemas"]["CreatePresignedUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PresignedUploadResultDto"];
+                        "application/json": components["schemas"]["PresignedUploadResultDto"];
+                        "text/json": components["schemas"]["PresignedUploadResultDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Channels/{channelId}/attachments/{attachmentId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CompleteUploadRequest"];
+                    "text/json": components["schemas"]["CompleteUploadRequest"];
+                    "application/*+json": components["schemas"]["CompleteUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageAttachmentDto"];
+                        "application/json": components["schemas"]["MessageAttachmentDto"];
+                        "text/json": components["schemas"]["MessageAttachmentDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Channels/{channelId}/attachments/{attachmentId}/abort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Channels/{channelId}/attachments/{attachmentId}/stream-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AttachmentStreamUrlDto"];
+                        "application/json": components["schemas"]["AttachmentStreamUrlDto"];
+                        "text/json": components["schemas"]["AttachmentStreamUrlDto"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Channels/{channelId}/attachments/{attachmentId}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StoragePartDetail"][];
+                        "application/json": components["schemas"]["StoragePartDetail"][];
+                        "text/json": components["schemas"]["StoragePartDetail"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Channels/{id}/read": {
         parameters: {
             query?: never;
@@ -1859,6 +2242,13 @@ export interface components {
         AddChannelMembersRequest: {
             memberIds: string[];
         };
+        AttachmentStreamUrlDto: {
+            /** Format: uuid */
+            attachmentId: string;
+            streamUrl: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         AuthResponse: {
             user: components["schemas"]["UserDto"];
             accessToken: string;
@@ -1917,11 +2307,33 @@ export interface components {
             otherUserId?: null | string;
         };
         ChannelType: number;
+        CompletePartRequest: {
+            /** Format: int32 */
+            partNumber: number | string;
+            eTag: string;
+        };
+        CompleteUploadRequest: {
+            parts?: null | components["schemas"]["CompletePartRequest"][];
+        };
         CreateChannelRequest: {
             name: string;
             description?: null | string;
             avatarUrl?: null | string;
             memberIds?: null | string[];
+        };
+        CreatePresignedUploadRequest: {
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            fileSizeBytes: number | string;
+            /** Format: int32 */
+            width?: null | number | string;
+            /** Format: int32 */
+            height?: null | number | string;
+            /** Format: int32 */
+            durationSeconds?: null | number | string;
+            /** @default false */
+            hasThumbnail: boolean;
         };
         CurrentUserResponse: {
             /** Format: uuid */
@@ -1950,6 +2362,28 @@ export interface components {
         LogoutCommand: {
             refreshToken: string;
         };
+        MessageAttachmentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            channelId: string;
+            /** Format: uuid */
+            messageId: null | string;
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            fileSizeBytes: number | string;
+            url: string;
+            /** Format: date-time */
+            createdAt: string;
+            thumbnailUrl?: null | string;
+            /** Format: int32 */
+            width?: null | number | string;
+            /** Format: int32 */
+            height?: null | number | string;
+            /** Format: int32 */
+            durationSeconds?: null | number | string;
+        };
         MessageContextDto: {
             messages: components["schemas"]["MessageDto"][];
             /** Format: uuid */
@@ -1976,6 +2410,7 @@ export interface components {
             createdAt: string;
             reactions?: null | components["schemas"]["ReactionGroupDto"][];
             replyTo?: null | components["schemas"]["ReplyToMessageDto"];
+            attachments?: null | components["schemas"]["MessageAttachmentDto"][];
         };
         PaginatedListOfMessageDto: {
             items: components["schemas"]["MessageDto"][];
@@ -1998,6 +2433,24 @@ export interface components {
             totalCount?: number | string;
             hasPreviousPage?: boolean;
             hasNextPage?: boolean;
+        };
+        PresignedPartDto: {
+            /** Format: int32 */
+            partNumber: number | string;
+            uploadUrl: string;
+        };
+        PresignedUploadResultDto: {
+            /** Format: uuid */
+            attachmentId: string;
+            storageKey: string;
+            isMultipart: boolean;
+            uploadUrl: null | string;
+            uploadId: null | string;
+            /** Format: int32 */
+            partSizeBytes: null | number | string;
+            parts: null | components["schemas"]["PresignedPartDto"][];
+            thumbnailUploadUrl: null | string;
+            thumbnailStorageKey: null | string;
         };
         ProblemDetails: {
             type?: null | string;
@@ -2035,6 +2488,16 @@ export interface components {
             clientMessageId?: null | string;
             /** Format: uuid */
             parentMessageId?: null | string;
+            attachmentIds?: null | string[];
+        };
+        StoragePartDetail: {
+            /** Format: int32 */
+            partNumber: number | string;
+            eTag: string;
+            /** Format: int64 */
+            size: number | string;
+            /** Format: date-time */
+            lastModified: string;
         };
         ToggleReactionRequest: {
             emoji: string;

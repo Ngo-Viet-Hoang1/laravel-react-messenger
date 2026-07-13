@@ -1,6 +1,18 @@
 import { api } from '@/shared/api';
 import type { components } from '@/shared/api';
-import type { MessageDto, MessagesCursorResponse, SendMessagePayload, SearchMessagesResponse, MessageContextDto } from '../model/types';
+import type {
+  MessageDto,
+  MessagesCursorResponse,
+  SendMessagePayload,
+  SearchMessagesResponse,
+  MessageContextDto,
+  CreatePresignedUploadRequest,
+  PresignedUploadResultDto,
+  CompleteUploadRequest,
+  MessageAttachmentDto,
+  AttachmentStreamUrlDto,
+  StoragePartDetail,
+} from '../model/types';
 
 export type ToggleReactionResponse = components['schemas']['ToggleReactionResponse'];
 
@@ -39,10 +51,51 @@ export const messageApi = {
   },
 
   sendMessage: async (channelId: string, payload: SendMessagePayload): Promise<MessageDto> => {
-    return api.post<MessageDto>(`/Channels/${channelId}/messages`, payload);
+    const { optimisticAttachments: _, ...body } = payload;
+    return api.post<MessageDto>(`/Channels/${channelId}/messages`, body);
   },
 
   toggleReaction: async (messageId: string, emoji: string): Promise<ToggleReactionResponse> => {
     return api.post<ToggleReactionResponse>(`/Messages/${messageId}/reactions`, { emoji });
+  },
+
+  createPresignedUpload: async (
+    channelId: string,
+    payload: CreatePresignedUploadRequest
+  ): Promise<PresignedUploadResultDto> => {
+    return api.post<PresignedUploadResultDto>(`/Channels/${channelId}/attachments/presign`, payload);
+  },
+
+  completeUpload: async (
+    channelId: string,
+    attachmentId: string,
+    payload: CompleteUploadRequest
+  ): Promise<MessageAttachmentDto> => {
+    return api.post<MessageAttachmentDto>(
+      `/Channels/${channelId}/attachments/${attachmentId}/complete`,
+      payload
+    );
+  },
+
+  abortUpload: async (channelId: string, attachmentId: string): Promise<void> => {
+    return api.post<void>(`/Channels/${channelId}/attachments/${attachmentId}/abort`, {});
+  },
+
+  getAttachmentStreamUrl: async (
+    channelId: string,
+    attachmentId: string
+  ): Promise<AttachmentStreamUrlDto> => {
+    return api.get<AttachmentStreamUrlDto>(
+      `/Channels/${channelId}/attachments/${attachmentId}/stream-url`
+    );
+  },
+
+  getUploadedParts: async (
+    channelId: string,
+    attachmentId: string
+  ): Promise<StoragePartDetail[]> => {
+    return api.get<StoragePartDetail[]>(
+      `/Channels/${channelId}/attachments/${attachmentId}/parts`
+    );
   },
 };

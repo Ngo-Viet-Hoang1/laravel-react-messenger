@@ -89,3 +89,11 @@ export const formatFullDate = (dateStr?: string | null): string => {
     return '—';
   }
 };
+
+export const formatBytes = (bytes: number | string | null | undefined): string => {
+  const n = typeof bytes === 'string' ? parseInt(bytes, 10) : Number(bytes);
+  if (!n || isNaN(n) || n <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(n) / Math.log(1024));
+  return `${(n / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+};
