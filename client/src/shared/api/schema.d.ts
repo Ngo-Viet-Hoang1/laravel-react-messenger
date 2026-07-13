@@ -308,9 +308,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": null | components["schemas"]["LogoutCommand"];
-                    "text/json": null | components["schemas"]["LogoutCommand"];
-                    "application/*+json": null | components["schemas"]["LogoutCommand"];
+                    "application/json": null | components["schemas"]["LogoutRequest"];
+                    "text/json": null | components["schemas"]["LogoutRequest"];
+                    "application/*+json": null | components["schemas"]["LogoutRequest"];
                 };
             };
             responses: {
@@ -704,7 +704,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query?: never;
+                query?: {
+                    isSecret?: boolean;
+                };
                 header?: never;
                 path: {
                     targetUserId: string;
@@ -2270,6 +2272,11 @@ export interface components {
             createdAt: string;
             /** Format: uuid */
             creatorId?: null | string;
+            /** @default false */
+            isSecret: boolean;
+            encryptionSalt?: null | string;
+            /** Format: uuid */
+            otherUserId?: null | string;
         };
         ChannelMemberDto: {
             /** Format: uuid */
@@ -2305,6 +2312,9 @@ export interface components {
             unreadCount: number | string;
             /** Format: uuid */
             otherUserId?: null | string;
+            /** @default false */
+            isSecret: boolean;
+            encryptionSalt?: null | string;
         };
         ChannelType: number;
         CompletePartRequest: {
@@ -2320,6 +2330,8 @@ export interface components {
             description?: null | string;
             avatarUrl?: null | string;
             memberIds?: null | string[];
+            /** @default false */
+            isSecret: boolean;
         };
         CreatePresignedUploadRequest: {
             fileName: string;
@@ -2359,8 +2371,8 @@ export interface components {
             emailOrUsername: string;
             password: string;
         };
-        LogoutCommand: {
-            refreshToken: string;
+        LogoutRequest: {
+            refreshToken?: null | string;
         };
         MessageAttachmentDto: {
             /** Format: uuid */
@@ -2484,7 +2496,7 @@ export interface components {
             content: string;
         };
         SendMessageRequest: {
-            content: string;
+            content?: null | string;
             clientMessageId?: null | string;
             /** Format: uuid */
             parentMessageId?: null | string;

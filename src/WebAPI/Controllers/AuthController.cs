@@ -7,6 +7,7 @@ using MessengerApp.Application.Auth.Commands.Register;
 using MessengerApp.Application.Auth.Common;
 using MessengerApp.Application.Auth.Queries.GetCurrentUser;
 using MessengerApp.WebAPI.Common;
+using MessengerApp.WebAPI.Contracts.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -71,14 +72,22 @@ public class AuthController(ISender sender) : ApiController
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout(
-        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] LogoutCommand? command,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] LogoutRequest? request,
         CancellationToken ct)
     {
-        var token = command?.RefreshToken ?? AuthCookieHelper.GetRefreshToken(Request);
+        string? token = request?.RefreshToken;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            token = AuthCookieHelper.GetRefreshToken(Request);
+        }
 
-        var result = await sender.Send(new LogoutCommand(token ?? string.Empty), ct);
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            await sender.Send(new LogoutCommand(token), ct);
+        }
+
         AuthCookieHelper.DeleteRefreshToken(Response, Request);
-        return HandleNoContentResult(result);
+        return NoContent();
     }
 
     [Authorize]

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MessengerApp.Application.Auth.Commands.Logout;
 
-public record LogoutCommand(string RefreshToken) : IRequest<Result>;
+public record LogoutCommand(string? RefreshToken = null) : IRequest<Result>;
 
 public class LogoutCommandHandler(
     IApplicationDbContext context,

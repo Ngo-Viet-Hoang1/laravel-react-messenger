@@ -23,7 +23,7 @@ export const authApi = {
   },
 
   logout: async (): Promise<void> => {
-    return api.post<void>('/auth/logout', {}, { _skipAuthRefresh: true, silent: true });
+    return api.post<void>('/auth/logout', undefined, { _skipAuthRefresh: true, silent: true });
   },
 
   getCurrentUser: async (): Promise<CurrentUserResponse> => {
