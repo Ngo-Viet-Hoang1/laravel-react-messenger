@@ -18,8 +18,10 @@ export const channelApi = {
   createChannel: (payload: CreateChannelPayload): Promise<ChannelDetail> =>
     api.post<ChannelDetail>('/Channels', payload),
 
-  getOrCreateDirectChannel: (targetUserId: string): Promise<ChannelDetail> =>
-    api.post<ChannelDetail>(`/Channels/direct/${targetUserId}`),
+  getOrCreateDirectChannel: (targetUserId: string, isSecret = false): Promise<ChannelDetail> =>
+    api.post<ChannelDetail>(`/Channels/direct/${targetUserId}`, undefined, {
+      params: isSecret ? { isSecret: true } : undefined,
+    }),
 
   markAsRead: (channelId: string): Promise<void> =>
     api.post<void>(`/Channels/${channelId}/read`),

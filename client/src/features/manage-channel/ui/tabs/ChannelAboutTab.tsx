@@ -8,23 +8,21 @@ import {
   useChannelMembersQuery,
   useLeaveChannelMutation,
   useDeleteChannelMutation,
+  useStartDirectChatMutation,
   CHANNEL_TYPE,
   CHANNEL_MEMBER_ROLE,
 } from '@/entities/channel';
 import { useAppSelector } from '@/app/store';
 import { selectCurrentUser } from '@/entities/user';
 import { EditChannelModal } from '../EditChannelModal';
-import { Pencil, LogOut, Trash2 } from 'lucide-react';
+import { Pencil, LogOut, Trash2, Lock } from 'lucide-react';
 
 export interface ChannelAboutTabProps {
   channelId: string;
   onCloseSheet: () => void;
 }
 
-export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({
-  channelId,
-  onCloseSheet,
-}) => {
+export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({ channelId, onCloseSheet }) => {
   const navigate = useNavigate();
   const currentUser = useAppSelector(selectCurrentUser);
 
@@ -60,6 +58,25 @@ export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({
     },
   });
 
+  const startSecretMutation = useStartDirectChatMutation({
+    onSuccess: (newChannel) => {
+      onCloseSheet();
+      navigate(`/chat/${newChannel.id}`);
+    },
+  });
+
+  const handleStartSecretChat = (targetUserId: string) => {
+    startSecretMutation.mutate({
+      targetUserId,
+      isSecret: true,
+    });
+  };
+
+  const otherMember = React.useMemo(
+    () => members.find((m) => m.userId !== currentUser?.id),
+    [members, currentUser]
+  );
+
   const handleConfirm = () => {
     if (confirmAction === 'leave') {
       leaveMutation.mutate();
@@ -73,29 +90,42 @@ export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Encrypted Chat Shortcut for Direct Messages */}
+      {isDirect && !channel?.isSecret && otherMember && (
+        <Button
+          type="button"
+          onClick={() => handleStartSecretChat(otherMember.userId)}
+          disabled={startSecretMutation.isPending}
+          className="w-full cursor-pointer text-xs font-medium"
+        >
+          <Lock className="h-3 w-3" />
+          {startSecretMutation.isPending ? 'Opening...' : 'Start Encrypted Direct Message'}
+        </Button>
+      )}
+
       {/* Description & Topic Card */}
-      <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+      <div className="space-y-2 rounded-lg border border-border bg-card p-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-foreground">Topic & Description</span>
           {isManager && !isDirect && (
             <button
               type="button"
               onClick={() => setIsEditOpen(true)}
-              className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
               <Pencil className="h-3 w-3" />
               Edit
             </button>
           )}
         </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           {channel?.description || 'No description provided for this channel.'}
         </p>
       </div>
 
       {/* Channel Metadata Card */}
-      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <span className="text-xs font-semibold text-foreground block">Channel Details</span>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <span className="block text-xs font-semibold text-foreground">Channel Details</span>
         <div className="space-y-2 text-xs">
           <div className="flex items-center justify-between text-muted-foreground">
             <span>Created Date</span>
@@ -108,25 +138,18 @@ export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({
             <span>Total Members</span>
             <span className="font-medium text-foreground">{memberCount}</span>
           </div>
-
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>Channel Type</span>
-            <span className="font-medium text-foreground">
-              {isDirect ? 'Direct Message (1:1)' : 'Public Group Channel'}
-            </span>
-          </div>
         </div>
       </div>
 
-      {/* Channel Actions (Only for Group Channels) */}
+      {/* Channel Actions */}
       {!isDirect && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <span className="text-xs font-semibold text-foreground block">Channel Actions</span>
+        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+          <span className="block text-xs font-semibold text-foreground">Channel Actions</span>
 
           {/* Owner Protection Rule: Cannot leave if there are other members */}
           {isOwner && memberCount > 1 ? (
-            <div className="rounded-md border border-border/60 bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
-              <span className="font-semibold text-foreground block">Channel Owner Notice</span>
+            <div className="space-y-1 rounded-md border border-border/60 bg-muted/40 p-3 text-xs text-muted-foreground">
+              <span className="block font-semibold text-foreground">Channel Owner Notice</span>
               <p>
                 As the channel owner, you cannot leave while other members are present. You can
                 transfer ownership to another member in the <strong>Members</strong> tab or delete
@@ -144,7 +167,7 @@ export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setConfirmAction('leave')}
-                className="w-full justify-start text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 font-medium border-border cursor-pointer"
+                className="h-8 w-full cursor-pointer justify-start border-border text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               >
                 <LogOut className="mr-2 h-3.5 w-3.5" />
                 Leave Channel
@@ -154,8 +177,8 @@ export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({
 
           {/* Danger Zone: Owner Only */}
           {isOwner && (
-            <div className="pt-3 mt-3 border-t border-border/80 space-y-2">
-              <span className="text-xs font-semibold text-destructive block">Danger Zone</span>
+            <div className="mt-3 space-y-2 border-t border-border/80 pt-3">
+              <span className="block text-xs font-semibold text-destructive">Danger Zone</span>
               <p className="text-xs text-muted-foreground">
                 Permanently soft-delete this channel and its messages for all members.
               </p>
@@ -164,7 +187,7 @@ export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmAction('delete')}
-                className="w-full justify-start text-xs h-8 font-medium cursor-pointer"
+                className="h-8 w-full cursor-pointer justify-start text-xs font-medium"
               >
                 <Trash2 className="mr-2 h-3.5 w-3.5" />
                 Delete Channel
@@ -175,11 +198,7 @@ export const ChannelAboutTab: React.FC<ChannelAboutTabProps> = ({
       )}
 
       {/* Local Modals & Dialogs */}
-      <EditChannelModal
-        channelId={channelId}
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-      />
+      <EditChannelModal channelId={channelId} open={isEditOpen} onOpenChange={setIsEditOpen} />
 
       <ConfirmDialog
         open={Boolean(confirmAction)}

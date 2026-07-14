@@ -38,13 +38,21 @@ export const useStartDirectChatMutation = (options?: UseStartDirectChatMutationO
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (targetUserId: string) => channelApi.getOrCreateDirectChannel(targetUserId),
+    mutationFn: (variables: string | { targetUserId: string; isSecret?: boolean }) => {
+      const targetUserId = typeof variables === 'string' ? variables : variables.targetUserId;
+      const isSecret = typeof variables === 'string' ? false : Boolean(variables.isSecret);
+      return channelApi.getOrCreateDirectChannel(targetUserId, isSecret);
+    },
     meta: {
       errorMessage: 'Failed to start direct conversation.',
     },
     onSuccess: (channel) => {
       queryClient.invalidateQueries({ queryKey: channelKeys.lists() });
-      toast.success(`Direct conversation opened with ${channel.name}!`);
+      toast.success(
+        channel.isSecret
+          ? `Secret chat opened with ${channel.name}!`
+          : `Direct conversation opened with ${channel.name}!`
+      );
       options?.onSuccess?.(channel);
     },
     onError: (error: unknown) => {

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Users, MessageSquareOff, Loader2, ArrowDown, Info, Search } from 'lucide-react';
+import { Lock, Users, MessageSquareOff, Loader2, ArrowDown, Info, Search } from 'lucide-react';
 import { useChannelDetailQuery, CHANNEL_TYPE, ChannelAvatar } from '@/entities/channel';
 import {
   useChannelMessagesQuery,
@@ -10,6 +10,7 @@ import {
   type ChatMessage,
 } from '@/entities/message';
 import { MessageInput } from '@/features/send-message';
+import { useSecretChatStore } from '@/features/secret-chat';
 import { useAppSelector } from '@/app/store';
 import { selectCurrentUser } from '@/entities/user';
 import { Skeleton } from '@/shared/ui/skeleton';
@@ -28,6 +29,12 @@ export interface ChatWindowProps {
 export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
   const currentUser = useAppSelector(selectCurrentUser);
   const { data: channel, isLoading: isChannelLoading } = useChannelDetailQuery(channelId);
+
+  const isSecretUnlocked = useSecretChatStore((state) =>
+    channelId ? Boolean(state.keys[channelId]) : false
+  );
+  const lockChannel = useSecretChatStore((state) => state.lockChannel);
+
   const {
     data: messagesData,
     isLoading: isMessagesLoading,
@@ -127,8 +134,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
               {isChannelLoading ? (
                 <Skeleton className="h-4 w-32" />
               ) : (
-                <h2 className="truncate text-sm font-bold text-foreground transition-colors group-hover:text-primary">
-                  {displayName}
+                <h2 className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground transition-colors group-hover:text-primary">
+                  <span className="truncate">{displayName}</span>
+                  {channel?.isSecret && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" />}
                 </h2>
               )}
 
@@ -139,17 +147,33 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
           </button>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <Button
-              type="button"
-              variant={activeSideTab === 'search' ? 'secondary' : 'ghost'}
-              size="icon"
-              onClick={() => toggleSideTab('search')}
-              className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-foreground"
-              title="Search in conversation"
-            >
-              <Search className="h-4 w-4" />
-              <span className="sr-only">Search in conversation</span>
-            </Button>
+            {channel?.isSecret && isSecretUnlocked && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => lockChannel(channel.id)}
+                className="h-8 cursor-pointer gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+                title="Lock secret chat"
+              >
+                <Lock className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Lock</span>
+              </Button>
+            )}
+
+            {!channel?.isSecret && (
+              <Button
+                type="button"
+                variant={activeSideTab === 'search' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => toggleSideTab('search')}
+                className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-foreground"
+                title="Search in conversation"
+              >
+                <Search className="h-4 w-4" />
+                <span className="sr-only">Search in conversation</span>
+              </Button>
+            )}
 
             {channel?.memberCount !== undefined && !isDirect && (
               <button
@@ -241,6 +265,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
                       message={message}
                       isCurrentUser={currentUser?.id === message.senderId}
                       isHighlighted={highlightedMessageId === message.id}
+                      isSecret={channel?.isSecret}
                       onScrollToMessage={scrollToMessage}
                       actions={
                         (!message.status || message.status === MESSAGE_STATUS.SENT) && channelId ? (
@@ -308,6 +333,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channelId }) => {
           channelId={channelId}
           channelName={displayName}
           isDirect={isDirect}
+          isSecret={channel?.isSecret}
+          encryptionSalt={channel?.encryptionSalt}
           disabled={isChannelLoading}
           replyingTo={replyingToMessage}
           onCancelReply={() => setReplyingToMessage(null)}

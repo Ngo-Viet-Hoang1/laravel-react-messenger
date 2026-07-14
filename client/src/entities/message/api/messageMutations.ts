@@ -44,7 +44,7 @@ export const useSendMessageMutation = (channelId?: string) => {
         senderId: currentUser?.id || '',
         senderUsername: currentUser?.username || 'You',
         senderAvatarUrl: currentUser?.avatarUrl || null,
-        content: newPayload.content,
+        content: newPayload.content ?? "",
         clientMessageId: clientMsgId,
         createdAt: new Date().toISOString(),
         replyTo,

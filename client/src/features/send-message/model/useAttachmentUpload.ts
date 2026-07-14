@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { toast } from 'sonner';
 import { messageApi } from '@/entities/message';
+import { useSecretChatStore } from '@/features/secret-chat';
+import { encryptFile } from '@/shared/lib/crypto/passphraseCrypto';
 import {
   extractVideoMetadata,
   extractImageDimensions,
@@ -27,7 +29,7 @@ export interface PendingUploadItem {
   abortController: AbortController;
 }
 
-export function useAttachmentUpload(channelId?: string) {
+export function useAttachmentUpload(channelId?: string, isSecret = false) {
   const [items, setItems] = React.useState<PendingUploadItem[]>([]);
 
   const removeAttachment = React.useCallback(
@@ -61,6 +63,13 @@ export function useAttachmentUpload(channelId?: string) {
   const addFiles = React.useCallback(
     async (files: File[]) => {
       if (!channelId || files.length === 0) return;
+      if (isSecret) {
+        const roomKey = useSecretChatStore.getState().keys[channelId];
+        if (!roomKey) {
+          toast.error('Please unlock the secret chat before attaching files.');
+          return;
+        }
+      }
 
       const currentCount = items.length;
       if (currentCount >= MAX_ATTACHMENTS) {
@@ -115,7 +124,7 @@ export function useAttachmentUpload(channelId?: string) {
               width = meta.width;
               height = meta.height;
               durationSeconds = meta.durationSeconds;
-              thumbnailBlob = meta.thumbnailBlob;
+              thumbnailBlob = !isSecret ? meta.thumbnailBlob : null;
               if (thumbnailBlob && !previewUrl) {
                 previewUrl = URL.createObjectURL(thumbnailBlob);
                 setItems((prev) =>
@@ -130,11 +139,18 @@ export function useAttachmentUpload(channelId?: string) {
 
             if (abortController.signal.aborted) return;
 
-            // 1. Backend presign contract
+            let uploadPayload: Blob | File = file;
+            if (isSecret) {
+              const roomKey = useSecretChatStore.getState().keys[channelId];
+              if (!roomKey) throw new Error('Secret room is locked');
+              uploadPayload = await encryptFile(file, roomKey);
+            }
+
+            // Backend presign contract
             const presign = await messageApi.createPresignedUpload(channelId, {
               fileName: file.name,
               contentType: file.type || 'application/octet-stream',
-              fileSizeBytes: file.size,
+              fileSizeBytes: uploadPayload.size,
               width,
               height,
               durationSeconds,
@@ -158,7 +174,7 @@ export function useAttachmentUpload(channelId?: string) {
 
             if (abortController.signal.aborted) return;
 
-            // 2. Direct binary transfer to MinIO
+            // Direct binary transfer to MinIO
             if (presign.isMultipart && presign.parts && presign.parts.length > 0) {
               const partSize = Number(presign.partSizeBytes) || 10 * 1024 * 1024;
               const completedParts: { partNumber: number; eTag: string }[] = [];
@@ -168,8 +184,8 @@ export function useAttachmentUpload(channelId?: string) {
 
                 const part = presign.parts[i];
                 const start = i * partSize;
-                const end = Math.min(start + partSize, file.size);
-                const chunk = file.slice(start, end);
+                const end = Math.min(start + partSize, uploadPayload.size);
+                const chunk = uploadPayload.slice(start, end);
 
                 const eTag = await uploadSinglePart(
                   part.uploadUrl,
@@ -200,8 +216,8 @@ export function useAttachmentUpload(channelId?: string) {
               // Single PUT direct to MinIO
               await uploadSinglePart(
                 presign.uploadUrl,
-                file,
-                file.type || 'application/octet-stream',
+                uploadPayload,
+                uploadPayload.type || 'application/octet-stream',
                 (loaded, total) => {
                   const pct = Math.min(95, Math.round(15 + (loaded / total) * 75));
                   setItems((prev) =>
@@ -214,7 +230,7 @@ export function useAttachmentUpload(channelId?: string) {
               await messageApi.completeUpload(channelId, presign.attachmentId, {});
             }
 
-            // 3. Upload video thumbnail if present
+            // Upload video thumbnail if present
             if (presign.thumbnailUploadUrl && thumbnailBlob) {
               await uploadSinglePart(
                 presign.thumbnailUploadUrl,
@@ -228,9 +244,7 @@ export function useAttachmentUpload(channelId?: string) {
             // 4. Success state
             setItems((prev) =>
               prev.map((it) =>
-                it.id === clientTempId
-                  ? { ...it, progress: 100, status: 'completed' }
-                  : it
+                it.id === clientTempId ? { ...it, progress: 100, status: 'completed' } : it
               )
             );
           } catch (err: unknown) {
@@ -238,16 +252,14 @@ export function useAttachmentUpload(channelId?: string) {
             const message = err instanceof Error ? err.message : 'Upload failed';
             setItems((prev) =>
               prev.map((it) =>
-                it.id === clientTempId
-                  ? { ...it, status: 'error', error: message }
-                  : it
+                it.id === clientTempId ? { ...it, status: 'error', error: message } : it
               )
             );
           }
         })();
       }
     },
-    [channelId, items.length]
+    [channelId, items.length, isSecret]
   );
 
   const isUploading = items.some((i) => i.status === 'uploading');

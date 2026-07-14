@@ -3,6 +3,8 @@ import { UserAvatar } from '@/entities/user';
 import { Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { formatMessageTime } from '@/shared/lib/formatters';
+import { isEncrypted } from '@/shared/lib/crypto/passphraseCrypto';
+import { useSecretChatStore } from '@/features/secret-chat';
 import { MESSAGE_STATUS, type ChatMessage } from '../model/types';
 import { MessageAttachments } from './MessageAttachments';
 
@@ -14,6 +16,7 @@ export interface MessageBubbleProps {
   actions?: React.ReactNode;
   reactions?: React.ReactNode;
   onScrollToMessage?: (messageId: string) => void;
+  isSecret?: boolean;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -24,6 +27,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   actions,
   reactions,
   onScrollToMessage,
+  isSecret,
 }) => {
   const isOptimistic = message.status === MESSAGE_STATUS.SENDING;
   const isFailed = message.status === MESSAGE_STATUS.FAILED;
@@ -31,6 +35,67 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     () => formatMessageTime(message.createdAt),
     [message.createdAt]
   );
+
+  const isMsgEncrypted = React.useMemo(
+    () => isEncrypted(message.content),
+    [message.content]
+  );
+
+  const isUnlocked = useSecretChatStore((state) =>
+    Boolean(state.keys[message.channelId])
+  );
+  const cachedDecrypted = useSecretChatStore(
+    (state) => state.decryptedCache[message.id]
+  );
+  const decryptMessageContent = useSecretChatStore(
+    (state) => state.decryptMessageContent
+  );
+
+  React.useEffect(() => {
+    if (isMsgEncrypted && isUnlocked && !cachedDecrypted && message.content) {
+      void decryptMessageContent(message.id, message.content, message.channelId);
+    }
+  }, [isMsgEncrypted, isUnlocked, cachedDecrypted, message.id, message.content, message.channelId, decryptMessageContent]);
+
+  const displayContent = React.useMemo(() => {
+    if (!message.content) return null;
+    if (!isMsgEncrypted) return message.content;
+
+    if (!isUnlocked) {
+      return (
+        <span className="text-xs text-muted-foreground italic select-none">
+          [Encrypted message]
+        </span>
+      );
+    }
+
+    if (cachedDecrypted) {
+      if (cachedDecrypted.startsWith('[Decryption failed')) {
+        return (
+          <span className="text-xs text-destructive italic select-none">
+            {cachedDecrypted}
+          </span>
+        );
+      }
+      return cachedDecrypted;
+    }
+
+    return (
+      <span className="text-xs text-muted-foreground italic select-none">
+        [Encrypted message]
+      </span>
+    );
+  }, [message.content, isMsgEncrypted, isUnlocked, cachedDecrypted]);
+
+  const replyDisplayContent = React.useMemo(() => {
+    if (!message.replyTo) return null;
+    const raw = message.replyTo.content;
+    if (isEncrypted(raw)) {
+      const cached = useSecretChatStore.getState().decryptedCache[message.replyTo.id];
+      return cached && !cached.startsWith('[Decryption failed') ? cached : '[Encrypted message]';
+    }
+    return raw || (message.replyTo ? '[Attachment]' : '');
+  }, [message.replyTo]);
 
   return (
     <div
@@ -67,7 +132,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <span className="shrink-0 font-semibold text-primary">
               {message.replyTo.senderUsername}
             </span>
-            <span className="truncate">{message.replyTo.content || '[Attachment]'}</span>
+            <span className="truncate">{replyDisplayContent}</span>
           </button>
         )}
 
@@ -97,13 +162,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           )}
         </div>
 
-        {message.content && (
+        {displayContent && (
           <div className="mt-0.5 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap text-foreground/90 select-text">
-            {message.content}
+            {displayContent}
           </div>
         )}
 
-        <MessageAttachments attachments={message.attachments} />
+        <MessageAttachments attachments={message.attachments} isSecret={isSecret} />
 
         {reactions}
       </div>

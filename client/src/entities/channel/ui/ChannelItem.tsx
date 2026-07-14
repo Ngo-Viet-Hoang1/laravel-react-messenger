@@ -2,6 +2,7 @@ import * as React from 'react';
 import { cn } from '@/shared/lib/utils';
 import type { ChannelSummary } from '../model/types';
 import { ChannelAvatar } from './ChannelAvatar';
+import { Lock } from 'lucide-react';
 
 export interface ChannelItemProps {
   channel: ChannelSummary;
@@ -35,7 +36,15 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
     >
       <ChannelAvatar channel={channel} size="sm" isActive={isActive} />
 
-      <span className="flex-1 truncate tracking-tight">{channel.name}</span>
+      <span className="flex flex-1 items-center gap-1.5 truncate tracking-tight">
+        {channel.isSecret && (
+          <Lock
+            className="h-3 w-3 shrink-0 text-muted-foreground"
+            aria-label="End-to-End Encrypted"
+          />
+        )}
+        <span className="truncate">{channel.name}</span>
+      </span>
 
       {unreadCount > 0 && (
         <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">

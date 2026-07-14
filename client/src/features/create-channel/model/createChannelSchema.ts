@@ -15,9 +15,9 @@ export const createChannelSchema = z.object({
     .or(z.literal('')),
   avatarUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
   memberIds: z.array(z.string().uuid()).optional(),
+  isSecret: z.boolean(),
 });
 
 export type CreateChannelFormValues = z.infer<typeof createChannelSchema>;
 
-// Compile-time assertion matching OpenAPI CreateChannelRequest
 export const _assertChannelPayload: CreateChannelPayload = {} as CreateChannelFormValues;

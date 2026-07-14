@@ -13,14 +13,13 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Textarea } from '@/shared/ui/textarea';
 import { Label } from '@/shared/ui/label';
-import { Hash, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Hash, Loader2, Image as ImageIcon, Lock } from 'lucide-react';
 import {
   createChannelSchema,
   type CreateChannelFormValues,
 } from '../model/createChannelSchema';
 import {
   useCreateChannelMutation,
-  ChannelAvatar,
   type ChannelDetail,
 } from '@/entities/channel';
 
@@ -39,7 +38,6 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
     register,
     handleSubmit,
     reset,
-    watch,
     formState: { errors },
   } = useForm<CreateChannelFormValues>({
     resolver: zodResolver(createChannelSchema),
@@ -47,11 +45,9 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
       name: '',
       description: '',
       avatarUrl: '',
+      isSecret: false,
     },
   });
-
-  const previewName = watch('name');
-  const previewAvatarUrl = watch('avatarUrl');
 
   const createMutation = useCreateChannelMutation({
     onSuccess: (newChannel) => {
@@ -66,6 +62,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
       name: values.name.trim(),
       description: values.description?.trim() || null,
       avatarUrl: values.avatarUrl?.trim() || null,
+      isSecret: values.isSecret ?? false,
     });
   };
 
@@ -96,26 +93,6 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
-          {/* Live Preview Avatar */}
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-3">
-            <ChannelAvatar
-              channel={{
-                name: previewName || 'Channel Name',
-                type: 2,
-                avatarUrl: previewAvatarUrl || null,
-              }}
-              size="md"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-foreground">
-                {previewName || 'Channel Name'}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Live preview of how this channel appears in the workspace
-              </p>
-            </div>
-          </div>
-
           {/* Channel Name */}
           <div className="space-y-1.5">
             <Label htmlFor="create-channel-name" className="text-xs font-semibold">
@@ -179,6 +156,29 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                 {errors.avatarUrl.message}
               </p>
             )}
+          </div>
+
+          {/* End-to-End Encryption Option */}
+          <div className="flex items-start gap-2.5 rounded-lg border border-border/70 bg-muted/20 p-3">
+            <input
+              type="checkbox"
+              id="create-channel-secret"
+              {...register('isSecret')}
+              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+              disabled={createMutation.isPending}
+            />
+            <div className="flex flex-col gap-0.5">
+              <Label
+                htmlFor="create-channel-secret"
+                className="cursor-pointer text-xs font-semibold text-foreground flex items-center gap-1.5"
+              >
+                <Lock className="h-3 w-3 text-primary" />
+                End-to-End Encrypted (E2EE)
+              </Label>
+              <p className="text-[11px] text-muted-foreground leading-normal">
+                Messages and attachments are encrypted client-side with a passphrase.
+              </p>
+            </div>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0 pt-2">

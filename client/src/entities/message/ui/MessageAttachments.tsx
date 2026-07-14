@@ -1,25 +1,75 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { Download, X } from 'lucide-react';
+import { Download, X, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { formatBytes, getFileMeta, FileIcon } from '@/shared/lib';
 import { cn } from '@/shared/lib/utils';
+import { useSecretChatStore } from '@/features/secret-chat';
 import type { MessageAttachmentDto } from '../model/types';
 
 interface MessageAttachmentsProps {
   attachments?: MessageAttachmentDto[] | null;
   className?: string;
+  isSecret?: boolean;
 }
 
 export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
   className,
+  isSecret = false,
 }) => {
   const [selectedImage, setSelectedImage] = React.useState<{ url: string; name: string } | null>(
     null
   );
 
+  const channelId = attachments?.[0]?.channelId;
+  const isUnlocked = useSecretChatStore((state) => Boolean(channelId && state.keys[channelId]));
+  const decryptedUrls = useSecretChatStore((state) => state.decryptedAttachmentUrls);
+  const decryptAttachmentBlob = useSecretChatStore((state) => state.decryptAttachmentBlob);
+
+  // Trigger decryption of attachments if in secret room and unlocked
+  React.useEffect(() => {
+    if (!isSecret || !isUnlocked || !channelId || !attachments || attachments.length === 0) {
+      return;
+    }
+
+    attachments.forEach((att) => {
+      if (decryptedUrls[att.id] || att.url.startsWith('blob:')) {
+        return;
+      }
+      void decryptAttachmentBlob(att.id, channelId, att.url, att.contentType).catch(() => {});
+    });
+  }, [isSecret, isUnlocked, channelId, attachments, decryptedUrls, decryptAttachmentBlob]);
+
   if (!attachments || attachments.length === 0) return null;
+
+  if (isSecret && !isUnlocked) {
+    return (
+      <div className={cn('mt-1.5 flex max-w-full flex-col items-start gap-1.5', className)}>
+        {attachments.map((att) => (
+          <div
+            key={att.id}
+            className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground"
+          >
+            <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+            <span className="truncate font-medium">{att.fileName}</span>
+            <span className="text-[11px] text-muted-foreground/60">
+              ({formatBytes(att.fileSizeBytes)})
+            </span>
+            <span className="text-[11px] text-muted-foreground/75 italic">
+              — Locked encrypted file
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const getAttachmentUrl = (att: MessageAttachmentDto): string => {
+    if (!isSecret) return att.url;
+    if (att.url.startsWith('blob:')) return att.url;
+    return decryptedUrls[att.id] || '';
+  };
 
   const images = attachments.filter((a) => a.contentType.startsWith('image/'));
   const videos = attachments.filter((a) => a.contentType.startsWith('video/'));
@@ -38,7 +88,6 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
 
   return (
     <div className={cn('mt-2 flex max-w-full flex-col items-start gap-2.5', className)}>
-      {/* Images: Clean responsive grid or single preview */}
       {images.length > 0 && (
         <div
           className={
@@ -47,70 +96,122 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               : 'grid max-w-xs grid-cols-2 gap-2 sm:max-w-sm'
           }
         >
-          {images.map((img) => (
-            <div
-              key={img.id}
-              onClick={() => setSelectedImage({ url: img.url, name: img.fileName })}
-              className="group relative cursor-pointer overflow-hidden rounded-lg border border-border/50 bg-muted/20 shadow-2xs transition-all hover:border-primary/50"
-            >
-              <img
-                src={img.url}
-                alt={img.fileName}
-                loading="lazy"
-                onLoad={handleMediaLoad}
-                className={
-                  images.length === 1
-                    ? 'block max-h-64 w-auto max-w-full rounded-lg object-contain sm:max-h-72'
-                    : 'aspect-square h-full w-full object-cover'
-                }
-              />
-              <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
-            </div>
-          ))}
+          {images.map((img) => {
+            const effectiveUrl = getAttachmentUrl(img);
+            if (!effectiveUrl) {
+              return (
+                <div
+                  key={img.id}
+                  className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs text-muted-foreground"
+                >
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  <span>Decrypting {img.fileName}...</span>
+                </div>
+              );
+            }
+
+            return (
+              <div
+                key={img.id}
+                onClick={() => setSelectedImage({ url: effectiveUrl, name: img.fileName })}
+                className="group relative cursor-pointer overflow-hidden rounded-lg border border-border/50 bg-muted/20 shadow-2xs transition-all hover:border-primary/50"
+              >
+                <img
+                  src={effectiveUrl}
+                  alt={img.fileName}
+                  loading="lazy"
+                  onLoad={handleMediaLoad}
+                  className={
+                    images.length === 1
+                      ? 'block max-h-64 w-auto max-w-full rounded-lg object-contain sm:max-h-72'
+                      : 'aspect-square h-full w-full object-cover'
+                  }
+                />
+                <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Videos: Range 206 streaming player */}
-      {videos.map((vid) => (
-        <div
-          key={vid.id}
-          className="relative w-full max-w-xs overflow-hidden rounded-lg border border-border/50 bg-black shadow-xs sm:max-w-sm"
-        >
-          <video
-            key={vid.url}
-            src={vid.url}
-            controls
-            playsInline
-            preload="metadata"
-            poster={vid.thumbnailUrl || undefined}
-            onLoadedMetadata={handleMediaLoad}
-            className="max-h-64 w-full object-contain"
-          >
-            Your browser does not support HTML5 video playback.
-          </video>
-        </div>
-      ))}
+      {/* Videos: Range 206 streaming player or decrypted blob player */}
+      {videos.map((vid) => {
+        const effectiveUrl = getAttachmentUrl(vid);
+        if (!effectiveUrl) {
+          return (
+            <div
+              key={vid.id}
+              className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs text-muted-foreground"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <span>Decrypting {vid.fileName}...</span>
+            </div>
+          );
+        }
 
-      {/* 3. Audio: Native audio card */}
-      {audios.map((aud) => (
-        <div
-          key={aud.id}
-          className="flex w-full max-w-xs flex-col gap-1.5 rounded-lg border border-border/60 bg-card/60 p-3 shadow-2xs sm:max-w-sm"
-        >
-          <div className="flex items-center justify-between text-xs">
-            <span className="truncate font-medium text-foreground">{aud.fileName}</span>
-            <span className="text-[11px] text-muted-foreground">
-              {formatBytes(aud.fileSizeBytes)}
-            </span>
+        return (
+          <div
+            key={vid.id}
+            className="relative w-full max-w-xs overflow-hidden rounded-lg border border-border/50 bg-black shadow-xs sm:max-w-sm"
+          >
+            <video
+              key={effectiveUrl}
+              src={effectiveUrl}
+              controls
+              playsInline
+              preload="metadata"
+              poster={(!isSecret && vid.thumbnailUrl) || undefined}
+              onLoadedMetadata={handleMediaLoad}
+              className="max-h-64 w-full object-contain"
+            >
+              Your browser does not support HTML5 video playback.
+            </video>
           </div>
-          <audio key={aud.url} src={aud.url} controls preload="metadata" className="w-full">
-            Your browser does not support audio playback.
-          </audio>
-        </div>
-      ))}
+        );
+      })}
+
+      {/* Audio: Native audio card */}
+      {audios.map((aud) => {
+        const effectiveUrl = getAttachmentUrl(aud);
+        if (!effectiveUrl) {
+          return (
+            <div
+              key={aud.id}
+              className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs text-muted-foreground"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <span>Decrypting {aud.fileName}...</span>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={aud.id}
+            className="flex w-full max-w-xs flex-col gap-1.5 rounded-lg border border-border/60 bg-card/60 p-3 shadow-2xs sm:max-w-sm"
+          >
+            <div className="flex items-center justify-between text-xs">
+              <span className="truncate font-medium text-foreground">{aud.fileName}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {formatBytes(aud.fileSizeBytes)}
+              </span>
+            </div>
+            <audio
+              key={effectiveUrl}
+              src={effectiveUrl}
+              controls
+              preload="metadata"
+              className="w-full"
+            >
+              Your browser does not support audio playback.
+            </audio>
+          </div>
+        );
+      })}
 
       {/* Documents & Files: Clean card with download */}
       {documents.map((doc) => {
+        const effectiveUrl = getAttachmentUrl(doc);
         const meta = getFileMeta(doc.fileName, doc.contentType);
 
         return (
@@ -141,27 +242,31 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              className="h-8 w-8 cursor-pointer rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <a
-                href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                download={doc.fileName}
-                title="Download file"
+            {effectiveUrl ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
+                className="h-8 w-8 cursor-pointer rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <Download className="h-4 w-4" />
-              </a>
-            </Button>
+                <a
+                  href={effectiveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={doc.fileName}
+                  title="Download file"
+                >
+                  <Download className="h-4 w-4" />
+                </a>
+              </Button>
+            ) : (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
           </div>
         );
       })}
 
-      {/* Simple, unconstrained Fullscreen Lightbox */}
+      {/* Fullscreen Lightbox */}
       <DialogPrimitive.Root
         open={Boolean(selectedImage)}
         onOpenChange={(open) => !open && setSelectedImage(null)}
@@ -208,7 +313,6 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                   </div>
                 </div>
 
-                {/* Main Full-Size Image */}
                 <img
                   src={selectedImage.url}
                   alt={selectedImage.name}
