@@ -25,6 +25,13 @@ public class ChannelConfiguration : IEntityTypeConfiguration<Channel>
             .HasConversion<int>()
             .IsRequired();
 
+        builder.Property(c => c.IsSecret)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(c => c.EncryptionSalt)
+            .HasMaxLength(64);
+
         builder.HasMany(c => c.Members)
             .WithOne(m => m.Channel)
             .HasForeignKey(m => m.ChannelId)

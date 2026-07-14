@@ -79,4 +79,28 @@ public class CreateChannelCommandHandlerTests
         channelInDb.Should().NotBeNull();
         channelInDb!.Members.Count.Should().Be(3);
     }
+
+    [Fact]
+    public async Task Handle_WithIsSecretTrue_ShouldCreateSecretChannelWithEncryptionSalt()
+    {
+        var creator = User.Create("alice@example.com", "alice", "hashed_pwd");
+        _context.Users.Add(creator);
+        await _context.SaveChangesAsync();
+
+        var command = new CreateChannelCommand(creator.Id, "secret-ops", "Top secret team", null, null, IsSecret: true);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().Be("secret-ops");
+        result.Value.Type.Should().Be(ChannelType.Group);
+        result.Value.IsSecret.Should().BeTrue();
+        result.Value.EncryptionSalt.Should().NotBeNullOrWhiteSpace();
+
+        var channelInDb = _context.Channels.FirstOrDefault(c => c.Name == "secret-ops");
+        channelInDb.Should().NotBeNull();
+        channelInDb!.IsSecret.Should().BeTrue();
+        channelInDb.EncryptionSalt.Should().NotBeNullOrWhiteSpace();
+        channelInDb.Members.Should().ContainSingle(m => m.UserId == creator.Id && m.Role == ChannelMemberRole.Owner);
+    }
 }

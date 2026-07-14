@@ -32,7 +32,7 @@ public class SendMessageCommandValidator : AbstractValidator<SendMessageCommand>
             .NotEmpty()
             .When(x => x.AttachmentIds == null || x.AttachmentIds.Count == 0)
             .WithMessage("Message content cannot be empty when there are no attachments.")
-            .MaximumLength(5000).WithMessage("Message content cannot exceed 5000 characters.");
+            .MaximumLength(65536).WithMessage("Message content cannot exceed 65536 characters.");
 
         RuleFor(x => x.ClientMessageId)
             .MaximumLength(64).WithMessage("Client message ID cannot exceed 64 characters.");

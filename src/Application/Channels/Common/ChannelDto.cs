@@ -12,7 +12,9 @@ public record ChannelSummaryDto(
     DateTimeOffset? LastActivityAt,
     bool HasUnread = false,
     int UnreadCount = 0,
-    Guid? OtherUserId = null
+    Guid? OtherUserId = null,
+    bool IsSecret = false,
+    string? EncryptionSalt = null
 );
 
 public record ChannelDetailDto(
@@ -23,7 +25,10 @@ public record ChannelDetailDto(
     string? AvatarUrl,
     int MemberCount,
     DateTimeOffset CreatedAt,
-    Guid? CreatorId = null
+    Guid? CreatorId = null,
+    bool IsSecret = false,
+    string? EncryptionSalt = null,
+    Guid? OtherUserId = null
 );
 
 public record ChannelMemberDto(

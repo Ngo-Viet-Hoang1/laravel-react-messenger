@@ -4,5 +4,6 @@ public record CreateChannelRequest(
     string Name,
     string? Description = null,
     string? AvatarUrl = null,
-    List<Guid>? MemberIds = null
+    List<Guid>? MemberIds = null,
+    bool IsSecret = false
 );

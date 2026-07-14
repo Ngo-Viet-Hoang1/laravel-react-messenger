@@ -58,7 +58,7 @@ public class SearchMessagesQueryHandler(
             .Include(m => m.ParentMessage)
                 .ThenInclude(p => p!.Sender)
             .Include(m => m.Attachments)
-            .Where(m => !m.IsDeleted && !m.Channel.IsDeleted);
+            .Where(m => !m.IsDeleted && !m.Channel.IsDeleted && !m.Channel.IsSecret);
 
         if (request.ChannelId.HasValue)
         {

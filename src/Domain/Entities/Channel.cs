@@ -15,6 +15,9 @@ public class Channel : BaseAuditableEntity, ISoftDelete
     public DateTimeOffset? DeletedAt { get; set; }
     public string? DeletedBy { get; set; }
 
+    public bool IsSecret { get; set; }
+    public string? EncryptionSalt { get; set; }
+
     private readonly List<ChannelMember> _members = [];
     public IReadOnlyCollection<ChannelMember> Members => _members.AsReadOnly();
 
@@ -38,6 +41,20 @@ public class Channel : BaseAuditableEntity, ISoftDelete
         return channel;
     }
 
+    public static Channel CreateSecret(string name, Guid creatorId, string encryptionSalt, string? description = null, string? avatarUrl = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(encryptionSalt);
+
+        Channel channel = new(ChannelType.Group, name, description, avatarUrl)
+        {
+            IsSecret = true,
+            EncryptionSalt = encryptionSalt.Trim()
+        };
+        channel.AddMember(creatorId, ChannelMemberRole.Owner);
+        return channel;
+    }
+
     public static Channel CreateDirect(Guid userAId, Guid userBId)
     {
         if (userAId == userBId)
@@ -46,6 +63,25 @@ public class Channel : BaseAuditableEntity, ISoftDelete
         }
 
         Channel channel = new(ChannelType.Direct, name: null);
+        channel.AddMember(userAId, ChannelMemberRole.Member);
+        channel.AddMember(userBId, ChannelMemberRole.Member);
+        return channel;
+    }
+
+    public static Channel CreateSecret(Guid userAId, Guid userBId, string encryptionSalt)
+    {
+        if (userAId == userBId)
+        {
+            throw new InvalidOperationException("Secret channel cannot be created with only one user.");
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(encryptionSalt);
+
+        Channel channel = new(ChannelType.Direct, name: null)
+        {
+            IsSecret = true,
+            EncryptionSalt = encryptionSalt.Trim()
+        };
         channel.AddMember(userAId, ChannelMemberRole.Member);
         channel.AddMember(userBId, ChannelMemberRole.Member);
         return channel;

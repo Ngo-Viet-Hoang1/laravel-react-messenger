@@ -14,7 +14,8 @@ public record CreateChannelCommand(
     string Name,
     string? Description = null,
     string? AvatarUrl = null,
-    List<Guid>? InitialMemberIds = null
+    List<Guid>? InitialMemberIds = null,
+    bool IsSecret = false
 ) : IRequest<Result<ChannelDetailDto>>;
 
 public class CreateChannelCommandValidator : AbstractValidator<CreateChannelCommand>
@@ -50,7 +51,16 @@ public class CreateChannelCommandHandler(IApplicationDbContext context)
                 Error.Conflict("Channel.NameConflict", $"A channel named '{normalizedName}' already exists."));
         }
 
-        Channel channel = Channel.CreateGroup(normalizedName, cmd.CreatorId, cmd.Description, cmd.AvatarUrl);
+        Channel channel;
+        if (cmd.IsSecret)
+        {
+            string salt = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
+            channel = Channel.CreateSecret(normalizedName, cmd.CreatorId, salt, cmd.Description, cmd.AvatarUrl);
+        }
+        else
+        {
+            channel = Channel.CreateGroup(normalizedName, cmd.CreatorId, cmd.Description, cmd.AvatarUrl);
+        }
 
         if (cmd.InitialMemberIds != null && cmd.InitialMemberIds.Count > 0)
         {

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using FluentValidation;
 using MediatR;
 using MessengerApp.Application.Channels.Common;
@@ -11,7 +12,8 @@ namespace MessengerApp.Application.Channels.Commands.GetOrCreateDirectChannel;
 
 public record GetOrCreateDirectChannelCommand(
     Guid CurrentUserId,
-    Guid TargetUserId
+    Guid TargetUserId,
+    bool IsSecret = false
 ) : IRequest<Result<ChannelDetailDto>>;
 
 public class GetOrCreateDirectChannelCommandValidator : AbstractValidator<GetOrCreateDirectChannelCommand>
@@ -43,7 +45,7 @@ public class GetOrCreateDirectChannelCommandHandler(IApplicationDbContext contex
         Channel? existingChannel = await context.Channels
             .Include(c => c.Members)
             .ThenInclude(m => m.User)
-            .Where(c => c.Type == ChannelType.Direct && !c.IsDeleted)
+            .Where(c => c.Type == ChannelType.Direct && !c.IsDeleted && c.IsSecret == cmd.IsSecret)
             .Where(c => c.Members.Any(m => m.UserId == cmd.CurrentUserId) &&
                         c.Members.Any(m => m.UserId == cmd.TargetUserId))
             .FirstOrDefaultAsync(ct);
@@ -53,7 +55,18 @@ public class GetOrCreateDirectChannelCommandHandler(IApplicationDbContext contex
             return Result.Success(existingChannel.ToDetailDto(cmd.CurrentUserId));
         }
 
-        Channel channel = Channel.CreateDirect(cmd.CurrentUserId, cmd.TargetUserId);
+        Channel channel;
+        if (cmd.IsSecret)
+        {
+            byte[] saltBytes = RandomNumberGenerator.GetBytes(16);
+            string salt = Convert.ToHexString(saltBytes).ToLowerInvariant();
+            channel = Channel.CreateSecret(cmd.CurrentUserId, cmd.TargetUserId, salt);
+        }
+        else
+        {
+            channel = Channel.CreateDirect(cmd.CurrentUserId, cmd.TargetUserId);
+        }
+
         context.Channels.Add(channel);
         await context.SaveChangesAsync(ct);
 

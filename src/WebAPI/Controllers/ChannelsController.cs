@@ -75,7 +75,8 @@ public class ChannelsController(ISender sender) : ApiController
             request.Name,
             request.Description,
             request.AvatarUrl,
-            request.MemberIds);
+            request.MemberIds,
+            request.IsSecret);
 
         Result<ChannelDetailDto> result = await sender.Send(command, ct);
         return HandleCreatedResult(result);
@@ -86,9 +87,9 @@ public class ChannelsController(ISender sender) : ApiController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetOrCreateDirectChannel([FromRoute] Guid targetUserId, CancellationToken ct)
+    public async Task<IActionResult> GetOrCreateDirectChannel([FromRoute] Guid targetUserId, [FromQuery] bool isSecret = false, CancellationToken ct = default)
     {
-        GetOrCreateDirectChannelCommand command = new(CurrentUserId, targetUserId);
+        GetOrCreateDirectChannelCommand command = new(CurrentUserId, targetUserId, isSecret);
         Result<ChannelDetailDto> result = await sender.Send(command, ct);
         return HandleResult(result);
     }

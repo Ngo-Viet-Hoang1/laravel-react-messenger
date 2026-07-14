@@ -45,7 +45,9 @@ public static class ChannelMappingExtensions
             lastActivityAt,
             hasUnread,
             unreadCount,
-            otherUserId
+            otherUserId,
+            channel.IsSecret,
+            channel.EncryptionSalt
         );
     }
 
@@ -53,14 +55,19 @@ public static class ChannelMappingExtensions
     {
         string displayName = channel.Name ?? string.Empty;
         string? displayAvatar = channel.AvatarUrl;
+        Guid? otherUserId = null;
 
         if (channel.Type == ChannelType.Direct)
         {
-            User? otherUser = channel.Members.FirstOrDefault(m => m.UserId != currentUserId)?.User;
-            if (otherUser != null)
+            ChannelMember? otherMember = channel.Members.FirstOrDefault(m => m.UserId != currentUserId);
+            if (otherMember != null)
             {
-                displayName = otherUser.Username;
-                displayAvatar = otherUser.AvatarUrl;
+                otherUserId = otherMember.UserId;
+                if (otherMember.User != null)
+                {
+                    displayName = otherMember.User.Username;
+                    displayAvatar = otherMember.User.AvatarUrl;
+                }
             }
         }
 
@@ -74,7 +81,10 @@ public static class ChannelMappingExtensions
             displayAvatar,
             channel.Members.Count,
             channel.CreatedAt,
-            creatorId
+            creatorId,
+            channel.IsSecret,
+            channel.EncryptionSalt,
+            otherUserId
         );
     }
 

@@ -16,7 +16,7 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         builder.Property(m => m.Content)
             .IsRequired()
-            .HasMaxLength(5000);
+            .HasMaxLength(65536);
 
         builder.Property(m => m.ClientMessageId)
             .HasMaxLength(64);
