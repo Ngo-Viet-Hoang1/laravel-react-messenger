@@ -1,0 +1,16 @@
+server {
+    listen 80;
+    server_name ${NGINX_SERVER_NAME};
+
+    # ACME challenge cho Certbot webroot verification
+    # Phải đặt TRƯỚC redirect để Certbot lấy được cert
+    location /.well-known/acme-challenge/ {
+        root /var/www/public;
+        try_files $uri =404;
+    }
+
+    # Redirect tất cả HTTP còn lại sang HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

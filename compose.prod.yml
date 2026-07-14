@@ -79,6 +79,16 @@ services:
       # Nginx must serve it from /var/www/public/.well-known/ inside the container.
       # Without this mount, certbot --webroot cannot verify domain ownership.
       - ./public/.well-known:/var/www/public/.well-known:ro
+    environment:
+      # Nginx template engine thay thế các biến này trong *.conf.template
+      # khi container khởi động, trước khi nginx process bắt đầu.
+      # ${NGINX_SERVER_NAME} → server_name directive
+      # ${NGINX_CERT_DOMAIN} → đường dẫn tới Let's Encrypt cert
+      NGINX_SERVER_NAME: "${APP_DOMAIN:-twiliver.dev} www.${APP_DOMAIN:-twiliver.dev}"
+      NGINX_CERT_DOMAIN: "${APP_DOMAIN:-twiliver.dev}"
+      # Built-in nginx image envsubst settings:
+      NGINX_ENVSUBST_TEMPLATE_SUFFIX: ".conf.template"
+      NGINX_ENVSUBST_OUTPUT_DIR: "/etc/nginx/conf.d"
     networks:
       - laravel
     depends_on:
