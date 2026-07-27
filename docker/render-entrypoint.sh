@@ -14,26 +14,18 @@ mkdir -p \
 chmod -R 775 /var/www/storage /var/www/bootstrap/cache 2>/dev/null || true
 chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache 2>/dev/null || true
 
-# 2. Tạo Storage Symlink nếu chưa có
-if [ ! -L /var/www/public/storage ]; then
-    echo "==> Creating storage symlink..."
-    php /var/www/artisan storage:link 2>/dev/null || true
-fi
+# 2. Re-create Storage Symlink chuẩn xác
+rm -rf /var/www/public/storage
+php /var/www/artisan storage:link 2>/dev/null || true
 
-# Clear bất kỳ config cache cũ nào để tránh lỗi đọc cache_locks trước khi chạy migration
+# Clear bất kỳ config cache cũ nào để tránh đọc cache_locks trước khi migration
 php /var/www/artisan config:clear || true
 
 # 3. Chạy Database Migrations (dùng CACHE_STORE=array để tránh tìm bảng cache_locks khi chưa tạo)
 echo "==> Running database migrations..."
 CACHE_STORE=array php /var/www/artisan migrate --force --no-interaction
 
-# 4. Chạy Seeder nếu biến môi trường SEED_DATABASE=true
-if [ "$SEED_DATABASE" = "true" ]; then
-    echo "==> SEED_DATABASE=true detected! Running database seeder..."
-    CACHE_STORE=array php /var/www/artisan db:seed --force
-fi
-
-# 5. Cache Config, Routes, Events trong môi trường Production
+# 4. Cache Config, Routes, Events trong môi trường Production
 if [ "$APP_ENV" = "production" ]; then
     echo "==> Caching config, routes, events..."
     php /var/www/artisan config:cache
@@ -41,18 +33,18 @@ if [ "$APP_ENV" = "production" ]; then
     php /var/www/artisan event:cache
 fi
 
-# 6. Khởi chạy Queue Worker ở chế độ background
+# 5. Khởi chạy Queue Worker ở chế độ background
 echo "==> Starting Queue Worker (Background)..."
 php /var/www/artisan queue:work --tries=3 --timeout=90 &
 
-# 7. Khởi chạy Reverb WebSocket Server ở chế độ background
+# 6. Khởi chạy Reverb WebSocket Server ở chế độ background
 echo "==> Starting Reverb WebSocket Server (Background)..."
 php /var/www/artisan reverb:start --host=0.0.0.0 --port=8080 &
 
-# 8. Khởi chạy PHP-FPM daemon
+# 7. Khởi chạy PHP-FPM daemon
 echo "==> Starting PHP-FPM..."
 php-fpm -D
 
-# 9. Khởi chạy Nginx foreground (process chính giữ cho container sống)
+# 8. Khởi chạy Nginx foreground (process chính giữ cho container sống)
 echo "==> Starting Nginx Web Server..."
 exec nginx -g 'daemon off;'

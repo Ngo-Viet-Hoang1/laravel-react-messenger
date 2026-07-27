@@ -62,6 +62,10 @@ COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
+# Copy PHP Production & OPcache configurations
+COPY docker/php/production.ini /usr/local/etc/php/conf.d/zzz-production.ini
+COPY docker/php/opcache.ini    /usr/local/etc/php/conf.d/zzz-opcache.ini
+
 # Copy ứng dụng & frontend build assets
 COPY . .
 COPY --from=node-builder /app/public/build ./public/build

@@ -16,19 +16,33 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $admin = User::factory()->create([
-            'name' => 'John Doe',
-            'email' => 'johndoe@example.com',
-            'password' => bcrypt('password'),
-            'is_admin' => true,
-        ]);
+        // 1. Tạo hoặc lấy Admin user (Idempotent firstOrCreate)
+        $admin = User::firstOrCreate(
+            ['email' => 'johndoe@example.com'],
+            [
+                'name' => 'John Doe',
+                'password' => bcrypt('password'),
+                'is_admin' => true,
+                'email_verified_at' => now(),
+            ]
+        );
 
-        $jane = User::factory()->create([
-            'name' => 'Jane Smith',
-            'email' => 'janesmith@example.com',
-            'password' => bcrypt('password'),
-            'is_admin' => false,
-        ]);
+        // 2. Tạo hoặc lấy Jane Smith user (Idempotent firstOrCreate)
+        $jane = User::firstOrCreate(
+            ['email' => 'janesmith@example.com'],
+            [
+                'name' => 'Jane Smith',
+                'password' => bcrypt('password'),
+                'is_admin' => false,
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // Nếu hệ thống đã có kênh chat mẫu rồi thì dừng, tránh tạo lặp lại rác
+        if (Channel::count() >= 5) {
+            $this->command?->info('Sample channel data already seeded. Skipping...');
+            return;
+        }
 
         $randomUsers = User::factory(10)->create();
         $allUsers = collect([$admin, $jane])->concat($randomUsers);
