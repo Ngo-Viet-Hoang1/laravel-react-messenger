@@ -20,22 +20,25 @@ if [ ! -L /var/www/public/storage ]; then
     php /var/www/artisan storage:link 2>/dev/null || true
 fi
 
-# 3. Cache Config & Routes trong môi trường Production
+# Clear bất kỳ config cache cũ nào để tránh lỗi đọc cache_locks trước khi chạy migration
+php /var/www/artisan config:clear || true
+
+# 3. Chạy Database Migrations (dùng CACHE_STORE=array để tránh tìm bảng cache_locks khi chưa tạo)
+echo "==> Running database migrations..."
+CACHE_STORE=array php /var/www/artisan migrate --force --no-interaction
+
+# 4. Chạy Seeder nếu biến môi trường SEED_DATABASE=true
+if [ "$SEED_DATABASE" = "true" ]; then
+    echo "==> SEED_DATABASE=true detected! Running database seeder..."
+    CACHE_STORE=array php /var/www/artisan db:seed --force
+fi
+
+# 5. Cache Config, Routes, Events trong môi trường Production
 if [ "$APP_ENV" = "production" ]; then
     echo "==> Caching config, routes, events..."
     php /var/www/artisan config:cache
     php /var/www/artisan route:cache
     php /var/www/artisan event:cache
-fi
-
-# 4. Chạy Database Migrations
-echo "==> Running database migrations..."
-php /var/www/artisan migrate --force --isolated --no-interaction
-
-# 5. Chạy Seeder nếu biến môi trường SEED_DATABASE=true
-if [ "$SEED_DATABASE" = "true" ]; then
-    echo "==> SEED_DATABASE=true detected! Running database seeder..."
-    php /var/www/artisan db:seed --force
 fi
 
 # 6. Khởi chạy Queue Worker ở chế độ background
