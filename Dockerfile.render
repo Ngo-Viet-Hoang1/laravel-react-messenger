@@ -1,0 +1,88 @@
+# ─── Stage 1: Build Frontend Assets (Node.js) ─────────────────────────────────
+FROM node:22-alpine AS node-builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build \
+    && npm cache clean --force
+
+# ─── Stage 2: Production Single Container (PHP 8.3 + Nginx) ───────────────────
+FROM php:8.3-fpm-alpine
+
+RUN set -eux; \
+    apk add --no-cache \
+        nginx \
+        bash \
+        git \
+        curl \
+        zip \
+        unzip \
+        libpng \
+        libjpeg-turbo \
+        freetype \
+        libzip \
+        icu-libs \
+        libxml2 \
+        oniguruma \
+        postgresql-dev; \
+    \
+    apk add --no-cache --virtual .build-deps \
+        $PHPIZE_DEPS \
+        freetype-dev \
+        libjpeg-turbo-dev \
+        libpng-dev \
+        libzip-dev \
+        icu-dev \
+        libxml2-dev \
+        oniguruma-dev; \
+    \
+    docker-php-ext-configure gd --with-freetype --with-jpeg; \
+    \
+    docker-php-ext-install -j"$(nproc)" \
+        pdo \
+        pdo_pgsql \
+        pdo_mysql \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        zip \
+        intl \
+        opcache; \
+    \
+    apk del .build-deps; \
+    rm -rf /tmp/pear /var/cache/apk/*
+
+COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www
+
+# Copy ứng dụng & frontend build assets
+COPY . .
+COPY --from=node-builder /app/public/build ./public/build
+
+# Cài đặt PHP dependencies
+RUN composer install \
+      --no-dev \
+      --optimize-autoloader \
+      --prefer-dist \
+      --no-progress \
+      --no-scripts \
+    && chmod -R 755 /var/www/storage /var/www/bootstrap/cache
+
+# Cấu hình Nginx
+RUN mkdir -p /run/nginx
+COPY docker/nginx/render.conf /etc/nginx/http.d/default.conf
+
+# Script entrypoint cho Render
+COPY docker/render-entrypoint.sh /render-entrypoint.sh
+RUN chmod +x /render-entrypoint.sh
+
+EXPOSE 80
+
+ENTRYPOINT ["/render-entrypoint.sh"]
