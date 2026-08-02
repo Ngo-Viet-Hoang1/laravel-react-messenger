@@ -113,7 +113,7 @@ const CreateOrEditUserModal = ({ isOpen, entity: user, onClose }: Props) => {
                             name="email"
                             type="email"
                             value={data.email}
-                            className="mt-1 block w-full disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400 disabled:cursor-not-allowed"
+                            className="mt-1 block w-full disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-400"
                             onChange={(e) => setData('email', e.target.value)}
                             required={!user}
                             disabled={!!user}

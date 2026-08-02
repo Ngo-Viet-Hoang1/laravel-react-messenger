@@ -4,12 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Events\MessageCreated;
 use App\Events\MessageDeleted;
+use App\Events\MessageReactionUpdated;
 use App\Http\Requests\StoreMessageRequest;
+use App\Http\Requests\ToggleReactionRequest;
+use App\Http\Requests\UploadChunkRequest;
+use App\Http\Resources\MessageReactionResource;
 use App\Http\Resources\MessageResource;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageAttachment;
+use App\Models\MessageReaction;
+use App\Services\ChunkUploadService;
 use App\Services\MessageService;
+use App\Services\VideoThumbnailService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +27,9 @@ use Illuminate\Support\Str;
 class MessageController extends Controller
 {
     public function __construct(
-        private MessageService $messageService
+        private MessageService $messageService,
+        protected ChunkUploadService $chunkUploadService,
+        protected VideoThumbnailService $videoThumbnailService
     ) {}
 
     public function search(Request $request, Channel $channel): AnonymousResourceCollection
@@ -49,7 +59,7 @@ class MessageController extends Controller
         $beforeAt = request()->query('before_at');
 
         $query = Message::where('channel_id', $channel->id)
-            ->with(['sender', 'attachments', 'parent.sender', 'parent.attachments']);
+            ->with(['sender', 'attachments', 'parent.sender', 'parent.attachments', 'reactions']);
 
         if ($beforeId && $beforeAt) {
             $query->where(function ($q) use ($beforeAt, $beforeId) {
@@ -74,6 +84,15 @@ class MessageController extends Controller
         $data = $request->validated();
         $data['sender_id'] = (int) $request->user()->id;
         $data['channel_id'] = $channel->id;
+
+        if ($data['is_encrypted'] ?? false) {
+            abort_unless($channel->is_e2ee_enabled, 422, 'Cannot send encrypted messages to a non-E2EE channel.');
+            $data['content'] = null;
+        }
+        if ($channel->is_e2ee_enabled && ! ($data['is_encrypted'] ?? false)) {
+            abort(422, 'E2EE channel requires encrypted messages.');
+        }
+
         $files = $data['attachments'] ?? [];
         $uploadedAttachments = $data['uploaded_attachments'] ?? [];
         unset($data['attachments'], $data['uploaded_attachments']);
@@ -86,14 +105,23 @@ class MessageController extends Controller
                     $directory = 'attachments/'.Str::random(40);
                     Storage::disk('public')->makeDirectory($directory);
 
+                    $path = $file->store($directory, 'public');
+                    $mime = $file->getMimeType();
+                    $mime = $this->determineMimeType($file->getClientOriginalName(), $mime);
+
+                    $thumbnailPath = null;
+                    if ($mime === 'video/mp4') {
+                        $thumbnailPath = $this->videoThumbnailService->generate($path, 'public');
+                    }
+
                     MessageAttachment::create([
                         'message_id' => $message->id,
-                        'path' => $file->store($directory, 'public'),
+                        'path' => $path,
                         'name' => $file->getClientOriginalName(),
                         'size' => $file->getSize(),
-                        'mime' => $file->getMimeType(),
+                        'mime' => $mime,
                         'storage_disk' => 'public',
-                        'thumbnail_path' => null,
+                        'thumbnail_path' => $thumbnailPath,
                     ]);
                 }
             }
@@ -119,14 +147,22 @@ class MessageController extends Controller
                             @rmdir($tempDir);
                         }
 
+                        $mime = $att['mime'];
+                        $mime = $this->determineMimeType($att['name'], $mime);
+
+                        $thumbnailPath = null;
+                        if ($mime === 'video/mp4') {
+                            $thumbnailPath = $this->videoThumbnailService->generate($finalRelativePath, 'public');
+                        }
+
                         MessageAttachment::create([
                             'message_id' => $message->id,
                             'path' => $finalRelativePath,
                             'name' => $att['name'],
                             'size' => (int) $att['size'],
-                            'mime' => $att['mime'],
+                            'mime' => $mime,
                             'storage_disk' => 'public',
-                            'thumbnail_path' => null,
+                            'thumbnail_path' => $thumbnailPath,
                         ]);
                     }
                 }
@@ -137,6 +173,7 @@ class MessageController extends Controller
                 'attachments',
                 'parent.sender',
                 'parent.attachments',
+                'reactions',
             ]);
         });
 
@@ -149,80 +186,23 @@ class MessageController extends Controller
         return new MessageResource($message);
     }
 
-    public function uploadChunk(Request $request)
+    public function uploadChunk(UploadChunkRequest $request)
     {
-        $request->validate([
-            'file_uuid' => ['required', 'string'],
-            'chunk_index' => ['required', 'integer'],
-            'total_chunks' => ['required', 'integer'],
-            'name' => ['required', 'string'],
-            'size' => ['required', 'integer'],
-            'mime' => ['required', 'string'],
-            'file' => ['required', 'file'],
-        ]);
+        try {
+            $result = $this->chunkUploadService->uploadChunk(
+                $request->input('file_uuid'),
+                (int) $request->input('chunk_index'),
+                (int) $request->input('total_chunks'),
+                $request->input('name'),
+                $request->input('mime'),
+                (int) $request->input('size'),
+                $request->file('file')
+            );
 
-        $fileUuid = $request->input('file_uuid');
-        $chunkIndex = (int) $request->input('chunk_index');
-        $totalChunks = (int) $request->input('total_chunks');
-        $fileName = $request->input('name');
-        $fileMime = $request->input('mime');
-        $fileSize = (int) $request->input('size');
-        $chunkFile = $request->file('file');
-
-        $tempDir = storage_path('app/chunks/'.$fileUuid);
-        if (! file_exists($tempDir)) {
-            mkdir($tempDir, 0777, true);
+            return response()->json($result);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        $chunkFile->move($tempDir, (string) $chunkIndex);
-
-        $uploadedCount = 0;
-        for ($i = 0; $i < $totalChunks; $i++) {
-            if (file_exists($tempDir.'/'.$i)) {
-                $uploadedCount++;
-            }
-        }
-
-        if ($uploadedCount === $totalChunks) {
-            $mergedFilePath = $tempDir.'/merged';
-            $out = fopen($mergedFilePath, 'wb');
-            if ($out === false) {
-                return response()->json(['error' => 'Failed to open output stream'], 500);
-            }
-
-            for ($i = 0; $i < $totalChunks; $i++) {
-                $chunkPath = $tempDir.'/'.$i;
-                $in = fopen($chunkPath, 'rb');
-                if ($in === false) {
-                    fclose($out);
-
-                    return response()->json(['error' => 'Failed to open chunk '.$i], 500);
-                }
-                while ($buff = fread($in, 4096)) {
-                    fwrite($out, $buff);
-                }
-                fclose($in);
-            }
-            fclose($out);
-
-            // Clean up chunks
-            for ($i = 0; $i < $totalChunks; $i++) {
-                @unlink($tempDir.'/'.$i);
-            }
-
-            return response()->json([
-                'status' => 'completed',
-                'path' => 'chunks/'.$fileUuid.'/merged',
-                'name' => $fileName,
-                'mime' => $fileMime,
-                'size' => $fileSize,
-            ]);
-        }
-
-        return response()->json([
-            'status' => 'uploading',
-            'progress' => round(($uploadedCount / $totalChunks) * 100),
-        ]);
     }
 
     public function destroy(Message $message)
@@ -261,12 +241,87 @@ class MessageController extends Controller
         ]);
     }
 
+    public function toggleReaction(ToggleReactionRequest $request, Message $message): JsonResponse
+    {
+        $userId = (int) $request->user()->id;
+        $emoji = $request->validated('emoji');
+
+        $existing = MessageReaction::where('message_id', $message->id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($existing) {
+            if ($existing->emoji === $emoji) {
+                // Same emoji → remove reaction
+                $existing->delete();
+            } else {
+                // Different emoji → update to new one
+                $existing->update(['emoji' => $emoji]);
+            }
+        } else {
+            // No existing reaction → create new
+            MessageReaction::create([
+                'message_id' => $message->id,
+                'user_id' => $userId,
+                'emoji' => $emoji,
+            ]);
+        }
+
+        // Update channel last_message_id to push channel to top of sidebar
+        Channel::whereKey($message->channel_id)
+            ->where(function ($query) use ($message) {
+                $query->whereNull('last_message_id')
+                    ->orWhere('last_message_id', '<=', $message->id);
+            })
+            ->update(['last_message_id' => $message->id]);
+
+        // Reload reactions to get fresh aggregated data
+        $message->load('reactions');
+        $reactions = MessageReactionResource::aggregateForMessage($message);
+
+        broadcast(new MessageReactionUpdated(
+            $message->id,
+            $message->channel_id,
+            $reactions,
+        ))->toOthers();
+
+        return response()->json([
+            'message_id' => $message->id,
+            'channel_id' => $message->channel_id,
+            'reactions' => $reactions,
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
     private function buildMessageSnapshot(Message $message): array
     {
         $message->loadMissing(['sender', 'attachments', 'parent.sender', 'parent.attachments']);
+
+        $formatAttachment = function (MessageAttachment $attachment) {
+            $arr = $attachment->toArray();
+            $arr['url'] = Storage::disk($attachment->storage_disk)->url($attachment->path);
+            $arr['thumbnail_url'] = ($attachment->mime === 'video/mp4' && $attachment->thumbnail_path) ? Storage::disk($attachment->storage_disk)->url($attachment->thumbnail_path) : null;
+            $arr['stream_url'] = $attachment->mime === 'video/mp4' ? route('attachments.stream', $attachment->id) : null;
+
+            return $arr;
+        };
+
+        $attachmentsArray = [];
+        foreach ($message->attachments as $attachment) {
+            $attachmentsArray[] = $formatAttachment($attachment);
+        }
+
+        $parent = null;
+        if ($message->parent) {
+            $parentAttachments = [];
+            foreach ($message->parent->attachments as $attachment) {
+                $parentAttachments[] = $formatAttachment($attachment);
+            }
+            $parent = $message->parent->toArray();
+            $parent['attachments'] = $parentAttachments;
+        }
 
         return [
             'id' => $message->id,
@@ -275,10 +330,59 @@ class MessageController extends Controller
             'sender_id' => $message->sender_id,
             'parent_id' => $message->parent_id,
             'sender' => $message->sender?->toArray(),
-            'parent' => $message->parent?->toArray(),
-            'attachments' => $message->attachments->toArray(),
+            'parent' => $parent,
+            'attachments' => $attachmentsArray,
             'created_at' => $message->created_at?->toISOString(),
             'updated_at' => $message->updated_at?->toISOString(),
         ];
+    }
+
+    private function determineMimeType(string $name, string $detectedMime): string
+    {
+        $lowerName = strtolower($name);
+
+        $isAudio = str_starts_with($detectedMime, 'audio/') ||
+            str_starts_with($lowerName, 'audio-') ||
+            str_ends_with($lowerName, '.mp3') ||
+            str_ends_with($lowerName, '.wav') ||
+            str_ends_with($lowerName, '.m4a') ||
+            str_ends_with($lowerName, '.aac') ||
+            str_ends_with($lowerName, '.flac') ||
+            str_ends_with($lowerName, '.ogg') ||
+            str_ends_with($lowerName, '.oga');
+
+        if ($isAudio) {
+            if (str_starts_with($detectedMime, 'audio/')) {
+                return $detectedMime;
+            }
+            if (str_ends_with($lowerName, '.mp3')) {
+                return 'audio/mpeg';
+            }
+            if (str_ends_with($lowerName, '.wav')) {
+                return 'audio/wav';
+            }
+            if (str_ends_with($lowerName, '.m4a')) {
+                return 'audio/mp4';
+            }
+            if (str_ends_with($lowerName, '.aac')) {
+                return 'audio/aac';
+            }
+            if (str_ends_with($lowerName, '.flac')) {
+                return 'audio/flac';
+            }
+            if (str_ends_with($lowerName, '.ogg') || str_ends_with($lowerName, '.oga')) {
+                return 'audio/ogg';
+            }
+            if (str_ends_with($lowerName, '.webm')) {
+                return 'audio/webm';
+            }
+            if (str_ends_with($lowerName, '.mp4')) {
+                return 'audio/mp4';
+            }
+
+            return 'audio/mpeg';
+        }
+
+        return $detectedMime;
     }
 }

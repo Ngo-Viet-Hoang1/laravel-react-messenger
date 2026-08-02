@@ -10,13 +10,34 @@ const getMimeType = (file?: AttachmentSource | File | null): string => {
     return file.type || ('mime' in file ? (file.mime ?? '') : '');
 };
 
-export const isImage = (file?: AttachmentSource | File | null) =>
+export const isImage = (file?: AttachmentSource | File | null): boolean =>
     getMimeType(file).startsWith('image/');
-export const isVideo = (file?: AttachmentSource | File | null) =>
-    getMimeType(file).startsWith('video/');
-export const isAudio = (file?: AttachmentSource | File | null) =>
-    getMimeType(file).startsWith('audio/');
-export const isPDF = (file?: AttachmentSource | File | null) =>
+
+export const isAudio = (file?: AttachmentSource | File | null): boolean => {
+    if (!file) return false;
+    const name = (file as { name?: string | null })?.name ?? '';
+    const mime = getMimeType(file);
+    const lowerName = name.toLowerCase();
+    return (
+        mime.startsWith('audio/') ||
+        lowerName.endsWith('.mp3') ||
+        lowerName.endsWith('.wav') ||
+        lowerName.endsWith('.m4a') ||
+        lowerName.endsWith('.aac') ||
+        lowerName.endsWith('.flac') ||
+        lowerName.endsWith('.ogg') ||
+        lowerName.endsWith('.oga') ||
+        lowerName.startsWith('audio-')
+    );
+};
+
+export const isVideo = (file?: AttachmentSource | File | null): boolean => {
+    if (!file) return false;
+    if (isAudio(file)) return false;
+    return getMimeType(file).startsWith('video/');
+};
+
+export const isPDF = (file?: AttachmentSource | File | null): boolean =>
     getMimeType(file) === 'application/pdf';
 
 export const getAttachmentKind = (

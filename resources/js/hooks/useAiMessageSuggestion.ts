@@ -42,12 +42,17 @@ export const useAiMessageSuggestion = (
 
                 return data.suggestion;
             } catch (error) {
-                if (error instanceof AxiosError && error.response?.status === 503) {
+                if (
+                    error instanceof AxiosError &&
+                    error.response?.status === 503
+                ) {
                     onError(
                         'AI is busy right now. Please wait a moment and try again.',
                     );
                 } else {
-                    onError('Failed to generate AI suggestion. Please try again.');
+                    onError(
+                        'Failed to generate AI suggestion. Please try again.',
+                    );
                 }
 
                 return null;

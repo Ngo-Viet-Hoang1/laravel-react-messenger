@@ -1,3 +1,4 @@
+import { useE2EE } from '@/Contexts/E2EEContext';
 import { useEventBus } from '@/EventBus';
 import { type AttachedItem, type ChatItem, type ChatMessage } from '@/types';
 import axios from 'axios';
@@ -13,6 +14,8 @@ type SendArgs = {
 
 export const useSendMessage = (onError: (msg: string) => void) => {
     const { emit } = useEventBus();
+    const { encryptForUser } = useE2EE();
+
     const [sending, setSending] = useState(false);
     const [progress, setProgress] = useState(0);
 
@@ -31,8 +34,36 @@ export const useSendMessage = (onError: (msg: string) => void) => {
 
             if (content.trim() === '' && attachments.length === 0) return;
 
+            if (channel.is_e2ee_enabled && channel.peer_user_id == null) {
+                onError(
+                    'This Secret Chat is missing peer information. Please contact support.',
+                );
+                return;
+            }
+
             const formData = new FormData();
-            formData.append('content', content);
+            let encryptedContent: string | null = null;
+
+            if (channel.is_e2ee_enabled && content.trim().length > 0) {
+                const encrypted = await encryptForUser(
+                    channel.peer_user_id!,
+                    content.trim(),
+                );
+
+                if (!encrypted) {
+                    onError(
+                        'Could not encrypt message. Please try again or check your connection.',
+                    );
+                    return;
+                }
+
+                formData.append('is_encrypted', '1');
+                formData.append('iv', encrypted.iv);
+                formData.append('ciphertext', encrypted.ciphertext);
+                encryptedContent = content.trim(); // kept locally to inject into emitted event
+            } else {
+                formData.append('content', content);
+            }
 
             if (parentId) {
                 formData.append('parent_id', String(parentId));
@@ -61,7 +92,15 @@ export const useSendMessage = (onError: (msg: string) => void) => {
                 );
 
                 if (newMessage?.id) {
-                    emit('message.created', newMessage);
+                    // For own encrypted messages: server returns content=null.
+                    // Inject the plaintext we already know (we just encrypted it)
+                    // so local UI (and useChannels sidebar preview) shows it immediately.
+                    const messageToEmit =
+                        encryptedContent !== null
+                            ? { ...newMessage, content: encryptedContent }
+                            : newMessage;
+
+                    emit('message.created', messageToEmit);
                 }
 
                 onSuccess?.();
@@ -72,7 +111,7 @@ export const useSendMessage = (onError: (msg: string) => void) => {
                 setProgress(0);
             }
         },
-        [emit, onError],
+        [emit, onError, encryptForUser],
     );
 
     return { send, sending, progress };

@@ -5,11 +5,20 @@ namespace App\Repositories\Eloquent;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use App\Patterns\TemplateMethod\DirectChannel\DirectCreator;
+use App\Patterns\TemplateMethod\DirectChannel\E2EEDirectCreator;
 use App\Repositories\Interfaces\IChannelRepo;
+
 use Illuminate\Database\Eloquent\Collection;
 
 class ChannelRepo implements IChannelRepo
 {
+    public function __construct(
+        private DirectCreator $regularCreator,
+        private E2EEDirectCreator $secretCreator,
+    ) {
+    }
+
     public function getChannelsForUser(User $user): Collection
     {
         return Channel::select([
@@ -49,22 +58,12 @@ class ChannelRepo implements IChannelRepo
 
     public function findOrCreateDirect(int $userId1, int $userId2): Channel
     {
-        $directKey = implode(':', [min($userId1, $userId2), max($userId1, $userId2)]);
+        return $this->regularCreator->findOrCreate($userId1, $userId2);
+    }
 
-        $channel = Channel::firstOrCreate(
-            ['direct_key' => $directKey],
-            [
-                'type' => 'direct',
-                'name' => null,
-                'description' => null,
-                'owner_id' => null,
-            ]
-        );
-
-        // Ensure both users are members (in case the channel was just created or one user was removed from an existing channel)
-        $channel->members()->syncWithoutDetaching([$userId1, $userId2]);
-
-        return $channel;
+    public function findOrCreateE2EEDirect(int $userId1, int $userId2): Channel
+    {
+        return $this->secretCreator->findOrCreate($userId1, $userId2);
     }
 
     public function markAsRead(Channel $channel, int $userId, ?int $lastReadMessageId): void

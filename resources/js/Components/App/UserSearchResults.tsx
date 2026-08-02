@@ -16,7 +16,7 @@ type Props = {
 const INITIAL_LIMIT = 5;
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <div className="sticky top-0 z-10 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:bg-slate-800/90 dark:text-slate-500">
+    <div className="sticky top-0 z-10 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wider text-slate-400 uppercase dark:bg-slate-800/90 dark:text-slate-500">
         {children}
     </div>
 );
@@ -75,18 +75,14 @@ const UserSearchResults = ({
     const visibleChannels = channelsExpanded
         ? channels
         : channels.slice(0, INITIAL_LIMIT);
-    const visibleUsers = usersExpanded
-        ? users
-        : users.slice(0, INITIAL_LIMIT);
+    const visibleUsers = usersExpanded ? users : users.slice(0, INITIAL_LIMIT);
 
     return (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {/* Matched channels */}
             {hasChannels && (
                 <>
-                    <SectionLabel>
-                        Channels · {channels.length}
-                    </SectionLabel>
+                    <SectionLabel>Channels · {channels.length}</SectionLabel>
                     {visibleChannels.map((channel) => (
                         <button
                             key={`ch-${channel.id}`}
@@ -115,9 +111,7 @@ const UserSearchResults = ({
                         <ShowMoreButton
                             totalCount={channels.length}
                             isExpanded={channelsExpanded}
-                            onClick={() =>
-                                setChannelsExpanded((prev) => !prev)
-                            }
+                            onClick={() => setChannelsExpanded((prev) => !prev)}
                         />
                     )}
                 </>
@@ -126,9 +120,7 @@ const UserSearchResults = ({
             {/* Users from API */}
             {hasUsers && (
                 <>
-                    <SectionLabel>
-                        Users · {users.length}
-                    </SectionLabel>
+                    <SectionLabel>Users · {users.length}</SectionLabel>
                     {visibleUsers.map((user) => (
                         <button
                             key={`u-${user.id}`}
@@ -151,9 +143,7 @@ const UserSearchResults = ({
                         <ShowMoreButton
                             totalCount={users.length}
                             isExpanded={usersExpanded}
-                            onClick={() =>
-                                setUsersExpanded((prev) => !prev)
-                            }
+                            onClick={() => setUsersExpanded((prev) => !prev)}
                         />
                     )}
                 </>

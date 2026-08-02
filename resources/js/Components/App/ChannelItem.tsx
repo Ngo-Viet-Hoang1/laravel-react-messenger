@@ -1,4 +1,5 @@
 import { ChatItem } from '@/types';
+import { LockClosedIcon } from '@heroicons/react/24/outline';
 import { formatChatTime } from '../../utils/chatTime.util';
 import GroupAvatar from './GroupAvatar';
 import UserAvatar from './UserAvatar';
@@ -55,10 +56,13 @@ const ChannelItem = ({
                     <div className="flex min-w-0 items-center gap-2">
                         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                             {channel.name}
+                            {channel.is_e2ee_enabled && (
+                                <LockClosedIcon className="ml-1 inline h-3 w-3 text-emerald-300" />
+                            )}
                         </h3>
 
                         {channel.unread_count ? (
-                            <span className="badge badge-primary badge-sm text-[10px] font-semibold">
+                            <span className="badge badge-sm text-[10px] font-semibold badge-primary">
                                 {channel.unread_count > 9
                                     ? '9+'
                                     : channel.unread_count}

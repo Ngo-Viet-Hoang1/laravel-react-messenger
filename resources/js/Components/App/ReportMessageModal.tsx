@@ -101,7 +101,7 @@ const ReportMessageModal = ({ isOpen, onClose, messageId }: Props) => {
                             value={data.note}
                             onChange={(e) => setData('note', e.target.value)}
                             placeholder="Describe the issue..."
-                            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-red-500 dark:focus:ring-red-500/20"
+                            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-red-300 focus:ring-2 focus:ring-red-200 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-red-500 dark:focus:ring-red-500/20"
                         />
                         <InputError message={errors.note} className="mt-1" />
                     </div>
@@ -121,7 +121,7 @@ const ReportMessageModal = ({ isOpen, onClose, messageId }: Props) => {
                             className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {processing ? (
-                                <span className="loading loading-spinner loading-xs" />
+                                <span className="loading loading-xs loading-spinner" />
                             ) : (
                                 <FlagIcon className="h-4 w-4" />
                             )}

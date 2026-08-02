@@ -1,10 +1,10 @@
 import TextInput from '@/Components/Breeze/TextInput';
-import FilterSelect, { FilterSelectOption } from './FilterSelect';
 import {
     MagnifyingGlassIcon,
     UserGroupIcon,
     UserPlusIcon,
 } from '@heroicons/react/24/outline';
+import FilterSelect, { FilterSelectOption } from './FilterSelect';
 
 type Props = {
     search: string;
@@ -59,7 +59,7 @@ const UserFiltersBar = ({
                 <button
                     type="button"
                     onClick={onNewUser}
-                    className="btn btn-sm h-10 border-none bg-slate-800 hover:bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-800 dark:hover:bg-white text-sm font-semibold rounded-lg px-4 gap-2"
+                    className="btn h-10 gap-2 rounded-lg border-none bg-slate-800 px-4 text-sm font-semibold text-white btn-sm hover:bg-slate-700 dark:bg-slate-200 dark:text-slate-800 dark:hover:bg-white"
                 >
                     <UserPlusIcon className="h-4 w-4" />
                     New User
@@ -69,12 +69,12 @@ const UserFiltersBar = ({
             {/* Filters */}
             <div className="mt-4 flex flex-wrap items-center gap-3">
                 <div className="relative w-full sm:max-w-xs">
-                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <TextInput
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
                         placeholder="Search by name or email..."
-                        className="w-full !pl-9 h-10"
+                        className="h-10 w-full !pl-9"
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 onSearchClick();

@@ -11,7 +11,7 @@ type Props = {
 };
 
 const UserAvatar = ({ user, online, profile = false }: Props) => {
-    const onlineClass = online ? 'online' : '';
+    const onlineClass = online ? 'avatar-online' : '';
     const sizeClass = profile ? 'h-40 w-40' : 'h-8 w-8';
     const fallbackTextSizeClass = profile ? 'text-4xl' : 'text-sm';
     const initial = user.name ? user.name.charAt(0).toUpperCase() : '?';
@@ -31,9 +31,9 @@ const UserAvatar = ({ user, online, profile = false }: Props) => {
     }
 
     return (
-        <div className={`avatar placeholder ${onlineClass}`}>
+        <div className={`avatar avatar-placeholder ${onlineClass}`}>
             <div
-                className={`!flex ${sizeClass} items-center justify-center rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100`}
+                className={`flex! ${sizeClass} items-center justify-center rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100`}
             >
                 <span className={`${fallbackTextSizeClass} font-semibold`}>
                     {initial}

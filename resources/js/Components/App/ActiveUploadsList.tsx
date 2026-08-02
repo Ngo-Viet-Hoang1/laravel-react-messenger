@@ -1,6 +1,6 @@
 import { useUploads } from '@/Contexts/UploadContext';
-import { UPLOAD_STATUS_CONFIG } from '@/utils/chunkedUpload';
 import { formatFileSize } from '@/utils';
+import { UPLOAD_STATUS_CONFIG } from '@/utils/chunkedUpload';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 type Props = {
@@ -16,7 +16,7 @@ const ActiveUploadsList = ({ channelId }: Props) => {
 
     return (
         <div className="mx-2 mb-2 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
                 Sending files ({channelUploads.length})
             </div>
             <div className="flex max-h-40 flex-col gap-2 overflow-y-auto pr-1">
@@ -67,7 +67,7 @@ const ActiveUploadsList = ({ channelId }: Props) => {
                                     isUploading ? upload.progress : config.value
                                 }
                                 max={100}
-                                className={`progress ${config.progressClass} h-1.5 w-full${config.opaque ? ' opacity-50' : ''}`}
+                                className={`progress ${config.progressClass} h-1.5 w-full${config.opaque ? 'opacity-50' : ''}`}
                             />
                         </div>
                     );

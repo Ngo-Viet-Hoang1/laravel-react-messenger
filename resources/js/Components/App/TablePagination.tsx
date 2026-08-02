@@ -1,4 +1,7 @@
-import { LengthAwarePaginationMeta, PaginationMetaLink } from '@/types/pagination';
+import {
+    LengthAwarePaginationMeta,
+    PaginationMetaLink,
+} from '@/types/pagination';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 type Props = {
@@ -64,10 +67,11 @@ export default function TablePagination({ meta, onPageChange }: Props) {
                             key={link.label}
                             onClick={(e) => handleClick(e, link.url)}
                             disabled={!link.url}
-                            className={`flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors ${link.active
+                            className={`flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors ${
+                                link.active
                                     ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800'
-                                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 disabled:opacity-50'
-                                }`}
+                                    : 'text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-700'
+                            }`}
                         >
                             {link.label}
                         </button>

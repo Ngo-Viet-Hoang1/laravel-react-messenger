@@ -1,4 +1,4 @@
-import { User, LengthAwarePaginatedResponse } from '@/types';
+import { LengthAwarePaginatedResponse, User } from '@/types';
 import axios from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -39,7 +39,7 @@ const useAdminUsers = (
     const [search, setSearchState] = useState(initialFilters.q);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-    const debounceRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentUrlRef = useRef<string | undefined>(undefined);
 
     useEffect(() => {
@@ -58,10 +58,13 @@ const useAdminUsers = (
             setIsLoading(true);
             try {
                 const targetUrl = url ?? route('admin.users.index');
-                const { data } = await axios.get<AdminUsersResponse>(targetUrl, {
-                    params: url ? undefined : params,
-                    headers: { Accept: 'application/json' },
-                });
+                const { data } = await axios.get<AdminUsersResponse>(
+                    targetUrl,
+                    {
+                        params: url ? undefined : params,
+                        headers: { Accept: 'application/json' },
+                    },
+                );
                 setUsers(data.users);
                 setFilters(data.filters);
             } finally {
@@ -81,7 +84,7 @@ const useAdminUsers = (
 
     const clearDebounce = (): void => {
         if (debounceRef.current) {
-            globalThis.clearTimeout(debounceRef.current);
+            clearTimeout(debounceRef.current);
             debounceRef.current = null;
         }
     };
@@ -90,7 +93,7 @@ const useAdminUsers = (
         setSearchState(value);
         clearDebounce();
 
-        debounceRef.current = globalThis.setTimeout(() => {
+        debounceRef.current = setTimeout(() => {
             applyFilters({ q: value });
         }, 500);
     };
@@ -125,9 +128,9 @@ const useAdminUsers = (
                             headers: {
                                 Accept: 'application/json',
                             },
-                        }
-                    )
-                )
+                        },
+                    ),
+                ),
             );
             setSelectedIds(new Set());
             await fetchUsers(filters, currentUrlRef.current);
@@ -149,9 +152,9 @@ const useAdminUsers = (
                             headers: {
                                 Accept: 'application/json',
                             },
-                        }
-                    )
-                )
+                        },
+                    ),
+                ),
             );
             setSelectedIds(new Set());
             await fetchUsers(filters, currentUrlRef.current);
@@ -173,9 +176,9 @@ const useAdminUsers = (
                             headers: {
                                 Accept: 'application/json',
                             },
-                        }
-                    )
-                )
+                        },
+                    ),
+                ),
             );
             setSelectedIds(new Set());
             await fetchUsers(filters, currentUrlRef.current);

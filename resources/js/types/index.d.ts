@@ -9,6 +9,7 @@ export type {
     ChatMessage,
     ChatMessageCollection,
     MessageAttachment,
+    MessageReactionGroup,
     ParentMessage,
 } from './chat';
 
@@ -28,6 +29,9 @@ export type {
     ChannelDeletedEvent,
     MessageCreatedEvent,
     MessageDeletedEvent,
+    MessageReactionUpdatedEvent,
 } from './events';
 
 export type { ChatPageProps, PageProps } from './page-props';
+
+export type { PremiumPaymentHistoryItem, PremiumPaymentStatus } from './premium';

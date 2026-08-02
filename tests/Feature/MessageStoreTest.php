@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
@@ -112,5 +113,38 @@ class MessageStoreTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.0.parent.attachments.0.name', 'photo.jpg');
+    }
+
+    public function test_store_message_accepts_form_data_string_boolean_for_e2ee_messages(): void
+    {
+        $sender = User::factory()->create();
+        $receiver = User::factory()->create();
+
+        $channel = Channel::factory()->direct()->create([
+            'is_e2ee_enabled' => true,
+        ]);
+
+        $channel->members()->attach([$sender->id, $receiver->id]);
+
+        $response = $this->actingAs($sender)
+            ->post(route('channels.messages.store', $channel), [
+                'is_encrypted' => 'true',
+                'iv' => 'test-iv',
+                'ciphertext' => 'test-ciphertext',
+            ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('is_encrypted', true);
+        $response->assertJsonPath('iv', 'test-iv');
+        $response->assertJsonPath('ciphertext', 'test-ciphertext');
+
+        $this->assertDatabaseHas('messages', [
+            'channel_id' => $channel->id,
+            'sender_id' => $sender->id,
+            'is_encrypted' => true,
+            'content' => null,
+            'iv' => 'test-iv',
+            'ciphertext' => 'test-ciphertext',
+        ]);
     }
 }

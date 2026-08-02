@@ -26,6 +26,7 @@ class ChannelResource extends JsonResource
         return [
             'id' => $this->id,
             'type' => $this->type,
+            'is_e2ee_enabled' => (bool) $this->is_e2ee_enabled,
             'name' => $isDirect
                 ? ($otherUser?->name ?? 'Direct Message')
                 : $this->name,

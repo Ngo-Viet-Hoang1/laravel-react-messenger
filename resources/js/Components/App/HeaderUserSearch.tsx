@@ -56,7 +56,7 @@ const HeaderUserSearch = () => {
         <div ref={containerRef} className="relative hidden sm:block sm:w-64">
             {/* Search input */}
             <div className="relative">
-                <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                 <input
                     ref={inputRef}
                     type="text"
@@ -69,13 +69,13 @@ const HeaderUserSearch = () => {
                         if (e.key === 'Escape') handleClear();
                     }}
                     placeholder="Search users…"
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-8 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:border-indigo-500 dark:focus:bg-gray-700 dark:focus:ring-indigo-500/30"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pr-8 pl-8 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:bg-white focus:ring-1 focus:ring-indigo-300 focus:outline-none dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:border-indigo-500 dark:focus:bg-gray-700 dark:focus:ring-indigo-500/30"
                 />
                 {query && (
                     <button
                         type="button"
                         onClick={handleClear}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                        className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                     >
                         <XMarkIcon className="h-3.5 w-3.5" />
                     </button>
@@ -84,7 +84,7 @@ const HeaderUserSearch = () => {
 
             {/* Dropdown results */}
             {isOpen && (
-                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-800">
+                <div className="absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-800">
                     {isLoading && results.length === 0 && (
                         <div className="flex items-center justify-center gap-2 px-4 py-5 text-sm text-gray-400">
                             <LoadingSpinner size="sm" />

@@ -40,4 +40,12 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-3.1-flash-lite'),
     ],
 
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'client_secret' => env('PAYPAL_CLIENT_SECRET'),
+        'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.sandbox.paypal.com'),
+        'premium_price_cents' => (int) env('PAYPAL_PREMIUM_PRICE_CENTS', 499),
+        'premium_currency' => env('PAYPAL_PREMIUM_CURRENCY', 'USD'),
+    ],
+
 ];

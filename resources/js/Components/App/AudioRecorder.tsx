@@ -74,7 +74,12 @@ const AudioRecorder = ({ onFileReady, onError }: Props) => {
                 audio: true,
             });
             streamRef.current = stream;
-            const mediaRecorder = new MediaRecorder(stream);
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+                ? 'audio/webm'
+                : 'audio/mp4';
+            const ext = mimeType === 'audio/mp4' ? 'mp4' : 'webm';
+
+            const mediaRecorder = new MediaRecorder(stream, { mimeType });
             mediaRecorderRef.current = mediaRecorder;
 
             const chunks: BlobPart[] = [];
@@ -87,15 +92,12 @@ const AudioRecorder = ({ onFileReady, onError }: Props) => {
                 const timestamp = new Date()
                     .toISOString()
                     .replace(/[:.]/g, '-');
-                const mimeType = MediaRecorder.isTypeSupported('audio/webm')
-                    ? 'audio/webm'
-                    : 'audio/mp4';
                 const blob = new Blob(chunks, { type: mimeType });
-                const filename = `audio-${timestamp}-${durationSeconds}s.${mimeType.split('/')[1]}`;
+                const filename = `audio-${timestamp}-${durationSeconds}s.${ext}`;
 
                 onFileReady?.(
                     new File([blob], filename, {
-                        type: blob.type,
+                        type: mimeType,
                     }),
                 );
                 clearTimer();
@@ -119,7 +121,7 @@ const AudioRecorder = ({ onFileReady, onError }: Props) => {
     return (
         <div className="flex items-center gap-1">
             <button
-                className="btn btn-circle btn-ghost relative inline-flex h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
+                className="btn relative inline-flex btn-circle h-[42px] min-h-[42px] w-[42px] items-center justify-center p-0 text-slate-500 btn-ghost transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:outline-none active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
                 type="button"
                 onClick={handleMicrophoneClick}
                 aria-pressed={isRecording}
