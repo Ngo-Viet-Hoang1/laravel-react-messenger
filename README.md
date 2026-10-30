@@ -137,7 +137,7 @@ The real-time layer is split into two tiers: persistent events such as `ReceiveM
 | Architecture | Clean Architecture, CQRS, FSD                                | Clear boundaries and predictable feature growth       |
 | Testing      | xUnit, FluentAssertions, NSubstitute                         | Fast handler tests with readable assertions           |
 
----
+### Option B — Docker Compose
 
 ## Quick start
 
@@ -298,7 +298,30 @@ pnpm --dir client build
 
 ---
 
-## License
+## 🙏 Acknowledgments
+
+- **[Laravel](https://laravel.com)** — Elegant PHP framework
+- **[Laravel Reverb](https://reverb.laravel.com)** — First-party self-hosted WebSocket server
+- **[Inertia.js](https://inertiajs.com)** — The modern monolith
+- **[React](https://react.dev)** — Declarative UI
+- **[Vite](https://vitejs.dev)** — Blazing fast frontend tooling
+- **[Tailwind CSS](https://tailwindcss.com)** + **[DaisyUI](https://daisyui.com)** — Utility-first styling
+
+---
+
+## 📄 License
+
+This project is open-sourced software licensed under the [MIT License](https://opensource.org/licenses/MIT).
+
+---
+
+<div align="center">
+
+**⭐ Star this repo if you find it helpful!**
+
+Made with ❤️ by [Ngo-Viet-Hoang1](https://github.com/Ngo-Viet-Hoang1)
+
+[Live Demo](https://twiliver.dev) · [Report Bug](https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger/issues) · [GitHub](https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger)
 
 No license file is currently included. The source is available for portfolio review; add a license before redistributing or reusing it.
 
