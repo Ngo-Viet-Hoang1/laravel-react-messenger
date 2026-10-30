@@ -1,0 +1,43 @@
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Node
+**/node_modules/
+**/dist/
+**/.vite/
+
+# .NET
+**/bin/
+**/obj/
+**/TestResults/
+
+# Environment files and secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# User-specific files
+**/*.user
+**/*.suo
+
+# Local data
+archive/
+docs/
+scripts/
+
+# Logs
+**/*.log
+
+# OS
+.DS_Store
+Thumbs.db

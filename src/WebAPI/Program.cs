@@ -7,6 +7,7 @@ using MessengerApp.WebAPI.Extensions;
 using MessengerApp.WebAPI.Hubs;
 using MessengerApp.WebAPI.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
@@ -38,9 +39,14 @@ builder.Services.Configure<HostOptions>(options =>
     options.ShutdownTimeout = TimeSpan.FromSeconds(builder.Environment.IsDevelopment() ? 2 : 30);
 });
 
-var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "super-secret-messenger-app-key-with-at-least-256-bits-length!";
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MessengerApp";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "MessengerAppClient";
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("Jwt:SecretKey is required.");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer is required.");
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience is required.");
+
+if (Encoding.UTF8.GetByteCount(jwtSecretKey) < 32)
+{
+    throw new InvalidOperationException("Jwt:SecretKey must be at least 32 bytes.");
+}
 
 builder.Services.AddAuthentication(options =>
 {
@@ -71,7 +77,20 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    });
+}
+
 var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseForwardedHeaders();
+}
 
 app.Use(async (context, next) =>
 {
@@ -139,6 +158,10 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.UseRouting();
 app.UseCors(CorsPolicy);
 
 app.UseAuthentication();
@@ -146,6 +169,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
+
+app.MapFallbackToFile("index.html");
 
 app.MapGet("/api/health", () => Results.Ok(new
 {

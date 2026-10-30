@@ -1,6 +1,5 @@
 # Auto-detect text files and normalize line endings on commit
-* text=auto
-
+* text=auto eol=crlf
 # Source code files
 *.cs text diff=csharp
 *.ts text
