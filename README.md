@@ -1,595 +1,311 @@
-# 🚀 Laravel React Messenger
+# MessentR
 
 <div align="center">
 
-**A production-grade, real-time messaging application built with Laravel 13, Inertia.js v2, React 18, and Laravel Reverb.**
+**A real-time chat platform built with .NET 10 and React 19.**
 
-[![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
-[![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+**Live demo:** [twiliver.dev](https://twiliver.dev) · **Source:** [GitHub](https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger)
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-twiliver.dev-4F46E5?style=for-the-badge&logo=render&logoColor=white)](https://twiliver.dev)
-[![GitHub Stars](https://img.shields.io/github/stars/Ngo-Viet-Hoang1/laravel-react-messenger?style=for-the-badge&logo=github)](https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger/stargazers)
-[![GitHub Issues](https://img.shields.io/github/issues/Ngo-Viet-Hoang1/laravel-react-messenger?style=for-the-badge)](https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger/issues)
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![SignalR](https://img.shields.io/badge/SignalR-WebSockets-512BD4?style=flat-square)](https://learn.microsoft.com/aspnet/core/signalr/introduction)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
 </div>
 
----
+> **Portfolio project.** MessentR is a full-stack chat platform for group channels, direct messages, file sharing, and passphrase-protected rooms. It is built to demonstrate production-style architecture, real-time state synchronization, and browser-side encryption. It is not production-hardened yet.
 
-## 📖 Overview
-
-Full-stack real-time chat application focused on **production-level engineering practices**. Key highlights:
-
-- **End-to-end encryption** with ECDH P-256 key exchange + AES-GCM-256 entirely in the browser (Web Crypto API)
-- **WebSocket infrastructure** via Laravel Reverb (self-hosted, no Pusher dependency)
-- **8 design patterns** applied deliberately across backend (Service, Repository, Observer, Template Method, Adapter, Factory, Contract, EventBus)
-- **Freemium model** — free users retain messages for 90 days; premium unlocks unlimited history via PayPal
-- **Fully containerized** — Docker Compose with 8 services (PHP-FPM, Nginx, MySQL, Redis, Horizon, Reverb, MinIO, Mailpit)
+`MessentR` is the product name. The .NET solution and namespaces currently remain `MessengerApp`.
 
 ---
 
-## 🖥️ Screenshots
+## Table of contents
 
-> Screenshots will be added after the UI stabilizes. Live demo: [twiliver.dev](https://twiliver.dev)
-
-<!-- ![Home — Channel List](docs/screenshots/home.png) -->
-<!-- ![Group Chat](docs/screenshots/group-chat.png) -->
-<!-- ![E2EE Direct Message](docs/screenshots/e2ee-dm.png) -->
-<!-- ![Admin Panel](docs/screenshots/admin.png) -->
-<!-- ![Premium Subscription](docs/screenshots/premium.png) -->
-
----
-
-## ✨ Features
-
-### 💬 Messaging
-
-| Feature | Details |
-|---|---|
-| **Real-time messaging** | WebSockets via Laravel Reverb + Laravel Echo |
-| **Group channels** | Create, edit, delete groups with member management |
-| **Direct messages** | One-on-one private conversations |
-| **E2EE direct messages** | ECDH P-256 key exchange + AES-GCM-256; keys never leave the browser |
-| **Message reactions** | Emoji reactions with live broadcast updates |
-| **Reply to messages** | Threaded reply preview in the composer |
-| **Audio recording** | Record and send voice messages directly in-chat (MediaRecorder API) |
-| **Typing indicators** | Live whisper events via Echo private channels |
-| **Message search** | Full-text search with 350ms debounce and cursor pagination |
-| **Per-channel drafts** | Draft text persisted in `localStorage` per channel |
-
-### 📎 Files & Media
-
-| Feature | Details |
-|---|---|
-| **Chunked file uploads** | Multi-chunk upload with live progress tracking and cancellation |
-| **Video streaming** | HTTP Range Requests (206 Partial Content) for efficient playback |
-| **Video thumbnails** | Auto-generated server-side thumbnails |
-| **Attachment preview** | Full-screen modal for images, videos, and files |
-| **Shared media panel** | Per-channel media and file browser |
-
-### 🤖 AI & Premium
-
-| Feature | Details |
-|---|---|
-| **AI reply suggestions** | Google Gemini API (rate-limited 6 req/min per user) |
-| **Premium subscription** | PayPal checkout (1, 3, or 12 months) with idempotent capture |
-| **Message retention** | Free users: 90-day retention; Premium: unlimited history |
-
-### 🔐 Security & Auth
-
-| Feature | Details |
-|---|---|
-| **Authentication** | Laravel Breeze (session-based, via Inertia) |
-| **End-to-end encryption** | ECDH P-256 + AES-GCM-256; public keys stored server-side |
-| **Online presence** | Public Echo Presence channel |
-| **Read tracking** | Per-channel `last_read_message_id` with unread counts |
-
-### 🧑‍💼 Admin Panel
-
-| Capability | Details |
-|---|---|
-| **User management** | Create, promote to admin, demote, block/unblock, delete |
-| **Message reporting** | Users report messages; admins review and resolve |
-| **User search** | Filter and paginate users |
+- [Why MessentR?](#why-messentr)
+- [Demo](#demo)
+- [Feature highlights](#feature-highlights)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Quick start](#quick-start)
+- [Engineering notes](#engineering-notes)
+- [Project structure](#project-structure)
+- [Status and limitations](#status-and-limitations)
+- [Next improvements](#next-improvements)
+- [License](#license)
 
 ---
 
-## 🛠️ Tech Stack
+## Why MessentR?
 
-### Backend
+Chat looks simple until you add unread state, reconnects, file uploads, and encryption. MessentR is a full-stack attempt to handle those problems end to end: a .NET API, a React client, real-time delivery, and a browser-side encryption flow that is honest about its limits.
 
-| Package | Version | Role |
-|---|---|---|
-| PHP | ^8.3 | Runtime |
-| laravel/framework | ^13.0 | Core framework |
-| inertiajs/inertia-laravel | ^2.0 | Server-side Inertia adapter |
-| laravel/reverb | ^1.0 | Self-hosted WebSocket server |
-| laravel/sanctum | ^4.0 | Session & token authentication |
-| laravel/horizon | ^5.47 | Queue dashboard & monitoring |
-| tightenco/ziggy | ^2.0 | Named Laravel routes in JS |
-| pusher/pusher-php-server | `*` | Required by Reverb's transport layer |
+The interesting part is not the chat bubble. It is the state behind it: who belongs to a channel, which events go to which users, how uploads are streamed directly to storage, and where encryption actually happens.
 
-> All versions taken directly from `composer.json`.
-
-### Frontend
-
-| Package | Version | Role |
-|---|---|---|
-| react | ^18.2 | UI library |
-| @inertiajs/react | ^2.0 | Client-side Inertia adapter |
-| @laravel/echo-react | ^2.3 | Echo hooks for React |
-| laravel-echo | ^2.3 | WebSocket client |
-| tailwindcss | ^4.3 | Utility-first CSS |
-| daisyui | ^5.5 | Tailwind component library |
-| @headlessui/react | ^2.2 | Accessible unstyled components |
-| @heroicons/react | ^2.2 | SVG icon library |
-| typescript | ^5.0 | Type safety (strict mode) |
-| vite | ^7.0 | Frontend build tool |
-| emoji-picker-react | ^4.18 | Emoji picker |
-| react-markdown + rehype-sanitize | ^10.1 / ^6.0 | Safe markdown rendering |
-| idb-keyval | ^6.2 | IndexedDB for E2EE private key storage |
-| uuid | ^13.0 | Client-side unique IDs |
-
-> All versions taken directly from `package.json`.
-
-### Infrastructure
-
-| Service | Technology | Role |
-|---|---|---|
-| App (PHP-FPM) | PHP 8.3 + Laravel | Application server |
-| Web server | Nginx 1.27-alpine | Reverse proxy & static files |
-| Database | MySQL 8.0 | Primary relational store |
-| Cache / Queue / Sessions | Redis 7 (AOF persistence) | Fast ephemeral storage |
-| Queue manager | Laravel Horizon | Queue monitoring & worker management |
-| WebSocket server | Laravel Reverb | Real-time event broadcasting |
-| File storage (dev) | MinIO | S3-compatible local object storage |
-| File storage (prod) | AWS S3 | Cloud object storage |
-| Mail catcher (dev) | Mailpit | Intercept and inspect outgoing mail |
+This is a portfolio project, not a production service. The goal is to show how the pieces fit together, not to hide the trade-offs.
 
 ---
 
-## 🏗️ Architecture Overview
+## Demo
 
-The codebase enforces clear separation of concerns through 8 applied design patterns:
+> **Live demo:** [twiliver.dev](https://twiliver.dev) _._ The screenshots below are from the local development build.
 
+<p align="center">
+  <img src="docs/screenshots/channels.png" alt="App Preview" width="800" />
+</p>
+
+<details>
+  <summary><b>🔍 More (Conversation, Secret Room)</b></summary>
+  <br>
+
+  <p align="center">
+    <img src="docs/screenshots/chat.png" width="800" alt="Conversation view" /><br><br>
+    <img src="docs/screenshots/secret-channel.png" width="800" alt="Secret room" />
+  </p>
+</details>
+
+1. Sign in as `alex.rivers@messenger.local` with `Password123!`.
+2. Create a channel, add a member, and send a message.
+3. Upload an image and show the inline preview.
+4. Create a channel with E2EE enabled, enter a passphrase to unlock it, then send an encrypted message.
+
+Local demo URLs: client `http://localhost:5173`, API `http://localhost:5212`, Scalar `http://localhost:5212/scalar/v1`, MinIO console `http://localhost:9001`.
+
+---
+
+## Feature highlights
+
+Six capabilities define the project:
+
+| Capability              | What it demonstrates                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| **Real-time messaging** | SignalR delivery, optimistic UI, reconnect handling, and two-tier event routing.            |
+| **Channels and DMs**    | Roles, membership, cursor-paginated history, and unread state.                              |
+| **Secret rooms**        | Browser-side AES-GCM encryption for messages and attachments, with explicit limits.         |
+| **Auth and sessions**   | Short-lived JWT access tokens in memory, rotating refresh cookies, and Google sign-in.      |
+| **File sharing**        | Presigned S3/MinIO multipart uploads, progress tracking, abort support, and media previews. |
+| **Messaging UX**        | Replies, reactions, typing indicators, presence, and channel search.                        |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Browser["React 19 SPA<br/>Feature-Sliced Design"]
+    API["ASP.NET Core WebAPI<br/>Controllers + SignalR Hub"]
+    App["Application<br/>CQRS + validators + interfaces"]
+    Domain["Domain<br/>entities + invariants"]
+    Infra["Infrastructure<br/>EF Core + JWT + S3 + presence"]
+    PG[(PostgreSQL)]
+    S3[(S3 / MinIO)]
+
+    Browser -->|REST /api| API
+    Browser <-->|SignalR /hubs/chat| API
+    API --> App
+    API --> Infra
+    App --> Domain
+    Infra -.->|implements interfaces| App
+    Infra --> Domain
+    Infra --> PG
+    Infra --> S3
 ```
-Controllers  →  Form Requests (validate)  →  Services (business logic)
-                                           →  Repositories (Eloquent queries)
-                                           →  API Resources (JSON shape)
+
+- **Domain** contains entities, enums, audit/soft-delete contracts, and business invariants.
+- **Application** contains CQRS commands/queries, handlers, validators, DTOs, and service interfaces.
+- **Infrastructure** implements EF Core/PostgreSQL, JWT, Argon2id, Google auth, S3 storage, and presence tracking.
+- **WebAPI** exposes thin controllers, the SignalR hub, middleware, OpenAPI, and auth cookie helpers.
+- **Client** follows FSD: `app -> pages -> widgets -> features -> entities -> shared`.
+
+The real-time layer is split into two tiers: persistent events such as `ReceiveMessage` go to affected users, while ephemeral events such as typing go only to active viewers in a channel group.
+
+---
+
+## Tech stack
+
+| Layer        | Choice                                                       | Why                                                   |
+| ------------ | ------------------------------------------------------------ | ----------------------------------------------------- |
+| Backend      | .NET 10, ASP.NET Core, MediatR, FluentValidation, Mapperly   | Typed, testable API with first-class SignalR support  |
+| Frontend     | React 19, TypeScript, TanStack Query, Redux Toolkit, Zustand | Type-safe UI and predictable client state             |
+| UI           | Tailwind CSS 4, Radix UI, Lucide                             | Accessible primitives with a consistent design system |
+| Real-time    | SignalR WebSockets                                           | Bidirectional updates with reconnect handling         |
+| Data         | PostgreSQL 16, EF Core, Npgsql                               | Relational model with transactions and migrations     |
+| Storage      | S3-compatible storage, MinIO locally                         | Offload large files and test locally                  |
+| Auth         | JWT, refresh cookies, Google, Argon2id                       | Short-lived access, revocable sessions, social login  |
+| API contract | ASP.NET Core OpenAPI, openapi-typescript                     | Generated TypeScript types from the backend contract  |
+| Architecture | Clean Architecture, CQRS, FSD                                | Clear boundaries and predictable feature growth       |
+| Testing      | xUnit, FluentAssertions, NSubstitute                         | Fast handler tests with readable assertions           |
+
+---
+
+## Quick start
+
+### Prerequisites
+
+- .NET SDK 10
+- Node.js 22+ and pnpm 10
+- Docker Desktop (for PostgreSQL and MinIO)
+- `dotnet-ef` global tool
+
+### Run the stack
+
+```bash
+git clone https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger.git
+cd laravel-react-messenger
+
+docker compose up -d
+
+dotnet tool install --global dotnet-ef
+dotnet restore MessengerApp.slnx
+dotnet ef database update --project src/Infrastructure --startup-project src/WebAPI
+dotnet run --project src/WebAPI/MessengerApp.WebAPI.csproj
 ```
 
-| Pattern | Location | Purpose |
-|---|---|---|
-| **Service Layer** | `app/Services/` | `ChannelService`, `MessageService`, `ChunkUploadService`, `VideoThumbnailService`, `MessageSuggestionService`, `PremiumCheckoutService` |
-| **Repository Pattern** | `app/Repositories/Eloquent/` | `ChannelRepo`, `MessageRepo` behind interfaces — Eloquent queries out of services |
-| **Observer Pattern** | `app/Observers/MessageObserver` | Handles `last_message_id` atomic update and attachment cleanup on message create/delete |
-| **Template Method** | `app/Patterns/TemplateMethod/DirectChannel/` | `DirectCreator` (plain DM) and `E2EEDirectCreator` (encrypted DM) share abstract base |
-| **Adapter Pattern** | `app/Adapters/GeminiMessageSuggestionAdapter` | Implements `MessageSuggestionProvider` contract — swap AI providers by rebinding |
-| **Contract / Interface** | `app/Contracts/` | `MessageSuggestionProvider`, `PaymentGateway` — controllers depend on interfaces, not concretions |
-| **Factory Pattern** | `app/Services/Payments/PaymentGatewayFactory` | Resolves payment gateway from config |
-| **EventBus (Frontend)** | `resources/js/EventBus.tsx` | Cross-component event emission without prop drilling (`useEventBus()` → `emit()` / `on()`) |
+In Development, the API seeds sample users, channels, and messages on startup. Default password: `Password123!`.
 
-### Real-Time Architecture
+In a second terminal:
 
-```
-Browser  ──[WebSocket]──▶  Laravel Reverb (port 8080)
-                                │
-                          Laravel Events
-                                │
-             ┌──────────────────┼──────────────────┐
-             ▼                  ▼                  ▼
-  message.channel.{id}    user.{userId}         online
-  (private channel)       (private channel)   (presence channel)
-  MessageCreated          ChannelUpdated       Online users
-  MessageDeleted          ChannelDeleted
-  MessageReactionUpdated  ChannelReadUpdated
+```bash
+cp client/.env.example client/.env
+pnpm --dir client install
+pnpm --dir client dev
 ```
 
-### E2EE Encryption Flow
+Open `http://localhost:5173`.
 
+Set `VITE_GOOGLE_CLIENT_ID` in `client/.env` to enable Google sign-in; email/password login works without it.
+
+### Configuration
+
+Backend configuration lives in `src/WebAPI/appsettings.json`:
+
+- `ConnectionStrings:DefaultConnection`
+- `Jwt:SecretKey`, `Jwt:Issuer`, `Jwt:Audience`
+- `Google:ClientId`
+- `Storage:ServiceUrl`, `Storage:BucketName`, `Storage:AccessKey`, `Storage:SecretKey`
+
+Frontend configuration lives in `client/.env` (copied from `client/.env.example`):
+
+- `VITE_API_BASE_URL` — API base URL, default `http://localhost:5212/api`
+- `VITE_GOOGLE_CLIENT_ID` — optional; must match the backend `Google:ClientId`
+- `VITE_HUB_URL` — optional SignalR URL override; add it manually for non-default hosting
+
+Development values are checked in and must be replaced before deployment. If the built client is served from a different origin than the API, update the CORS allow-list in `src/WebAPI/Program.cs`. When building the client for another host, set `VITE_HUB_URL` so SignalR does not fall back to `http://localhost:5212`.
+
+### Run with Docker
+
+The `Dockerfile` builds the React client and publishes it together with the API. Start the infrastructure, apply migrations, then build and run:
+
+```bash
+docker compose up -d
+dotnet ef database update --project src/Infrastructure --startup-project src/WebAPI
+
+docker build -t messentr .
+docker run --rm -p 8080:8080 \
+  -e ASPNETCORE_ENVIRONMENT=Development \
+  -e ConnectionStrings__DefaultConnection="Host=host.docker.internal;Port=5432;Database=messenger_db;Username=postgres;Password=postgres;Pooling=true;" \
+  -e Storage__ServiceUrl="http://host.docker.internal:9000" \
+  messentr
 ```
-Alice generates ECDH P-256 key pair  →  public key stored server-side  (PUT /users/public-key)
-Alice opens E2EE DM with Bob         →  fetches Bob's public key        (GET /users/{user}/public-key)
-Alice sends message                  →  ECDH shared secret → AES-GCM-256 encrypt in browser
-                                     →  {is_encrypted: true, iv, ciphertext} stored in DB
-                                        (content column is NULL — server never sees plaintext)
-Bob receives message                 →  useChannelSockets decrypts before EventBus emit
+
+Open `http://localhost:8080`. On Linux, add `--add-host=host.docker.internal:host-gateway` to `docker run`. The image uses the checked-in development JWT and MinIO settings; override them before deployment. Google sign-in needs `VITE_GOOGLE_CLIENT_ID` at client build time.
+
+### API contract
+
+- OpenAPI document (Development only): `http://localhost:5212/openapi/v1.json`
+- Scalar UI (Development only): `http://localhost:5212/scalar/v1`
+- Health check: `http://localhost:5212/api/health`
+- Regenerate frontend types (API must be running): `pnpm --dir client run api:generate`
+
+### Tests
+
+```bash
+dotnet test tests/MessengerApp.Application.UnitTests --nologo
+pnpm --dir client lint
+pnpm --dir client build
 ```
 
 ---
 
-## 🐳 Docker Services
+## Engineering notes
 
-```
-compose.yml (development)                    compose.prod.yml (production)
-─────────────────────────                    ────────────────────────────
-app        PHP-FPM 8.3          (internal)   app        PHP-FPM (optimized)
-nginx      Nginx 1.27-alpine    :8000        nginx      Nginx           :80/:443
-mysql      MySQL 8.0            :3306        mysql      MySQL 8.0
-redis      Redis 7-alpine       :6379        redis      Redis 7
-horizon    Laravel Horizon      (internal)   horizon    Laravel Horizon
-reverb     Laravel Reverb       :8080        reverb     Laravel Reverb
-minio      MinIO (S3-compat)    :9000/:9001  —          (AWS S3 in production)
-mailpit    Mailpit              :8025        —          (real SMTP in production)
-```
+### Decisions
 
-> All services include proper `healthcheck` configurations. `horizon` depends only on Redis (not the app) to avoid the 120s app startup delay.
+- **Result pattern instead of control-flow exceptions.** Expected failures return `Result<T>` with a typed `Error` record (`Validation`, `NotFound`, `Conflict`, `Unauthorized`, `Forbidden`). `ApiController` maps them to RFC 7807/9457 `ProblemDetails`; `GlobalExceptionHandler` is the final safety net for unexpected 500s.
+- **CQRS with MediatR.** Commands and queries are records. Handlers depend on `IApplicationDbContext`, and read paths use `AsNoTracking()`.
+- **Compile-time mapping.** DTO mapping uses Mapperly source generation and explicit projections instead of runtime reflection mappers such as AutoMapper.
+- **Dual-token auth.** 15-minute JWT access tokens stay in memory. 64-byte random refresh tokens rotate in an `HttpOnly` cookie, and reuse revokes all active sessions for that user. Refresh tokens are currently stored raw and should be hashed at rest.
+- **Keyset pagination.** Channel history fetches `limit + 1` rows with a `CreatedAt` cursor instead of `OFFSET`; the next step is a stable `(CreatedAt, Id)` cursor and a matching composite index.
+- **Presigned uploads.** Files go directly to S3/MinIO through a single presigned PUT or multipart part URLs; the API handles authorization, metadata, completion, and abort.
+- **Passphrase E2EE with explicit limits.** Secret rooms derive an AES-GCM-256 key from PBKDF2-SHA256 (600,000 iterations) and a server-generated salt. Text uses `ENC:<base64 IV>:<base64 ciphertext+tag>`; files use `[12B IV][ciphertext+tag]`. There is no forward secrecy, passphrase rotation, or recovery.
+- **Contract-first API.** Native ASP.NET Core OpenAPI feeds `openapi-typescript`, so DTO drift fails the client build instead of surfacing at runtime.
+
+### What was hard
+
+- **Refresh-token stampede.** A burst of 401s can trigger concurrent refreshes; the Axios layer uses a single-flight queue so only one refresh runs and the rest wait for the new token.
+- **React StrictMode and SignalR.** Development double-mounting can create duplicate connections; the client uses a singleton connection with a shared `startPromise`.
+- **Secret-room media lifecycle.** Decrypted attachments become blob URLs that must be revoked on cleanup to avoid leaking memory; a shared in-flight map prevents duplicate decrypts.
+- **Reaction concurrency.** PostgreSQL `xmin` row versions plus a bounded retry loop prevent lost updates when many users react at once.
+- **Jump-to-context.** A dedicated query returns a window around a target message so reply/search navigation does not require scrolling through thousands of pages.
+- **Virtualized feed.** TanStack Virtual renders only visible rows, while `useChatScroll` keeps bottom stickiness and preserves the scroll anchor when loading older messages.
 
 ---
 
-## 📁 Directory Structure
+## Project structure
 
-```
+```text
 .
-├── app/
-│   ├── Adapters/              # GeminiMessageSuggestionAdapter
-│   ├── Console/Commands/      # CancelExpiredPremiumPayments, PruneExpiredFreeUserMessages
-│   ├── Contracts/             # MessageSuggestionProvider, PaymentGateway interfaces
-│   ├── Events/                # MessageCreated, MessageDeleted, MessageReactionUpdated,
-│   │                          #   ChannelDeleted, ChannelReadUpdated
-│   ├── Http/
-│   │   ├── Controllers/       # 11 thin controllers delegating to services
-│   │   ├── Requests/          # 16 Form Request validation classes
-│   │   └── Resources/         # 8 API Resources for JSON responses
-│   ├── Jobs/                  # DeleteChannelJob, SendUserCreatedJob
-│   ├── Mail/                  # UserCreated mailable
-│   ├── Models/                # Channel, Message, MessageAttachment, MessageReaction,
-│   │                          #   MessageReport, PremiumPayment, PremiumPaymentEvent, User
-│   ├── Observers/             # MessageObserver
-│   ├── Patterns/
-│   │   └── TemplateMethod/DirectChannel/  # DirectCreator, E2EEDirectCreator
-│   ├── Repositories/
-│   │   ├── Eloquent/          # ChannelRepo, MessageRepo
-│   │   └── Interfaces/
-│   └── Services/              # ChannelService, MessageService, ChunkUploadService,
-│                              #   VideoThumbnailService, MessageSuggestionService,
-│                              #   PremiumCheckoutService, Payments/PaypalPaymentGateway
-│
-├── resources/js/
-│   ├── Components/App/        # 47+ components (MessageInput, AudioRecorder, ReplyPreview,
-│   │                          #   AttachmentPreviewModal, TypingIndicator, CodeBlock, ...)
-│   ├── Contexts/              # E2EEContext, UploadContext, ConfirmContext,
-│   │                          #   ChannelModalContext, UserModalContext
-│   ├── hooks/                 # 18 custom hooks (useChannelSockets, useMessages,
-│   │                          #   useTypingIndicator, useDraftMessages, useMessageSearch,
-│   │                          #   useAiMessageSuggestion, useOnlinePresence, ...)
-│   ├── Pages/
-│   │   ├── Admin/             # Users.tsx, Reports.tsx
-│   │   ├── Auth/              # Login, Register, ForgotPassword, ...
-│   │   ├── Premium/           # Index.tsx (PayPal checkout)
-│   │   ├── Profile/           # Edit.tsx
-│   │   └── Home.tsx           # Main chat page
-│   ├── types/                 # TypeScript type definitions (chat.d.ts, events.d.ts, ...)
-│   └── utils/                 # crypto.ts, key-storage.ts, chunkedUpload.ts, ...
-│
-├── routes/
-│   ├── web.php                # All application routes (Inertia-style, no separate API file)
-│   ├── auth.php               # Breeze auth routes
-│   ├── channels.php           # Broadcast channel authorization (online, message.channel, user)
-│   └── console.php            # Artisan scheduled commands
-│
-├── tests/
-│   └── Feature/               # 20+ PHPUnit feature tests
-│
-├── docker/                    # Nginx config, PHP config, entrypoint scripts
-├── compose.yml                # Development Docker Compose (8 services)
-├── compose.prod.yml           # Production Docker Compose
-├── Makefile                   # Dev/prod lifecycle shortcuts
-├── Dockerfile                 # Multi-stage build (development + production targets)
-├── ansible/                   # Ansible playbooks for server provisioning
-└── terraform/                 # Terraform IaC for cloud infrastructure
+├── client/                  React 19 + Vite + Feature-Sliced Design
+├── src/
+│   ├── Domain/              Entities, enums, domain contracts
+│   ├── Application/         CQRS handlers, validators, DTOs
+│   ├── Infrastructure/      EF Core, auth, storage, presence
+│   └── WebAPI/              Controllers, SignalR hub, middleware
+├── tests/                   xUnit application tests
+├── docker-compose.yml       PostgreSQL + MinIO
+├── Dockerfile               Client + backend multi-stage build
+├── MessengerApp.slnx        .NET solution
+└── archive/                 Frozen legacy Laravel implementation
 ```
 
 ---
 
-## ⚡ Quick Start
+## Status and limitations
 
-### Option A — Local Development (no Docker)
-
-**Prerequisites:** PHP 8.3+, Composer, Node.js (LTS), MySQL
-
-```bash
-# 1. Clone
-git clone https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger.git
-cd laravel-react-messenger
-
-# 2. One-command setup
-#    (composer install → copy .env → key:generate → migrate → npm install → npm run build)
-composer run-script setup
-```
-
-Then open `.env` and fill in database and service credentials (see [Environment Variables](#%EF%B8%8F-environment-variables)), then:
-
-```bash
-# Start all 4 processes concurrently (HTTP server, queue worker, Vite, Reverb)
-composer run-script dev
-```
-
-| Process | Command | URL |
-|---|---|---|
-| HTTP server | `php artisan serve` | http://localhost:8000 |
-| Queue worker | `php artisan queue:listen --tries=1 --timeout=0` | — |
-| Vite dev server | `npm run dev` | (HMR assets) |
-| Reverb WebSocket | `php artisan reverb:start --debug` | ws://localhost:8080 |
-
-### Option B — Docker Compose
-
-**Prerequisites:** Docker + Docker Compose
-
-```bash
-git clone https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger.git
-cd laravel-react-messenger
-cp .env.example .env   # edit credentials
-
-# Start infrastructure first, then bring up full stack
-make setup
-```
-
-App at **http://localhost:8000** · Horizon at `/horizon` · Mailpit at http://localhost:8025 · MinIO console at http://localhost:9001
+- This is a portfolio project, not a production deployment.
+- Development secrets are checked in and must be replaced before public deployment.
+- Auth and message endpoints still need rate limiting; refresh tokens are stored raw and should be hashed at rest.
+- Argon2id currently uses 19 MiB and 2 iterations, below the project's 64 MiB / 3-iteration target.
+- Secret-room encryption is client-side; the API stores whatever payload the client sends and cannot verify ciphertext contents. Search excludes secret rooms, and passphrases cannot be rotated or recovered.
+- Presence tracking is in-memory and needs a backplane before running multiple API instances.
+- Message search uses a case-insensitive substring match without a dedicated search index; large workspaces need a trigram/GIN index or external search.
+- Channel history uses a `CreatedAt` cursor; a `(CreatedAt, Id)` tie-breaker is still needed for perfectly stable pagination.
+- Multipart uploads support abort and progress, but not resume after a page reload.
+- CORS is hard-coded to the local Vite origins; update it for other deployments.
 
 ---
 
-## 🔧 Development Commands
+## Next improvements
 
-### Composer Scripts
-
-| Command | Description |
-|---|---|
-| `composer run-script setup` | First-time setup (install deps, copy `.env`, generate key, migrate, build assets) |
-| `composer run-script dev` | Start all 4 processes concurrently |
-| `composer run-script test` | Clear config cache + run PHPUnit suite |
-
-### Makefile (Docker workflow)
-
-| Command | Description |
-|---|---|
-| `make up` | Start dev stack, print service URLs |
-| `make down` | Stop dev stack (keep volumes) |
-| `make build` | Rebuild images (no cache) |
-| `make shell` | Open bash in app container |
-| `make tinker` | Laravel Tinker in container |
-| `make migrate` | Run migrations |
-| `make fresh` | Drop + migrate + seed |
-| `make test` | Run PHPUnit suite |
-| `make test-filter F=TestName` | Run filtered tests |
-| `make pint` | Run Laravel Pint formatter |
-| `make logs` | Tail app + horizon + reverb logs |
-| `make horizon-pause` | Pause Horizon (stop accepting new jobs) |
-| `make restart-reverb` | Graceful Reverb restart |
-| `make prod-deploy` | Full deploy: install → build assets → restart containers |
-
-### npm Scripts
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Start Vite HMR dev server |
-| `npm run build` | `tsc && vite build` — TypeScript compile then bundle |
-| `npm run lint` | ESLint + Prettier fix across `resources/js/` |
+- Add rate limiting, hashed refresh tokens, and production cookie settings.
+- Harden Argon2id to the documented 64 MiB / 3-iteration target.
+- Add a Redis backplane for SignalR broadcast and presence.
+- Add a composite `(ChannelId, CreatedAt, Id)` index and a stable `(CreatedAt, Id)` cursor.
+- Add a PostgreSQL GIN/trigram index for search; evaluate Elasticsearch/OpenSearch for full-text search.
+- Publish a public demo and record a short walkthrough.
+- Add secret-room passphrase rotation and recovery.
 
 ---
 
-## ✅ Test Suite
+## License
 
-Tests use **PHPUnit** (not Pest) against an **in-memory SQLite** database — no external database setup required.
-
-```bash
-php artisan test --compact                          # full suite
-php artisan test --compact --filter=PremiumPayment  # filtered
-```
-
-| Test file | What it covers |
-|---|---|
-| `PremiumPaymentTest.php` | PayPal checkout, capture, idempotency, expiry cancellation |
-| `ChunkUploadTest.php` | Multi-chunk upload, temp file merge, validation |
-| `VideoStreamAndThumbnailTest.php` | Range request streaming, 206 responses, thumbnail generation |
-| `MessageReactionTest.php` | Toggle reactions, broadcast events, aggregation |
-| `AiMessageSuggestionTest.php` | Gemini adapter, rate limiting, 503 fallback |
-| `MessageStoreTest.php` | Store with attachments, validation |
-| `MessageDeleteTest.php` | Delete with broadcast, attachment cleanup |
-| `GroupAuthorizationTest.php` | Channel membership access control |
-| `UserAdminActionsTest.php` | Promote, demote, block, unblock |
-| `CancelExpiredPremiumPaymentsTest.php` | Scheduled command integration |
-| `PruneExpiredFreeUserMessagesTest.php` | 90-day retention logic |
-| `ChannelUnreadTest.php` | `last_read_message_id` tracking |
-| `UserSearchTest.php` | User search with pagination |
-| + 7 more | Auth, profile, group delete flows, ... |
-
----
-
-## ⚙️ Environment Variables
-
-### Application
-
-```env
-APP_NAME=Laravel
-APP_URL=http://localhost:8000
-```
-
-### Database
-
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=laravel-react-messenger
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
-> The test suite overrides `DB_CONNECTION=sqlite` and `DB_DATABASE=:memory:` via `phpunit.xml` — no separate setup needed.
-
-### Session / Cache / Queue
-
-```env
-SESSION_DRIVER=redis
-QUEUE_CONNECTION=redis
-CACHE_STORE=redis
-
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=null
-REDIS_PORT=6379
-```
-
-### Broadcasting (Reverb)
-
-```env
-BROADCAST_CONNECTION=reverb
-
-REVERB_APP_ID=my-app-id
-REVERB_APP_KEY=my-app-key
-REVERB_APP_SECRET=my-app-secret
-REVERB_HOST=localhost
-REVERB_PORT=8080
-REVERB_SCHEME=http
-
-VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
-VITE_REVERB_HOST=localhost
-VITE_REVERB_PORT=8080
-VITE_REVERB_SCHEME=http
-```
-
-### File Storage
-
-```env
-# Development — MinIO (S3-compatible, runs as Docker service)
-AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=minioadmin
-AWS_DEFAULT_REGION=us-east-1
-AWS_BUCKET=messenger
-AWS_ENDPOINT=http://localhost:9000
-AWS_USE_PATH_STYLE_ENDPOINT=true
-
-# Production — replace with real AWS S3 credentials
-```
-
-### Google Gemini (AI reply suggestions)
-
-```env
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-3.1-flash-lite
-```
-
-> Change `GEMINI_MODEL` to any valid Gemini model if needed.
-
-### PayPal (Premium subscription)
-
-```env
-PAYPAL_CLIENT_ID=
-PAYPAL_CLIENT_SECRET=
-PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com
-PAYPAL_PREMIUM_PRICE_CENTS=499
-PAYPAL_PREMIUM_CURRENCY=USD
-```
-
-> Use `https://api-m.paypal.com` (not the sandbox URL) in production.
-
----
-
-## 🔐 Security Highlights
-
-| Mechanism | Implementation |
-|---|---|
-| **End-to-end encryption** | ECDH P-256 + AES-GCM-256 in browser; `content` stored as `NULL` — server never sees plaintext |
-| **Session storage** | Redis-backed (not cookie-only) |
-| **Channel authorization** | Broadcast channels gated by membership check in `channels.php` |
-| **Rate limiting** | AI suggestions: `throttle:6,1` middleware |
-| **CSRF protection** | Laravel's built-in CSRF via Inertia |
-| **Input validation** | 16 Form Request classes with strict rules |
-| **Admin gate** | `admin` middleware on all privileged routes |
-| **Active user gate** | `active` middleware prevents blocked users from accessing the app |
-
----
-
-## 💡 Key Technical Decisions
-
-**Why Laravel Reverb instead of Pusher?**
-Self-hosted WebSocket server — no third-party SaaS dependency, no per-message pricing, runs as a first-class Docker service alongside the app.
-
-**Why Inertia.js instead of a separate REST API?**
-Eliminates the need to maintain a separate API layer while retaining a full React SPA experience. Laravel handles routing and auth; Inertia handles page rendering and state hydration.
-
-**Why Repository Pattern on top of Eloquent?**
-`ChannelRepo` and `MessageRepo` behind interfaces make complex query logic independently testable and swappable without touching controllers or services.
-
-**Why MinIO for development file storage?**
-S3-compatible API means zero code changes between development (MinIO Docker service) and production (AWS S3) — only env vars differ.
-
-**Why Laravel Horizon?**
-`DeleteChannelJob` and `SendUserCreatedJob` run asynchronously. Horizon provides a real-time dashboard for monitoring queue throughput, job failures, and worker health — without any additional infrastructure.
-
----
-
-## 📋 Scheduled Commands
-
-Registered in `routes/console.php` and run by Laravel's built-in task scheduler:
-
-| Command | Schedule | Description |
-|---|---|---|
-| `premium:cancel-expired-payments` | Hourly | Cancels PayPal orders not captured within 3 hours |
-| `messages:prune-expired-free-users` | Daily | Deletes messages older than 90 days from non-premium senders |
-
----
-
-## 🗺️ Route Overview
-
-All routes use Inertia (no separate REST API file). Auth middleware: `auth + verified + active`.
-
-| Group | Key Routes |
-|---|---|
-| **Channels** | `GET/POST /channels`, `GET/PUT/DELETE /channels/{channel}` |
-| **Direct / E2EE** | `POST /channels/direct/{user}`, `POST /channels/secret-direct/{user}` |
-| **Members** | `POST/DELETE /channels/{channel}/members/{user}` |
-| **Messages** | `GET/POST /channels/{channel}/messages`, `GET .../messages/search` |
-| **Chunked upload** | `POST /messages/upload-chunk` |
-| **Reactions** | `POST /messages/{message}/reactions` |
-| **AI Suggestions** | `POST /channels/{channel}/message-suggestions` (throttle: 6/min) |
-| **Video Streaming** | `GET /attachments/{attachment}/stream` (Range Request / 206) |
-| **Premium / PayPal** | `GET /premium`, `POST /premium/paypal/checkout`, `POST /premium/paypal/capture/{orderId}` |
-| **E2EE Keys** | `PUT /users/public-key`, `GET /users/{user}/public-key` |
-| **Admin** | `GET /admin/users`, `GET /admin/reports`, user CRUD + block/promote |
-| **Profile** | `GET/PATCH/DELETE /profile` |
-
----
-
-## 📋 Known Issues
-
-- **`GroupFactory` references a non-existent model.** `database/factories/GroupFactory.php` is scaffolded against `App\Models\Group`, which does not exist. Groups are `Channel` records with `type = 'group'`. Always use `ChannelFactory` in tests.
-- **Reverb must be running** for real-time features to work. If `BROADCAST_CONNECTION` is not set to `reverb`, all broadcasting falls back silently to the log driver.
-
----
-
-## 🤝 Contributing
-
-This is a personal/learning project and is not currently accepting external contributions. Feel free to fork it and adapt it to your own use case.
-
----
-
-## 🙏 Acknowledgments
-
-- **[Laravel](https://laravel.com)** — Elegant PHP framework
-- **[Laravel Reverb](https://reverb.laravel.com)** — First-party self-hosted WebSocket server
-- **[Inertia.js](https://inertiajs.com)** — The modern monolith
-- **[React](https://react.dev)** — Declarative UI
-- **[Vite](https://vitejs.dev)** — Blazing fast frontend tooling
-- **[Tailwind CSS](https://tailwindcss.com)** + **[DaisyUI](https://daisyui.com)** — Utility-first styling
-
----
-
-## 📄 License
-
-This project is open-sourced software licensed under the [MIT License](https://opensource.org/licenses/MIT).
+No license file is currently included. The source is available for portfolio review; add a license before redistributing or reusing it.
 
 ---
 
 <div align="center">
 
-**⭐ Star this repo if you find it helpful!**
-
-Made with ❤️ by [Ngo-Viet-Hoang1](https://github.com/Ngo-Viet-Hoang1)
-
-[Live Demo](https://twiliver.dev) · [Report Bug](https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger/issues) · [GitHub](https://github.com/Ngo-Viet-Hoang1/laravel-react-messenger)
+Built as a deep-dive into .NET architecture, React state management, real-time systems, and secure client-side data handling.
 
 </div>
