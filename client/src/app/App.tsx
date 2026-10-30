@@ -9,13 +9,20 @@ import { ThemeProvider } from '@/shared/theme';
 import { router } from '@/app/routes/router';
 import { useAuthBootstrap } from '@/features/auth';
 import { Toaster } from '@/shared/ui/sonner';
+import { useBackendHealth } from '@/shared/lib/useBackendHealth';
+import { ServerWakingScreen } from '@/shared/ui/ServerWakingScreen';
 
 initAuthInterceptors();
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const AppContent: React.FC = () => {
+  const isBackendReady = useBackendHealth();
   useAuthBootstrap();
+
+  if (!isBackendReady) {
+    return <ServerWakingScreen />;
+  }
 
   return (
     <>
@@ -30,9 +37,13 @@ export const App: React.FC = () => {
     <ThemeProvider defaultTheme="light" storageKey="messenger-theme">
       <Provider store={store}>
         <QueryProvider>
-          <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+          {GOOGLE_CLIENT_ID ? (
+            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+              <AppContent />
+            </GoogleOAuthProvider>
+          ) : (
             <AppContent />
-          </GoogleOAuthProvider>
+          )}
         </QueryProvider>
       </Provider>
     </ThemeProvider>
